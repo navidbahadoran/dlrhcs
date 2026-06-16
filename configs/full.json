@@ -1,0 +1,120 @@
+{
+  "name": "full",
+  "description": "Submission-scale run. Clean geometric grid T+=N in {50,100,200,400}; each step doubles the panel so the sqrt(T+N) SE contraction is read straight off tab:sim_precision. R=1000 at 50/100/200; R=500 at the expensive 400 cell (raise to 1000 if compute allows). Tuning balanced for speed (validated: oracle coverage 0.952 at these settings).",
+  "master_seed": 2024,
+  "dgp": {
+    "rho_y": 0.85,
+    "sigma_u": 0.3,
+    "c_x": 0.3,
+    "a_rms": 0.55,
+    "bh_rms": 0.5,
+    "noise": "iid"
+  },
+  "tuning": {
+    "ranks": [
+      1,
+      1,
+      1
+    ],
+    "q": 2,
+    "J": 6,
+    "ridge": 0.02,
+    "n_sweeps": 50,
+    "n_restarts": 2,
+    "riesz_tol": 1e-07,
+    "kappa_c": 0.5
+  },
+  "oracle": {
+    "Tp": 100,
+    "N": 100,
+    "R": 1000
+  },
+  "grid": [
+    [
+      50,
+      50,
+      1000
+    ],
+    [
+      100,
+      100,
+      1000
+    ],
+    [
+      200,
+      200,
+      1000
+    ],
+    [
+      400,
+      400,
+      500
+    ]
+  ],
+  "purge": {
+    "Tp": 100,
+    "N": 100,
+    "R": 1000,
+    "q_grid": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "empirical": {
+    "ranks": [
+      1,
+      1,
+      2
+    ],
+    "q": 1,
+    "J": 6,
+    "ridge": 0.1,
+    "n_restarts": 3,
+    "n_sweeps": 60,
+    "riesz_tol": 1e-05,
+    "riesz_ridge": 1e-06,
+    "riesz_maxiter": 600
+  },
+  "n_jobs": -1,
+  "theorems": {
+    "R": 500,
+    "R_rank": 200,
+    "rank_grid": [
+      [
+        50,
+        50
+      ],
+      [
+        100,
+        100
+      ],
+      [
+        200,
+        200
+      ]
+    ],
+    "xs_TpN": [
+      120,
+      120
+    ],
+    "irf_TpN": [
+      100,
+      100
+    ],
+    "debias_TpN": [
+      200,
+      200
+    ]
+  },
+  "purge_dgp": {
+    "rho_y": 0.95,
+    "sigma_u": 0.3,
+    "c_x": 0.3,
+    "a_rms": 0.65,
+    "bh_rms": 0.5,
+    "noise": "iid"
+  }
+}

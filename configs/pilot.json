@@ -1,0 +1,107 @@
+{
+  "name": "pilot",
+  "description": "Fast smoke run: confirms the whole pipeline end-to-end in minutes.",
+  "master_seed": 2024,
+  "dgp": {
+    "rho_y": 0.85,
+    "sigma_u": 0.3,
+    "c_x": 0.3,
+    "a_rms": 0.55,
+    "bh_rms": 0.5,
+    "noise": "iid"
+  },
+  "tuning": {
+    "ranks": [
+      1,
+      1,
+      1
+    ],
+    "q": 2,
+    "J": 6,
+    "ridge": 0.02,
+    "n_sweeps": 30,
+    "n_restarts": 1,
+    "riesz_tol": 1e-07,
+    "kappa_c": 0.5
+  },
+  "oracle": {
+    "Tp": 100,
+    "N": 100,
+    "R": 40
+  },
+  "grid": [
+    [
+      50,
+      50,
+      30
+    ],
+    [
+      100,
+      100,
+      30
+    ]
+  ],
+  "purge": {
+    "Tp": 100,
+    "N": 100,
+    "R": 30,
+    "q_grid": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6
+    ]
+  },
+  "empirical": {
+    "ranks": [
+      1,
+      1,
+      2
+    ],
+    "q": 1,
+    "J": 4,
+    "ridge": 0.1,
+    "n_restarts": 1,
+    "n_sweeps": 30,
+    "riesz_tol": 1e-05,
+    "riesz_ridge": 1e-06,
+    "riesz_maxiter": 600
+  },
+  "n_jobs": -1,
+  "theorems": {
+    "R": 30,
+    "R_rank": 8,
+    "rank_grid": [
+      [
+        50,
+        50
+      ],
+      [
+        100,
+        100
+      ]
+    ],
+    "xs_TpN": [
+      80,
+      80
+    ],
+    "irf_TpN": [
+      100,
+      100
+    ],
+    "debias_TpN": [
+      120,
+      120
+    ]
+  },
+  "purge_dgp": {
+    "rho_y": 0.95,
+    "sigma_u": 0.3,
+    "c_x": 0.3,
+    "a_rms": 0.65,
+    "bh_rms": 0.5,
+    "noise": "iid"
+  }
+}
