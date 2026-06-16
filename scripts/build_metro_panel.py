@@ -1,34 +1,39 @@
 #!/usr/bin/env python3
 """Build the clean metro-unemployment panel from the raw BLS LAUS flat file.
 
-Raw input  : data/metro/la.data.60.Metro.txt   (all U.S. metropolitan areas)
-Names       : data/metro/la.series              (series_id -> area title)
-Clean output: data/metro/metro_unemployment.csv (YEAR + one column per MSA)
+This is the data-preparation step for the OPTIONAL second empirical application
+(metro-area unemployment), which is implemented but not part of the default run.
 
-Cleaning steps (documented in the paper's data appendix):
-  * Keep only metropolitan statistical areas (area type "B"), the
-    not-seasonally-adjusted unemployment-RATE series (LAUMT...3, measure 03).
-  * Use the ANNUAL AVERAGE the agency itself publishes (period M13) -- the
-    within-year mean of the twelve monthly rates, so the series carry no
-    seasonal cycle and need no seasonal adjustment from us.
-  * Keep the balanced set of metros observed in every complete year 1990-2025
-    (T = 36).  Per-series stationarization (ADF) and standardization happen in
-    dlrhcs.empirical.load_metro.
+Place the raw downloads in a local (git-ignored) ``data/metro/`` folder:
+    data/metro/la.data.60.Metro.txt   (all U.S. metropolitan areas)
+    data/metro/la.series              (series_id -> area title)
+then run:  python scripts/build_metro_panel.py
+which writes:
+    data/metro/metro_unemployment.csv (YEAR + one column per MSA)
+
+Cleaning steps (see EMPIRICAL_FINDINGS.md):
+  * Keep metropolitan statistical areas (area type "B"), the not-seasonally-
+    adjusted unemployment-RATE series (LAUMT...3, measure code 03).
+  * Use the agency's own ANNUAL AVERAGE (period M13) -- the within-year mean of
+    the twelve monthly rates -- so the series carry no seasonal cycle.
+  * Keep the balanced set of metros observed in every complete year 1990-2025.
+
+Per-series stationarization (ADF) and standardization happen downstream in
+dlrhcs.empirical.load_metro.
 
 Source: U.S. Bureau of Labor Statistics, Local Area Unemployment Statistics,
 https://download.bls.gov/pub/time.series/la/  (public domain).
-
-Reproduce:  python data/metro/build_metro_panel.py
 """
 import csv
 import hashlib
 import os
 import re
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-RAW = os.path.join(HERE, "la.data.60.Metro.txt")
-SER = os.path.join(HERE, "la.series")
-OUT = os.path.join(HERE, "metro_unemployment.csv")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+METRO = os.path.join(ROOT, "data", "metro")
+RAW = os.path.join(METRO, "la.data.60.Metro.txt")
+SER = os.path.join(METRO, "la.series")
+OUT = os.path.join(METRO, "metro_unemployment.csv")
 YEARS = list(range(1990, 2026))
 
 

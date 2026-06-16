@@ -165,21 +165,22 @@ stress the forward-exclusion window.
 
 ## 7. Data: download and preparation
 
-No data files are committed (the sources are public but carry citation/red
-istribution terms). Download them yourself and place them as described below;
-the fingerprints printed in each `outputs/empirical/*.json` pin the exact vintage.
+**No data is included in this repository** — the entire `data/` folder is
+git-ignored. The sources are public but carry citation/redistribution terms, so
+download them yourself into a local `data/` folder as described below. The
+content fingerprint printed in each `outputs/empirical/*.json` pins the exact
+vintage you used.
 
 ### Zillow (the paper's empirical application)
 
-1. Go to <https://www.zillow.com/research/data/> → "Home Values".
-2. Data Type = **ZHVI by tier**, Geography = **Metro & U.S.**, and download
+1. Create a `data/` folder in the repository root.
+2. Go to <https://www.zillow.com/research/data/> → "Home Values".
+3. Data Type = **ZHVI by tier**, Geography = **Metro & U.S.**, and download
    **both** tiers:
    - bottom tier: `Metro_zhvi_uc_sfrcondo_tier_0.0_0.33_sm_sa_month.csv`
    - top tier: `Metro_zhvi_uc_sfrcondo_tier_0.67_1.0_sm_sa_month.csv`
-3. Save them as:
-   - `data/zillow_metro_bottom.csv`
-   - `data/zillow_metro_top.csv`
-4. Run `python run_all.py --config configs/full.json --stage empirical`.
+4. Save them as `data/zillow_metro_bottom.csv` and `data/zillow_metro_top.csv`.
+5. Run `python run_all.py --config configs/full.json --stage empirical`.
 
 The loader stacks each metro's top- and bottom-tier series as two units in one
 panel, balances and aligns, applies a minimal per-series stationarization (ADF
@@ -188,20 +189,25 @@ become log-returns — otherwise keep the level), and standardizes. The full
 cleaning rule is documented in the paper's data appendix and in
 `EMPIRICAL_FINDINGS.md`.
 
-### Metro unemployment (optional, built but not used by default)
+### Metro unemployment (optional — implemented but not in the default run)
 
 A second application is fully implemented and parked for later use; it is **not**
-part of the default reproduction. To build the panel:
+part of the default reproduction.
 
-1. From the BLS LAUS flat files <https://download.bls.gov/pub/time.series/la/>
+1. Create a `data/metro/` folder.
+2. From the BLS LAUS flat files <https://download.bls.gov/pub/time.series/la/>
    download `la.data.60.Metro.txt` and `la.series` into `data/metro/`.
-2. Run `python data/metro/build_metro_panel.py`, which writes
-   `data/metro/metro_unemployment.csv` (383 metros, 1990–2025 annual averages).
-3. Load it via `dlrhcs.empirical.load_metro`.
+3. Run `python scripts/build_metro_panel.py`, which writes
+   `data/metro/metro_unemployment.csv` (383 metros balanced over 1990–2025,
+   annual averages).
+4. Load it via `dlrhcs.empirical.load_metro`.
 
-See `data/metro/README.md` for the cleaning rule and why it is parked (the series
-are strongly common-factor-driven; the README explains the level-vs-difference
-choice).
+Cleaning rule: keep metropolitan-area (area type `B`) not-seasonally-adjusted
+unemployment-rate series, use the BLS annual average (period `M13`, so the series
+carry no seasonal cycle), and keep the metros observed in every complete year
+1990–2025. These series are strongly common-factor-driven and economically
+stationary-but-persistent in levels, which is why the application is parked — see
+`EMPIRICAL_FINDINGS.md`.
 
 ## 8. Headline results
 
