@@ -29,4 +29,5 @@ singular) sharpen at full R.
 ## Empirical (real data, illustration of the feasible theorems)
 The Zillow AR(2) application runs end-to-end: strong lag structure, tight valid
 CIs, and stationary dynamics (companion radius 0.63). A metro-unemployment
-application is implemented and parked (not in th
+application is implemented and parked (not in the default run). See
+`EMPIRICAL_FINDINGS.md`.
