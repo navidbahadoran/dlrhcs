@@ -44,6 +44,8 @@ class Tuning:
     riesz_ridge: float = 1e-8
     riesz_tol: float = 1e-10
     riesz_maxiter: int = 2000
+    xs_bandwidth: Optional[int] = None   # spatial-kernel xs s.e. bandwidth (None=auto)
+    xs_kernel: str = "bartlett"          # "bartlett" (spatial, sim) | "cluster" (empirical)
 
 
 @dataclass
@@ -115,7 +117,7 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
     se, se_xs, ci, ci_xs = {}, {}, {}, {}
     for tg in targets:
         s = white_se(res, tg.name)
-        sx = xs_se(res, tg.name)
+        sx = xs_se(res, tg.name, bandwidth=tuning.xs_bandwidth, kernel=tuning.xs_kernel)
         e = res.estimates[tg.name]
         se[tg.name], se_xs[tg.name] = s, sx
         ci[tg.name] = (e - z * s, e + z * s)

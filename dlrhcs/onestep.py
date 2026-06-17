@@ -89,21 +89,37 @@ def white_se(res: OneStepResult, name: str) -> float:
     return np.sqrt(s2)
 
 
-def xs_se(res: OneStepResult, name: str) -> float:
-    """Within-period (cross-sectional) dependence-robust s.e.
+def xs_se(res: OneStepResult, name: str, bandwidth: Optional[int] = None,
+          kernel: str = "bartlett") -> float:
+    """Within-period cross-sectional dependence-robust s.e. (eq:xs_estimator_main).
 
-    Cluster-by-time form of eq:xs_estimator_main: robust to arbitrary
-    cross-sectional correlation within a period, independent across periods.
+    Both forms are applied within each period (innovation time-slices are
+    independent across periods, ass:dependent (a)) and are PSD by construction.
+
+    kernel="bartlett" -- the spatial-kernel HAC over the unit-index metric
+        d = |i - j| with the Bartlett kernel K(x) = max(0, 1 - |x|):
+            s^2_xs = sum_t sum_{i,j} K(|i-j|/b_TN) V_{ti} V_{tj},  V = Psi_cf * u_cf.
+        This is eq:xs_estimator_main and requires a MEANINGFUL cross-sectional
+        ordering (used in the simulation, where the dependence is spatial).
+        Bandwidth satisfies b_TN -> inf, b_TN^2/(Tp+N) -> 0; default (Tp+N)^{1/3}.
+
+    kernel="cluster" -- one-way clustering by period, s^2 = sum_t (sum_i V_{ti})^2.
+        Robust to ARBITRARY within-period dependence and needs NO metric; used for
+        the empirical panels, whose units have no natural cross-sectional order.
     """
-    Psi = res.Psi_cf[name]; u = res.u_cf
-    cluster = float(np.sum((Psi * u).sum(axis=1) ** 2))   # one-way cluster by time
-    white = float(np.sum((Psi ** 2) * (u ** 2)))          # heteroskedastic (no dependence)
-    TpN = u.size
-    # the within-period (xs) variance is White + cross terms; under positive
-    # dependence the cross terms are >=0, but their finite-sample estimate is
-    # noisy and can be negative, so we floor the cluster estimator at White --
-    # the xs s.e. is then never anti-conservative relative to White.
-    s2 = max(cluster, white, TpN ** -2.0)
+    V = res.Psi_cf[name] * res.u_cf          # cross-fitted score field (Tp x N)
+    Tp, N = V.shape
+    if kernel == "cluster":
+        s2 = float(np.sum(V.sum(axis=1) ** 2))           # one-way cluster by period
+    else:                                                 # "bartlett": spatial HAC
+        b = bandwidth if bandwidth is not None else max(1, int(round((Tp + N) ** (1.0 / 3.0))))
+        s2 = float(np.sum(V * V))            # lag d = 0  (Bartlett weight 1)
+        for d in range(1, min(b, N)):        # within-period Bartlett-weighted lags
+            w = 1.0 - d / b
+            if w <= 0.0:
+                break
+            s2 += 2.0 * w * float(np.sum(V[:, :N - d] * V[:, d:]))
+    s2 = max(s2, (Tp * N) ** -2.0)           # numerical floor only
     return np.sqrt(s2)
 
 

@@ -98,13 +98,20 @@ def _innovations(Tp, N, sigma_u, rng, noise, G0):
         s *= sigma_u / s.mean()
         return s * rng.standard_normal((Tp, N))
     if noise == "xs":
-        # within-period equicorrelated across units, independent across time
-        rho = 0.60   # moderate within-period correlation (dependence-robust study)
+        # Cross-sectionally DECAYING within-period dependence: a spatial AR(1)
+        # along the unit index, corr(u_{it}, u_{jt}) = theta^{|i-j|}, independent
+        # across time.  Covariance row-sums are O(1) (sum_k theta^{|k|} =
+        # (1+theta)/(1-theta)), so the cumulant-summability condition ass:dependent
+        # (b) holds -- this is the dependence structure thm:xs_dependence covers
+        # (NOT a pervasive common factor, whose row-sums grow like N).
+        theta = 0.6
+        e = rng.standard_normal((Tp, N))
         out = np.empty((Tp, N))
-        common = rng.standard_normal((Tp, 1))
-        idio = rng.standard_normal((Tp, N))
-        out = sigma_u * (np.sqrt(rho) * common + np.sqrt(1 - rho) * idio)
-        return out
+        out[:, 0] = e[:, 0]
+        s = np.sqrt(1.0 - theta ** 2)
+        for i in range(1, N):
+            out[:, i] = theta * out[:, i - 1] + s * e[:, i]
+        return sigma_u * out
     raise ValueError(f"unknown noise model {noise}")
 
 

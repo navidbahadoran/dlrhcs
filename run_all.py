@@ -101,7 +101,8 @@ def stage_empirical(cfg):
     tun = Tuning(ranks=tuple(e["ranks"]), q=e["q"], J=e["J"], ridge=e.get("ridge", 0.1),
                  n_restarts=e["n_restarts"], n_sweeps=e["n_sweeps"],
                  riesz_tol=e["riesz_tol"], riesz_ridge=e.get("riesz_ridge", 1e-6),
-                 riesz_maxiter=e.get("riesz_maxiter", 600))
+                 riesz_maxiter=e.get("riesz_maxiter", 600),
+                 xs_kernel="cluster")   # metres have no spatial metric -> cluster-by-period
     data = os.path.join(ROOT, "data")
     out = {}
     # ---- Application 1: Zillow metro-tier house values ----------------------

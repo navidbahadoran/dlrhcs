@@ -85,7 +85,10 @@ def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
             bl = build_blocks(p.Z)
             folds = make_folds(Tp, N, tuning.J, tuning.q, rng=sa)
             sig2 = float(np.var(p.Y))
-            kappa = kappa_c * sig2 * np.log(np.log(Tp * N))  # calibrated: loglog scale
+            # kappa = c_k * sig^2 * ell^2 * loglog(TN); ell_TN = O(1) for the
+            # standardized design, absorbed into c_k (a literal max|Z|^2 conflates
+            # design scale with localization and over-penalizes -> P(correct)~0).
+            kappa = kappa_c * sig2 * np.log(np.log(Tp * N))
             rhat, _ = select_ranks(p.Y, bl, candidates, folds, kappa, fit_kwargs)
             hits += int(tuple(rhat) == true_rank)
         out[(Tp, N)] = dict(R=R, p_correct=hits / R, true_rank=true_rank)

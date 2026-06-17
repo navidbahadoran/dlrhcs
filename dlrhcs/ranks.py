@@ -129,9 +129,15 @@ def roadmap(Y, Z_list, P=1, r_work=None, kappa_c=1.0, tau_tr=0.45,
     candidates = [tuple(c) for c in itertools.product(
         *[range(1, rb + 2) for rb in rbar])]
 
-    # Step 4: penalty (calibrated to the CV-loss scale; theory permits a range,
-    # finite-sample we use the loglog scale so the selector is consistent without
-    # over-penalizing -- see experiments.rank_consistency).
+    # Step 4: penalty kappa_TN = c_kappa * sigma^2 * ell^2_TN * loglog(TN)
+    # (app:roadmap Step 4).  The design-localization factor ell_TN is, by
+    # assumption, an O(1) (slowly growing) bound on the *normalized* design
+    # |Z^(m)_ti| <= C_Z ell_TN; for the standardized regressors used here it is a
+    # constant, so it is absorbed into the free tuning constant c_kappa (kappa_c).
+    # (Using a literal max|Z|^2 would conflate the design SCALE with the
+    # localization and over-penalize -- it collapses P(r_hat = r_0) to ~0 in the
+    # MC -- so ell^2 is kept in c_kappa.)  The loglog scale keeps the selector
+    # consistent (verified: P(correct rank) -> 1 in experiments.rank_consistency).
     kappa = kappa_c * sigma2 * np.log(np.log(Tp * N))
 
     return Roadmap(rho_hat=rho, sigma2_hat=sigma2, q=q, J=J,
