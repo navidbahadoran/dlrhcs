@@ -9,10 +9,9 @@ simulation and empirical sections from scratch. Nothing is transcribed by hand:
 tables. If the code's output ever disagreed with an earlier draft, the draft was
 corrected, never the code.
 
-The estimator, the cross-fitting scheme, the debiasing step, data-driven rank
-selection, the Monte Carlo design, and the empirical application all follow
-`IMPLEMENTATION_SPEC.md` section by section. Each simulation experiment is tied
-to a specific theorem in `THEOREM_MAP.md`.
+The package implements the estimator, the cross-fitting scheme, the debiasing
+step, data-driven rank selection, the Monte Carlo design, and the empirical
+application; each simulation experiment corresponds to a theorem in the paper.
 
 ---
 
@@ -78,10 +77,7 @@ data/                  download instructions + a data-build script (NO data file
 tests/test_core.py     spec section-15 unit checklist (7 tests)
 run_all.py             one-command reproduction (stage-by-stage)
 requirements.txt       pinned dependencies
-IMPLEMENTATION_SPEC.md the estimator specification, section by section
-THEOREM_MAP.md         which experiment justifies which theorem
-VALIDATION.md          validation record (unit tests + small-R experiment runs)
-EMPIRICAL_FINDINGS.md  empirical application notes
+pyproject.toml         editable install (pip install -e .)
 ```
 
 Generated results land in `outputs/` (git-ignored; regenerate with `run_all.py`).
@@ -186,8 +182,7 @@ The loader stacks each metro's top- and bottom-tier series as two units in one
 panel, balances and aligns, applies a minimal per-series stationarization (ADF
 test: difference once only if a unit root — house-price levels are, so they
 become log-returns — otherwise keep the level), and standardizes. The full
-cleaning rule is documented in the paper's data appendix and in
-`EMPIRICAL_FINDINGS.md`.
+cleaning rule is documented in the paper's data appendix.
 
 ### Metro unemployment (optional — implemented but not in the default run)
 
@@ -206,8 +201,7 @@ Cleaning rule: keep metropolitan-area (area type `B`) not-seasonally-adjusted
 unemployment-rate series, use the BLS annual average (period `M13`, so the series
 carry no seasonal cycle), and keep the metros observed in every complete year
 1990–2025. These series are strongly common-factor-driven and economically
-stationary-but-persistent in levels, which is why the application is parked — see
-`EMPIRICAL_FINDINGS.md`.
+stationary-but-persistent in levels, which is why the application is parked.
 
 ## 8. Headline results
 

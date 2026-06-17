@@ -98,11 +98,14 @@ def stage_empirical(cfg):
     from dlrhcs.empirical import load_zillow, run_ar2
     os.makedirs(EMP, exist_ok=True)
     e = cfg["empirical"]
-    tun = Tuning(ranks=tuple(e["ranks"]), q=e["q"], J=e["J"], ridge=e.get("ridge", 0.1),
+    sel = bool(e.get("select", False))   # data-driven rank selection (roadmap box)
+    tun = Tuning(ranks=None if sel else tuple(e["ranks"]),
+                 select=sel, use_roadmap=sel,   # keep configured q,J; select ranks
+                 q=e["q"], J=e["J"], ridge=e.get("ridge", 0.1),
                  n_restarts=e["n_restarts"], n_sweeps=e["n_sweeps"],
                  riesz_tol=e["riesz_tol"], riesz_ridge=e.get("riesz_ridge", 1e-6),
-                 riesz_maxiter=e.get("riesz_maxiter", 600),
-                 xs_kernel="cluster")   # metres have no spatial metric -> cluster-by-period
+                 riesz_maxiter=e.get("riesz_maxiter", 600), kappa_c=e.get("kappa_c", 1.0),
+                 xs_kernel="cluster")   # metros have no spatial metric -> cluster-by-period
     data = os.path.join(ROOT, "data")
     out = {}
     # ---- Application 1: Zillow metro-tier house values ----------------------

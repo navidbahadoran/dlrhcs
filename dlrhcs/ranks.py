@@ -98,24 +98,29 @@ def _persistence(surfaces, P, Tp, N):
     it uses the full companion product, not a single-lag or L1 shortcut."""
     if P == 1:
         return _persistence_p1(surfaces[0], Tp, N)
-    # Read the DECAY RATE from a large horizon H (not max over all h): the
-    # companion is non-normal, so ||C||_2 > rho transiently and a max over small
-    # h would over-state persistence.  ||C_{t+H}...C_{t+1}||^{1/H} -> the product
-    # spectral radius as H grows; we evaluate it over all length-H windows and
-    # take the worst (max) over starts and units.
-    H = min(max(2, int(np.ceil(np.log(Tp * N)))), max(2, Tp - 1))
+    # Paper's exact persistence (app:roadmap, .tex:6474-6487):
+    #   rho_hat = min{ 0.99, max_{1<=h<=H} max_{t,i}
+    #                  ||C_{t,i} C_{t-1,i} ... C_{t-h+1,i}||_op^{1/h} },
+    # the max over cells AND horizons of the per-cell companion-product operator
+    # norm.  Every length-h window is covered (range(Tp), h up to min(H, Tp-t)),
+    # so the last window is included.  NOTE: the companion is non-normal, so
+    # ||C||_2 can exceed 1 transiently even for a stable system; the h=1 term then
+    # pushes rho_hat toward the 0.99 cap for AR(2).  That is a property of this
+    # formula (it yields a conservative, i.e. larger, exclusion window q via
+    # Step 1), not a bug.
+    H = min(max(1, int(np.ceil(np.log(Tp * N)))), Tp)
     C = np.zeros((Tp, N, P, P))
     for p in range(P):
         C[:, :, 0, p] = surfaces[p]                 # top row = lag coefficients
     for p in range(1, P):
         C[:, :, p, p - 1] = 1.0                     # subdiagonal ones
     best = 0.0
-    for t in range(max(1, Tp - H)):                 # full length-H windows
+    for t in range(Tp):                             # every window, batched over units
         M = np.broadcast_to(np.eye(P), (N, P, P)).copy()
-        for h in range(H):
-            M = np.matmul(C[t + h], M)              # batched over units (N,P,P)
-        nrm = np.linalg.norm(M, ord=2, axis=(1, 2))   # ||H-step product|| per unit
-        best = max(best, float(np.max(nrm ** (1.0 / H))))
+        for h in range(1, min(H, Tp - t) + 1):
+            M = np.matmul(C[t + h - 1], M)          # C_{t+h-1} ... C_t  (h consecutive)
+            nrm = np.linalg.norm(M, ord=2, axis=(1, 2))   # operator norm per unit
+            best = max(best, float(np.max(nrm ** (1.0 / h))))
     return min(0.99, best)
 
 
