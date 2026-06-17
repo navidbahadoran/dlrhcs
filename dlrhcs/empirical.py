@@ -373,7 +373,12 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
                               se_xs=res.se_xs[tg.name], ci=res.ci[tg.name],
                               ci_xs=res.ci_xs[tg.name])
 
-    # derived dynamics from the lag1/lag2 global means via the delta method
+    # Derived dynamics from the lag1/lag2 global means via the delta method.
+    # The joint covariance is the White (sandwich) form -- this is exactly the
+    # studentizer of thm:irf / lem:joint_clt, which is stated under the baseline
+    # (the paper does not define a cross-sectional dependence-robust delta-method
+    # covariance for IRF/LRM).  The scalar lag means above additionally carry a
+    # cross-sectional (cluster) s.e.; the derived functionals follow thm:irf.
     a = res.estimates["lag1_mean"]; b = res.estimates["lag2_mean"]
     Sig = joint_cov(res.onestep, ["lag1_mean", "lag2_mean"])
     cum = a + b

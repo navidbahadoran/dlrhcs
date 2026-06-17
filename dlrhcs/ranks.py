@@ -104,7 +104,15 @@ def roadmap(Y, Z_list, P=1, r_work=None, kappa_c=1.0, tau_tr=0.45,
     sigma2 = float(np.var(Y - A(fit.surfaces, blocks)))
     rho = _persistence_p1(fit.surfaces[0], Tp, N)
 
-    # Step 1: window
+    # Step 1: window q_TN = ceil(log(TN)/|log rho_hat|)  (app:roadmap Step 1).
+    # For strongly persistent panels this is large; per para:capped_window the
+    # paper sanctions capping q at a MODERATE value and letting the stability
+    # margin + a moderate J control the residual same-unit feedback, with the
+    # remaining O(q/J) leakage measured by the forward-exclusion-window sweep
+    # (the `purge` stage).  The cap below is that device, not an oversight: it
+    # trades a vanishing-leakage guarantee for finite-sample data retention, and
+    # the purge sweep is its empirical defence.  (The shipped MC configs use a
+    # fixed q anyway; this cap only binds when the data-driven roadmap is on.)
     q = int(np.ceil(np.log(Tp * N) / max(abs(np.log(rho)), 1e-6)))
     q = int(min(q, 8))
 
