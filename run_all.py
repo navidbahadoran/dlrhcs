@@ -105,6 +105,7 @@ def stage_empirical(cfg):
                  n_restarts=e["n_restarts"], n_sweeps=e["n_sweeps"],
                  riesz_tol=e["riesz_tol"], riesz_ridge=e.get("riesz_ridge", 1e-6),
                  riesz_maxiter=e.get("riesz_maxiter", 600), kappa_c=e.get("kappa_c", 1.0),
+                 n_jobs=cfg.get("n_jobs", 1) if sel else 1,   # parallel rank selection
                  xs_kernel="cluster")   # metros have no spatial metric -> cluster-by-period
     data = os.path.join(ROOT, "data")
     out = {}
@@ -165,22 +166,29 @@ def stage_tables(cfg):
 
 
 def stage_theorems(cfg):
-    """Run the theorem-justification suite (small, illustrative scales)."""
+    """Run the theorem-justification suite (small, illustrative scales).
+
+    The experiments are embarrassingly parallel over replications; they run on
+    ``n_jobs`` cores (joblib loky), like the grid.  At the full config this turns
+    a multi-hour serial run into roughly (serial time / n_cores).
+    """
     import json as _json
     tun = _tuning(cfg)
     th = cfg.get("theorems", {})
+    nj = cfg.get("n_jobs", 1)
     out = {}
     dbg=th.get("debias_TpN",[200,200])
     out["debiasing_thm_feasible"] = X.debiasing_demo(
-        dbg[0], dbg[1], th.get("R", 200), tun, master=cfg["master_seed"])
+        dbg[0], dbg[1], th.get("R", 200), tun, master=cfg["master_seed"], n_jobs=nj)
     out["rank_consistency"] = {f"{Tp}x{N}": v for (Tp, N), v in X.rank_consistency(
         th.get("rank_grid", [[50, 50], [100, 100], [200, 200]]),
-        th.get("R_rank", 100), tun, kappa_c=cfg["tuning"].get("kappa_c", 0.5)).items()}
+        th.get("R_rank", 100), tun, kappa_c=cfg["tuning"].get("kappa_c", 0.5),
+        n_jobs=nj).items()}
     ir=th.get("irf_TpN",[100,100])
     out["irf_lrm_coverage"] = X.irf_lrm_coverage(
-        ir[0], ir[1], th.get("R", 200), tun, oracle=True)
+        ir[0], ir[1], th.get("R", 200), tun, oracle=True, n_jobs=nj)
     xt=th.get("xs_TpN",[120,120])
-    out["xs_dependence"] = X.xs_coverage(xt[0], xt[1], th.get("R", 200), tun)
+    out["xs_dependence"] = X.xs_coverage(xt[0], xt[1], th.get("R", 200), tun, n_jobs=nj)
     out["contiguous_fold_singular"] = X.contiguous_fold_singular(40, 40, tun)
     _json.dump(out, open(os.path.join(OUT, "theorems.json"), "w"),
                indent=2, default=str)

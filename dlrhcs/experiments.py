@@ -30,19 +30,35 @@ from scipy.stats import norm
 Z95 = norm.ppf(0.975)
 
 
+def _pmap(fn, items, n_jobs=1):
+    """Map ``fn`` over ``items``; parallel via joblib loky when ``n_jobs != 1``.
+
+    The per-rep work is independent (each rep has its own seed), so this is an
+    embarrassingly parallel map -- the same loky backend the MC grid uses.  Set
+    OMP_NUM_THREADS=1 (run_all does) so each worker is single-threaded.
+    """
+    items = list(items)
+    if n_jobs and n_jobs != 1:
+        try:
+            from joblib import Parallel, delayed
+            return Parallel(n_jobs=n_jobs, backend="loky")(delayed(fn)(x) for x in items)
+        except Exception:
+            pass
+    return [fn(x) for x in items]
+
+
 # --------------------------------------------------------------------------- #
 #  main message 1: debiasing removes first-order bias (thm:feasible)
 # --------------------------------------------------------------------------- #
 def debiasing_demo(Tp, N, R, tuning: Tuning, master=2024, oracle=False,
-                   target="lag_entry"):
+                   target="lag_entry", n_jobs=1):
     """Show the one-step correction removes the regularization (shrinkage) bias.
 
     The lag-ENTRY target is heavily shrunk by the factor ridge, so the plug-in is
     biased toward zero and a CI built around it under-covers; the debiased one is
     centered and covers.  Reports plug-in vs debiased bias and the coverage of a
     CI centred at each (same studentizer)."""
-    pin, deb, cov_plug, cov_deb = [], [], [], []
-    for rep in range(R):
+    def _one(rep):
         sa = np.random.default_rng(np.random.SeedSequence([master, rep]))
         sb = np.random.default_rng(np.random.SeedSequence([master + 1, rep]))
         p = simulate(Tp, N, sa)
@@ -54,10 +70,13 @@ def debiasing_demo(Tp, N, R, tuning: Tuning, master=2024, oracle=False,
         tv = true_value(p, tg, ctx)
         plug = r.onestep.plugins[target]; deb_est = r.estimates[target]
         se = r.se[target]
-        pin.append(plug - tv); deb.append(deb_est - tv)
-        cov_plug.append(int(plug - Z95 * se <= tv <= plug + Z95 * se))
-        lo, hi = r.ci[target]; cov_deb.append(int(lo <= tv <= hi))
-    pin, deb = np.array(pin), np.array(deb)
+        lo, hi = r.ci[target]
+        return (plug - tv, deb_est - tv,
+                int(plug - Z95 * se <= tv <= plug + Z95 * se),
+                int(lo <= tv <= hi))
+    res = _pmap(_one, range(R), n_jobs)
+    pin = np.array([x[0] for x in res]); deb = np.array([x[1] for x in res])
+    cov_plug = [x[2] for x in res]; cov_deb = [x[3] for x in res]
     return dict(R=R, target=target,
                 plugin_bias=float(pin.mean()), plugin_absbias=float(np.abs(pin).mean()),
                 debiased_bias=float(deb.mean()), debiased_absbias=float(np.abs(deb).mean()),
@@ -68,7 +87,7 @@ def debiasing_demo(Tp, N, R, tuning: Tuning, master=2024, oracle=False,
 #  thm:rank_consistency -- selector picks the truth with prob -> 1
 # --------------------------------------------------------------------------- #
 def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
-                     kappa_c=1.0):
+                     kappa_c=1.0, n_jobs=1):
     """For each (Tp,N) in grid, fraction of reps with r_hat == true rank (1,1,1)."""
     if candidates is None:
         candidates = [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (2, 2, 2),
@@ -78,8 +97,7 @@ def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
     fit_kwargs = dict(ridge=tuning.ridge, n_sweeps=tuning.n_sweeps,
                       n_restarts=tuning.n_restarts)
     for (Tp, N) in grid:
-        hits = 0
-        for rep in range(R):
+        def _one(rep, Tp=Tp, N=N):
             sa = np.random.default_rng(np.random.SeedSequence([master, Tp, rep]))
             p = simulate(Tp, N, sa)
             bl = build_blocks(p.Z)
@@ -90,7 +108,8 @@ def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
             # design scale with localization and over-penalizes -> P(correct)~0).
             kappa = kappa_c * sig2 * np.log(np.log(Tp * N))
             rhat, _ = select_ranks(p.Y, bl, candidates, folds, kappa, fit_kwargs)
-            hits += int(tuple(rhat) == true_rank)
+            return int(tuple(rhat) == true_rank)
+        hits = sum(_pmap(_one, range(R), n_jobs))
         out[(Tp, N)] = dict(R=R, p_correct=hits / R, true_rank=true_rank)
     return out
 
@@ -99,10 +118,9 @@ def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
 #  cor:irf_body / thm:irf -- delta-method IRF and LRM intervals cover
 # --------------------------------------------------------------------------- #
 def irf_lrm_coverage(Tp, N, R, tuning: Tuning, horizons=(1, 2, 4), master=2024,
-                     oracle=False):
+                     oracle=False, n_jobs=1):
     """Coverage of delta-method IRF(h) and LRM intervals for the lag full mean."""
-    acc = {f"irf{h}": [] for h in horizons}; acc["lrm"] = []
-    for rep in range(R):
+    def _one(rep):
         sa = np.random.default_rng(np.random.SeedSequence([master, rep]))
         sb = np.random.default_rng(np.random.SeedSequence([master + 1, rep]))
         p = simulate(Tp, N, sa)
@@ -112,35 +130,41 @@ def irf_lrm_coverage(Tp, N, R, tuning: Tuning, horizons=(1, 2, 4), master=2024,
                      true_U=p.U, true_V=p.V)
         a_hat = r.estimates["lag_fmean"]; se_a = r.se["lag_fmean"]
         a_true = float(p.surfaces[0][ctx["t0"]] @ ctx["wf"])
+        row = {}
         for h in horizons:
             val, g = irf_p1(a_hat, h); se = abs(g) * se_a
             tval = irf_p1(a_true, h)[0]
-            acc[f"irf{h}"].append(int(val - Z95 * se <= tval <= val + Z95 * se))
+            row[f"irf{h}"] = int(val - Z95 * se <= tval <= val + Z95 * se)
         m, g = lrm_p1(a_hat); se = abs(g) * se_a; tval = lrm_p1(a_true)[0]
-        acc["lrm"].append(int(m - Z95 * se <= tval <= m + Z95 * se))
-    return {k: dict(R=R, cov=float(np.mean(v))) for k, v in acc.items()}
+        row["lrm"] = int(m - Z95 * se <= tval <= m + Z95 * se)
+        return row
+    res = _pmap(_one, range(R), n_jobs)
+    keys = [f"irf{h}" for h in horizons] + ["lrm"]
+    return {k: dict(R=R, cov=float(np.mean([x[k] for x in res]))) for k in keys}
 
 
 # --------------------------------------------------------------------------- #
 #  thm:xs_dependence -- xs s.e. restores coverage under within-period dependence
 # --------------------------------------------------------------------------- #
-def xs_coverage(Tp, N, R, tuning: Tuning, master=2024):
+def xs_coverage(Tp, N, R, tuning: Tuning, master=2024, n_jobs=1):
     """Under the 'xs' DGP, compare White vs xs coverage for the full-mean targets."""
     names = ["lag_fmean", "slope_fmean"]
-    cw = {n: [] for n in names}; cx = {n: [] for n in names}
-    for rep in range(R):
+    def _one(rep):
         sa = np.random.default_rng(np.random.SeedSequence([master, rep]))
         sb = np.random.default_rng(np.random.SeedSequence([master + 1, rep]))
         p = simulate(Tp, N, sa, noise="xs")
         bl = build_blocks(p.Z)
         tgs, ctx = standard_targets(bl, Tp, N)
         r = estimate(p.Y, p.Z, tgs, tuning, rng=sb)
+        row = {}
         for n in names:
             tg = [t for t in tgs if t.name == n][0]; tv = true_value(p, tg, ctx)
-            lo, hi = r.ci[n]; cw[n].append(int(lo <= tv <= hi))
-            lox, hix = r.ci_xs[n]; cx[n].append(int(lox <= tv <= hix))
-    return {n: dict(R=R, white_cov=float(np.mean(cw[n])),
-                    xs_cov=float(np.mean(cx[n]))) for n in names}
+            lo, hi = r.ci[n]; lox, hix = r.ci_xs[n]
+            row[n] = (int(lo <= tv <= hi), int(lox <= tv <= hix))
+        return row
+    res = _pmap(_one, range(R), n_jobs)
+    return {n: dict(R=R, white_cov=float(np.mean([x[n][0] for x in res])),
+                    xs_cov=float(np.mean([x[n][1] for x in res]))) for n in names}
 
 
 # --------------------------------------------------------------------------- #

@@ -46,6 +46,7 @@ class Tuning:
     riesz_maxiter: int = 2000
     xs_bandwidth: Optional[int] = None   # spatial-kernel xs s.e. bandwidth (None=auto)
     xs_kernel: str = "bartlett"          # "bartlett" (spatial, sim) | "cluster" (empirical)
+    n_jobs: int = 1                      # cores for rank selection (single-panel use)
 
 
 @dataclass
@@ -92,7 +93,8 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
 
     if ranks is None:
         if tuning.select and candidates:
-            ranks, _ = select_ranks(Y, blocks, candidates, folds, kappa, fit_kwargs)
+            ranks, _ = select_ranks(Y, blocks, candidates, folds, kappa, fit_kwargs,
+                                    n_jobs=tuning.n_jobs)
         else:
             ranks = tuple([1] * B)
 

@@ -24,6 +24,18 @@ from .factorridge import fit_factor_ridge
 from .folds import make_folds, retained_share
 
 
+def _pmap(fn, items, n_jobs=1):
+    """Map ``fn`` over ``items``; parallel via joblib loky when ``n_jobs != 1``."""
+    items = list(items)
+    if n_jobs and n_jobs != 1:
+        try:
+            from joblib import Parallel, delayed
+            return Parallel(n_jobs=n_jobs, backend="loky")(delayed(fn)(x) for x in items)
+        except Exception:
+            pass
+    return [fn(x) for x in items]
+
+
 # --------------------------------------------------------------------------- #
 #  prediction criterion
 # --------------------------------------------------------------------------- #
@@ -41,19 +53,43 @@ def effective_dim(ranks, Tp, N) -> float:
     return float(sum(r * (Tp + N - r) for r in ranks))
 
 
-def select_ranks(Y, blocks, candidates, folds, kappa, fit_kwargs):
-    """Return (r_hat, table) minimizing CV loss + penalty over candidates."""
+def select_ranks(Y, blocks, candidates, folds, kappa, fit_kwargs, n_jobs=1):
+    """Return (r_hat, table) minimizing CV loss + penalty over candidates.
+
+    The candidate x fold first-stage fits are independent and dominate the cost
+    (|candidates| * |folds| factor-ridge fits), so they run in parallel over
+    ``n_jobs`` cores.  Each fit gets its own seed derived from the base rng and
+    the (candidate, fold) indices, so the selected rank is reproducible and does
+    NOT depend on n_jobs.
+    """
     Tp, N = Y.shape
-    rows = []
-    best = None
-    for r in candidates:
-        L = cv_loss(Y, blocks, folds, r, fit_kwargs)
+    cand = [tuple(r) for r in candidates]
+    base = fit_kwargs.get("rng", None)
+    seed0 = int(base.integers(2 ** 31)) if base is not None else 0
+    fk = {k: v for k, v in fit_kwargs.items() if k != "rng"}
+    tasks = [(ci, fi) for ci in range(len(cand)) for fi in range(len(folds))]
+
+    def _fit(task):
+        ci, fi = task
+        fd = folds[fi]
+        rng = np.random.default_rng(np.random.SeedSequence([seed0, ci, fi]))
+        fit = fit_factor_ridge(Y, blocks, cand[ci], mask=fd.train, rng=rng, **fk)
+        Rr = Y - A(fit.surfaces, blocks)
+        return ci, float(np.sum(Rr[fd.val] ** 2))
+
+    loss = [0.0] * len(cand)
+    for ci, l in _pmap(_fit, tasks, n_jobs):
+        loss[ci] += l
+
+    rows, best = [], None
+    for ci, r in enumerate(cand):
+        L = loss[ci] / (Tp * N)
         d = effective_dim(r, Tp, N)
         crit = L + kappa * d / (Tp * N)
-        rows.append((tuple(r), L, d, crit))
-        key = (crit, d, tuple(r))
+        rows.append((r, L, d, crit))
+        key = (crit, d, r)
         if best is None or key < best[0]:
-            best = (key, tuple(r))
+            best = (key, r)
     return best[1], rows
 
 
