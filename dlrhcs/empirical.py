@@ -7,9 +7,13 @@ Empirical applications (spec sec 13): the heterogeneous low-rank AR(2)
 estimated by the same cross-fitted debiased one-step.  Blocks are
 ``[lag1, lag2, ones]`` so ``B = 3`` and the default ranks are ``(1, 1, 2)``.
 
-Two datasets:
-  * Zillow            -- metro tier house-value panel (top vs bottom price tier).
-  * State unemployment -- 51 U.S. state seasonally-adjusted unemployment rates.
+Datasets:
+  * Zillow (``load_zillow``) -- metro-tier house-value panel (top vs bottom price
+    tier).  This is the SHIPPED empirical application run by ``run_all.py``.
+  * Metro unemployment (``load_metro``) -- BLS LAUS metro-area annual-average
+    unemployment rates.  OPTIONAL / not in the default run; build it with
+    ``data/metro/build_metro_panel.py`` and see the README (section 7) and
+    ``data/metro/README.md`` for download + preparation.
 
 Both panels are homogeneous (one variable across comparable units).  Data are
 the RAW downloads; cleaning = balance + align; each series is made stationary by
@@ -156,43 +160,6 @@ def load_zillow(path_top, path_bottom, stationarize=True):
                 source="Zillow")
 
 
-def load_unemployment(path, stationarize=True):
-    """State-unemployment panel: wide CSV (DATE + one column per state).  Parse
-    the RAW rates, balance, apply the same minimal per-series stationarization,
-    and standardize.  Grouping uses the pre-transform average rate."""
-    import csv
-    with open(path) as fh:
-        rows = list(csv.reader(fh))
-    header = rows[0][1:]
-    body = [r for r in rows[1:] if r and r[0].strip()]
-    nc = len(header)
-    raw = np.full((len(body), nc), np.nan)         # ragged-robust parse (pad short rows)
-    for i, r in enumerate(body):
-        for j in range(nc):
-            if j + 1 < len(r):
-                raw[i, j] = _to_float(r[j + 1])
-    raw, good = _balanced_block(raw)               # longest contiguous balanced block
-    names = [n for n, g in zip(header, good) if g]
-    mean_level = raw.mean(0)                       # avg unemployment per state (for grouping)
-    if stationarize:
-        X, transforms = stationarize_panel(raw)
-    else:
-        X, transforms = raw, ["level"] * raw.shape[1]
-    vol = X.std(0)
-    X = (X - X.mean(0)) / X.std(0)
-    return dict(Y=X, names=names, mean_level=mean_level, vol=vol,
-                transforms=transforms,
-                n_differenced=int(sum(t != "level" for t in transforms)),
-                T=X.shape[0], N=X.shape[1],
-                fingerprint=data_fingerprint(path), source="StateUnemployment")
-
-
-def unemployment_groups(panel) -> np.ndarray:
-    """Median split by average unemployment level (1 = high, 0 = low)."""
-    ml = panel["mean_level"]
-    return (ml > np.median(ml)).astype(int)
-
-
 def load_metro(path, stationarize=True):
     """Metro-area unemployment panel: wide CSV (YEAR + one column per MSA) of
     BLS LAUS annual-average unemployment rates (period M13).  Built by
@@ -232,26 +199,6 @@ def metro_groups(panel) -> np.ndarray:
     return (ml > np.median(ml)).astype(int)
 
 
-def panel_diagnostic(Y, n_factors=2) -> Dict:
-    """Go/no-go checklist for a candidate empirical panel (homogeneity is by
-    construction).  Reports own-AR(1), idiosyncratic AR(1) after removing
-    ``n_factors`` common factors, the first-two-PC variance share, and size."""
-    Y = np.asarray(Y, float)
-    T, N = Y.shape
-
-    def mean_ar1(M):
-        return float(np.mean([np.dot(M[:-1, j], M[1:, j]) /
-                              max(np.dot(M[:-1, j], M[:-1, j]), 1e-12)
-                              for j in range(M.shape[1])]))
-    Yc = Y - Y.mean(0)
-    U, sv, Vt = np.linalg.svd(Yc, full_matrices=False)
-    var = sv ** 2 / np.sum(sv ** 2)
-    low = (U[:, :n_factors] * sv[:n_factors]) @ Vt[:n_factors]
-    return dict(T=T, N=N, mean_AR1=mean_ar1(Y),
-                idiosyncratic_AR1=mean_ar1(Yc - low),
-                pc_share_2=float(var[:2].sum()))
-
-
 def _looks_like_date(s: str) -> bool:
     s = s.strip()
     return len(s) >= 6 and (s[:4].isdigit() and ("-" in s or "/" in s))
@@ -262,28 +209,6 @@ def _to_float(v):
         return float(v)
     except Exception:
         return np.nan
-
-
-def _balanced_block(raw, col_thresh=0.8):
-    """Return the largest balanced rectangle: drop sparse columns, then take the
-    longest run of *consecutive* fully-observed rows (AR needs time-contiguity,
-    so interior gaps are handled by truncation, not row deletion)."""
-    raw = np.asarray(raw, float)
-    finite = np.isfinite(raw)
-    col_ok = finite.mean(0) >= col_thresh
-    sub = raw[:, col_ok]
-    rows_ok = np.all(np.isfinite(sub), axis=1)
-    best_len = best_start = cur = start = 0
-    for t, ok in enumerate(rows_ok):
-        if ok:
-            if cur == 0:
-                start = t
-            cur += 1
-            if cur > best_len:
-                best_len, best_start = cur, start
-        else:
-            cur = 0
-    return sub[best_start:best_start + best_len], col_ok
 
 
 # --------------------------------------------------------------------------- #
