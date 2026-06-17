@@ -113,32 +113,6 @@ def stationarize_panel(levels):
     return out, transforms
 
 
-def load_fredqd(path, stationarize=True):
-    """FRED-QD panel: parse the RAW levels, balance, then (default) apply the
-    minimal per-series stationarization above and standardize.  The database's
-    own tcode transforms are NOT applied -- they over-difference and erase the
-    dynamics; we let an ADF test decide, series by series."""
-    import csv
-    with open(path) as fh:
-        rows = list(csv.reader(fh))
-    header = rows[0][1:]
-    body = [r for r in rows[3:] if r and r[0].strip()]   # skip header/factors/transform
-    raw = np.array([[_to_float(v) for v in r[1:]] for r in body])   # RAW levels
-    good = ~np.any(~np.isfinite(raw), axis=0)             # balanced (fully observed)
-    raw = raw[:, good]
-    names = [n for n, g in zip(header, good) if g]
-    if stationarize:
-        X, transforms = stationarize_panel(raw)
-    else:
-        X, transforms = raw, ["level"] * raw.shape[1]
-    vol = X.std(0)
-    X = (X - X.mean(0)) / X.std(0)                        # standardize (cleaning)
-    return dict(Y=X, names=names, vol=vol, transforms=transforms,
-                n_differenced=int(sum(t != "level" for t in transforms)),
-                T=X.shape[0], N=X.shape[1],
-                fingerprint=data_fingerprint(path), source="FRED-QD")
-
-
 def load_zillow(path_top, path_bottom, stationarize=True):
     """Zillow ZHVI tier panel: parse RAW price levels, stack top & bottom tiers
     as units, balance, then (default) apply the minimal per-series
@@ -397,16 +371,6 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
                    companion_radius=radius, irf=irfs)
     return dict(targets=table, derived=derived, ranks=res.ranks,
                 q=res.q, J=res.J, Tp=Tp, N=N)
-
-
-def fred_volatility_groups(panel) -> np.ndarray:
-    """Median split of series by *pre-standardization* sample volatility
-    (1 = high, 0 = low).  Standardized series all have unit variance, so the
-    split must use the raw transformed-series volatility."""
-    vol = panel.get("vol")
-    if vol is None:
-        vol = panel["Y"].std(0)
-    return (vol > np.median(vol)).astype(int)
 
 
 def rank_robustness(Ymat, rH_list, base_tuning, groups=None,

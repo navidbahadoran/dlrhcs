@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dlrhcs"
+version = "0.1.0"
+description = "Cross-Fitted Debiased Inference for Dynamic Panels with Low-Rank Heterogeneous Coefficients (replication package)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24,<3",
+    "scipy>=1.10",
+    "joblib>=1.3",
+]
+
+[tool.setuptools]
+packages = ["dlrhcs"]
+
+# Editable install for reproduction:  pip install -e .
+# Then `python tests/test_core.py`, `python -m pytest tests/ -q`, and
+# `python run_all.py ...` all work from a clean checkout.

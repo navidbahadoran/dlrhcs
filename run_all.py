@@ -147,6 +147,18 @@ def stage_tables(cfg):
         print("[tables] wrote tab_sim_purge.tex")
     except FileNotFoundError as ex:
         print(f"[tables] skip purge ({ex})")
+    # ---- empirical table (Zillow) ------------------------------------------
+    try:
+        z = json.load(open(os.path.join(EMP, "zillow.json")))
+        rows = [("Lag-1 mean", "lag1_mean"), ("Lag-2 mean", "lag2_mean"),
+                ("Lag-1, top tier", "lag1_top"), ("Lag-1, bottom tier", "lag1_bottom"),
+                ("Lag-1 top-vs-bottom contrast", "lag1_contrast")]
+        rows = [r for r in rows if r[1] in z.get("targets", {})]
+        report.write_tex(report.empirical_table(z, rows),
+                         os.path.join(TAB, "tab_emp_zillow.tex"))
+        print("[tables] wrote tab_emp_zillow.tex")
+    except FileNotFoundError as ex:
+        print(f"[tables] skip empirical ({ex})")
 
 
 def stage_theorems(cfg):

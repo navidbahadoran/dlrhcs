@@ -2,6 +2,13 @@
 
 Run with:  python -m pytest tests/ -q     (or)     python tests/test_core.py
 """
+import os
+import sys
+
+# make `import dlrhcs` work when run directly (python tests/test_core.py) from a
+# clean checkout, without requiring PYTHONPATH or an editable install.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np
 
 from dlrhcs.design import (A, A_adjoint, build_blocks, theta_dot)

@@ -89,6 +89,36 @@ def _persistence_p1(A_surface, Tp, N):
     return min(0.99, best)
 
 
+def _persistence(surfaces, P, Tp, N):
+    """General (P>=1) roadmap persistence (app:roadmap Step 0): the max over
+    cells and horizons of the per-cell companion-PRODUCT modulus
+    ``||C_{t+h,i} ... C_{t+1,i}||^{1/h}``, where C_{ti} is the P x P companion of
+    the first P lag surfaces (top row = lag coefficients, ones on the subdiagonal).
+    For P=1 this collapses to the geometric mean of |a| (the fast path); for P>=2
+    it uses the full companion product, not a single-lag or L1 shortcut."""
+    if P == 1:
+        return _persistence_p1(surfaces[0], Tp, N)
+    # Read the DECAY RATE from a large horizon H (not max over all h): the
+    # companion is non-normal, so ||C||_2 > rho transiently and a max over small
+    # h would over-state persistence.  ||C_{t+H}...C_{t+1}||^{1/H} -> the product
+    # spectral radius as H grows; we evaluate it over all length-H windows and
+    # take the worst (max) over starts and units.
+    H = min(max(2, int(np.ceil(np.log(Tp * N)))), max(2, Tp - 1))
+    C = np.zeros((Tp, N, P, P))
+    for p in range(P):
+        C[:, :, 0, p] = surfaces[p]                 # top row = lag coefficients
+    for p in range(1, P):
+        C[:, :, p, p - 1] = 1.0                     # subdiagonal ones
+    best = 0.0
+    for t in range(max(1, Tp - H)):                 # full length-H windows
+        M = np.broadcast_to(np.eye(P), (N, P, P)).copy()
+        for h in range(H):
+            M = np.matmul(C[t + h], M)              # batched over units (N,P,P)
+        nrm = np.linalg.norm(M, ord=2, axis=(1, 2))   # ||H-step product|| per unit
+        best = max(best, float(np.max(nrm ** (1.0 / H))))
+    return min(0.99, best)
+
+
 def roadmap(Y, Z_list, P=1, r_work=None, kappa_c=1.0, tau_tr=0.45,
             tau_sv=0.15, fit_kwargs=None):
     """Run roadmap Steps 0-4; returns a :class:`Roadmap`."""
@@ -102,7 +132,7 @@ def roadmap(Y, Z_list, P=1, r_work=None, kappa_c=1.0, tau_tr=0.45,
     # Step 0: working fit -> persistence, residual scale
     fit = fit_factor_ridge(Y, blocks, r_work, mask=None, **fit_kwargs)
     sigma2 = float(np.var(Y - A(fit.surfaces, blocks)))
-    rho = _persistence_p1(fit.surfaces[0], Tp, N)
+    rho = _persistence(fit.surfaces, P, Tp, N)
 
     # Step 1: window q_TN = ceil(log(TN)/|log rho_hat|)  (app:roadmap Step 1).
     # For strongly persistent panels this is large; per para:capped_window the
@@ -134,8 +164,10 @@ def roadmap(Y, Z_list, P=1, r_work=None, kappa_c=1.0, tau_tr=0.45,
         thresh = tau_sv * s[0]
         rb = int(np.sum(s > thresh))
         rbar.append(max(1, rb))
+    # candidate box prod_m {0, 1, ..., rbar_m + 1} (app:roadmap, eq:rank_box):
+    # zero ranks are admitted so the selector can drop an absent block.
     candidates = [tuple(c) for c in itertools.product(
-        *[range(1, rb + 2) for rb in rbar])]
+        *[range(0, rb + 2) for rb in rbar])]
 
     # Step 4: penalty kappa_TN = c_kappa * sigma^2 * ell^2_TN * loglog(TN)
     # (app:roadmap Step 4).  The design-localization factor ell_TN is, by
