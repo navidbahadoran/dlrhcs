@@ -105,7 +105,7 @@ def stage_purge(cfg, only=None):
 
 
 def stage_empirical(cfg):
-    from dlrhcs.empirical import load_zillow, run_ar2
+    from dlrhcs.empirical import load_zillow, load_metro, metro_groups, run_ar2
     os.makedirs(EMP, exist_ok=True)
     e = cfg["empirical"]
     sel = bool(e.get("select", False))   # data-driven rank selection (roadmap box)
@@ -135,6 +135,39 @@ def stage_empirical(cfg):
               f"ranks={r['ranks']} lag1={r['targets']['lag1_mean']['est']:+.3f}")
     else:
         print("[empirical] Zillow CSVs not found in data/ -- skipping.")
+    # ---- Application 2: metro-area unemployment (levels) --------------------
+    mu = os.path.join(data, "metro", "metro_unemployment.csv")
+    me = cfg.get("metro", {})
+    if me.get("enabled", False) and os.path.exists(mu):
+        msel = bool(me.get("select", True))
+        # Unemployment RATES are economically stationary (bounded, mean-reverting);
+        # ADF lacks power at T=36, so we keep LEVELS and let the rank-r_H interactive
+        # block absorb the strong common business-cycle factor (~76% of variance).
+        mtun = Tuning(ranks=None if msel else tuple(me.get("ranks", [1, 1, 4])),
+                      select=msel, use_roadmap=msel,
+                      q=me.get("q", 1), J=me.get("J", 6), ridge=me.get("ridge", 0.5),
+                      n_restarts=me.get("n_restarts", 2), n_sweeps=me.get("n_sweeps", 60),
+                      riesz_tol=me.get("riesz_tol", 1e-5),
+                      riesz_ridge=me.get("riesz_ridge", 1e-6),
+                      riesz_maxiter=me.get("riesz_maxiter", 600),
+                      kappa_c=me.get("kappa_c", 0.03),
+                      n_jobs=cfg.get("n_jobs", 1) if msel else 1,
+                      r_bar=tuple(me.get("r_bar", [2, 2, 6])), xs_kernel="cluster")
+        u = load_metro(mu, stationarize=False)            # LEVELS
+        g = metro_groups(u)
+        r = run_ar2(u["Y"], mtun, groups=g, group_labels=("hi_unemp", "lo_unemp"),
+                    rng=np.random.default_rng(cfg["master_seed"] + 13))
+        r["fingerprint"] = u["fingerprint"]; r["T"], r["Nunits"] = u["T"], u["N"]
+        r["n_differenced"] = u["n_differenced"]; r["stationarized"] = "levels"
+        json.dump(r, open(os.path.join(EMP, "metro_unemployment.json"), "w"),
+                  indent=2, default=str)
+        out["metro"] = r
+        print(f"[empirical] Metro-unemp (levels) T={u['T']} N={u['N']} ranks={r['ranks']} "
+              f"lag1={r['targets']['lag1_mean']['est']:+.3f} "
+              f"radius={r['derived']['companion_radius']:.3f}")
+    elif me.get("enabled", False):
+        print("[empirical] metro_unemployment.csv not found -- run "
+              "scripts/build_metro_panel.py first.")
     return out
 
 
@@ -189,6 +222,21 @@ def stage_tables(cfg):
         print("[tables] wrote tab_emp_zillow.tex, fig_emp_zillow_irf.tex")
     except FileNotFoundError as ex:
         print(f"[tables] skip empirical ({ex})")
+    # ---- metro unemployment table + IRF figure -----------------------------
+    try:
+        u = json.load(open(os.path.join(EMP, "metro_unemployment.json")))
+        rows = [("Lag-1 mean", "lag1_mean"), ("Lag-2 mean", "lag2_mean"),
+                ("Lag-1, high-unemployment", "lag1_hi_unemp"),
+                ("Lag-1, low-unemployment", "lag1_lo_unemp"),
+                ("Lag-1 high-vs-low contrast", "lag1_contrast")]
+        rows = [r for r in rows if r[1] in u.get("targets", {})]
+        report.write_tex(report.empirical_table(u, rows),
+                         os.path.join(TAB, "tab_emp_metro.tex"))
+        report.write_tex(report.empirical_irf_figure(u),
+                         os.path.join(TAB, "fig_emp_metro_irf.tex"))
+        print("[tables] wrote tab_emp_metro.tex, fig_emp_metro_irf.tex")
+    except FileNotFoundError as ex:
+        print(f"[tables] skip metro ({ex})")
 
 
 def stage_theorems(cfg):
