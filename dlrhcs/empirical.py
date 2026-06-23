@@ -39,6 +39,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from .design import build_blocks
+from .factorridge import fit_factor_ridge
 from .onestep import (companion_p2, delta_se, irf_p2, joint_cov, lrm_p2)
 from .pipeline import Tuning, estimate
 from .targets import Target
@@ -294,6 +295,32 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
     derived = dict(cumulative_persistence=dict(est=cum, se=cum_se),
                    long_run_multiplier=dict(est=lrm_val, se=lrm_se),
                    companion_radius=radius, irf=irfs)
+
+    # Per-cell heterogeneity of the lag-1 surface, for the reproducible histogram
+    # figure.  One full-sample first-stage fit at the selected ranks recovers the
+    # estimated coefficient surface a_{ti}; we store its histogram (shared bins),
+    # split by group, so the figure renders without shipping the whole T x N grid.
+    fit = fit_factor_ridge(Y, blocks, res.ranks, mask=None, ridge=tuning.ridge,
+                           n_sweeps=tuning.n_sweeps, tol=tuning.tol,
+                           n_restarts=tuning.n_restarts, rng=rng)
+    a_surf = np.asarray(fit.surfaces[0], dtype=float)
+    lo, hi = float(np.percentile(flat, 0.5)), float(np.percentile(flat, 99.5))
+    edges = np.linspace(lo, hi, 41)
+    hist = dict(edges=edges.tolist(),
+                counts_all=np.histogram(flat, bins=edges)[0].tolist(),
+                mean=float(flat.mean()),
+                q05=float(np.percentile(flat, 5)),
+                q50=float(np.percentile(flat, 50)),
+                q95=float(np.percentile(flat, 95)))
+    if groups is not None:
+        g = np.asarray(groups).astype(int)            # length-N unit labels
+        hist["labels"] = list(group_labels)
+        hist["counts_g0"] = np.histogram(a_surf[:, g == 0].ravel(),
+                                         bins=edges)[0].tolist()
+        hist["counts_g1"] = np.histogram(a_surf[:, g == 1].ravel(),
+                                         bins=edges)[0].tolist()
+    derived["coef_hist"] = hist
+
     return dict(targets=table, derived=derived, ranks=res.ranks,
                 q=res.q, J=res.J, Tp=Tp, N=N)
 

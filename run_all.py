@@ -217,9 +217,15 @@ def stage_tables(cfg):
         rows = [r for r in rows if r[1] in z.get("targets", {})]
         report.write_tex(report.empirical_table(z, rows),
                          os.path.join(TAB, "tab_emp_zillow.tex"))
+        report.write_tex(report.empirical_forest_figure(z, rows),
+                         os.path.join(TAB, "fig_emp_zillow_forest.tex"))
+        report.write_tex(report.companion_root_figure(z),
+                         os.path.join(TAB, "fig_emp_zillow_roots.tex"))
+        report.write_tex(report.coef_hist_figure(z),
+                         os.path.join(TAB, "fig_emp_zillow_hist.tex"))
         report.write_tex(report.empirical_irf_figure(z),
                          os.path.join(TAB, "fig_emp_zillow_irf.tex"))
-        print("[tables] wrote tab_emp_zillow.tex, fig_emp_zillow_irf.tex")
+        print("[tables] wrote tab_emp_zillow.tex + 4 Zillow figures")
     except FileNotFoundError as ex:
         print(f"[tables] skip empirical ({ex})")
     # ---- metro unemployment table + IRF figure -----------------------------
@@ -229,12 +235,20 @@ def stage_tables(cfg):
                 ("Lag-1, high-unemployment", "lag1_hi_unemp"),
                 ("Lag-1, low-unemployment", "lag1_lo_unemp"),
                 ("Lag-1 high-vs-low contrast", "lag1_contrast")]
-        rows = [r for r in rows if r[1] in u.get("targets", {})]
+        rb = (u.get("ranks") or [1, 1, 1])[1]   # lag-2 block rank
+        rows = [r for r in rows if r[1] in u.get("targets", {})
+                and not (r[1] == "lag2_mean" and rb == 0)]  # drop absent lag-2 block
         report.write_tex(report.empirical_table(u, rows),
                          os.path.join(TAB, "tab_emp_metro.tex"))
+        report.write_tex(report.empirical_forest_figure(u, rows),
+                         os.path.join(TAB, "fig_emp_metro_forest.tex"))
+        report.write_tex(report.companion_root_figure(u),
+                         os.path.join(TAB, "fig_emp_metro_roots.tex"))
+        report.write_tex(report.coef_hist_figure(u),
+                         os.path.join(TAB, "fig_emp_metro_hist.tex"))
         report.write_tex(report.empirical_irf_figure(u),
                          os.path.join(TAB, "fig_emp_metro_irf.tex"))
-        print("[tables] wrote tab_emp_metro.tex, fig_emp_metro_irf.tex")
+        print("[tables] wrote tab_emp_metro.tex + 4 metro figures")
     except FileNotFoundError as ex:
         print(f"[tables] skip metro ({ex})")
 

@@ -153,6 +153,93 @@ def empirical_irf_figure(z: dict) -> str:
     return "\n".join(L)
 
 
+def empirical_forest_figure(z: dict, rows: List[tuple]) -> str:
+    """Forest (caterpillar) plot of the empirical targets: each estimate with its
+    95\\% diagonal and cross-sectional intervals.  Because real data carry no
+    ground truth, this is the empirical analogue of the simulation's coverage
+    panel -- it shows the estimate together with the uncertainty around it.
+    ``rows = [(label, key), ...]``; only keys present in ``z['targets']`` are
+    drawn (so an absent block, e.g. a dropped lag-2, is skipped)."""
+    rows = [(lab, k) for lab, k in rows if k in z.get("targets", {})]
+    labs = [lab.replace(",", "") for lab, _ in rows]                 # no commas
+    sym = "{" + ", ".join(labs) + "}"
+    diag, xs = [], []
+    for lab, k in rows:
+        d = z["targets"][k]
+        cl = lab.replace(",", "")
+        diag.append(f"({d['est']:.4f},{cl}) +- ({(d['ci'][1]-d['ci'][0])/2:.4f},0)")
+        xs.append(f"({d['est']:.4f},{cl}) +- ({(d['ci_xs'][1]-d['ci_xs'][0])/2:.4f},0)")
+    L = [r"\begin{tikzpicture}",
+         r"\begin{axis}[width=0.85\textwidth,height=0.5\textwidth,",
+         r"  xlabel={Estimate with 95\% interval}, y=0.8cm,",
+         f"  ytick=data, symbolic y coords={sym},",
+         r"  enlarge y limits=0.18, grid=major, legend pos=south east]",
+         r"\addplot+[only marks,mark=*,thick,error bars/.cd,x dir=both,x explicit] "
+         r"coordinates {" + " ".join(xs) + "};",
+         r"\addplot+[only marks,mark=|,thick,error bars/.cd,x dir=both,x explicit] "
+         r"coordinates {" + " ".join(diag) + "};",
+         r"\draw[dashed,gray] ({axis cs:0," + labs[0] + r"}|-{rel axis cs:0,0}) -- "
+         r"({axis cs:0," + labs[0] + r"}|-{rel axis cs:0,1});",
+         r"\legend{cross-sectional CI, diagonal CI}",
+         r"\end{axis}", r"\end{tikzpicture}"]
+    return "\n".join(L)
+
+
+def companion_root_figure(z: dict) -> str:
+    """Estimated companion eigenvalues against the unit circle (companion of the
+    global lag means): the visual form of ``lag-1 may exceed one yet the process is
+    stationary'' -- a stable AR(2) has both roots inside the circle."""
+    import numpy as _np
+    a = z["targets"]["lag1_mean"]["est"]
+    b = z["targets"].get("lag2_mean", {}).get("est", 0.0)
+    ev = _np.linalg.eigvals(_np.array([[a, b], [1.0, 0.0]]))
+    pts = " ".join(f"({e.real:.4f},{e.imag:.4f})" for e in ev)
+    rad = z.get("derived", {}).get("companion_radius", float(_np.max(_np.abs(ev))))
+    L = [r"\begin{tikzpicture}",
+         r"\begin{axis}[width=0.55\textwidth,axis equal image,",
+         r"  xlabel={Re}, ylabel={Im}, xmin=-1.25,xmax=1.25,ymin=-1.25,ymax=1.25,",
+         r"  grid=major, axis lines=middle, enlargelimits=false]",
+         r"\addplot[domain=0:360,samples=120,thick] ({cos(x)},{sin(x)});",
+         r"\addplot[only marks,mark=*,mark size=2.6pt] coordinates {" + pts + "};",
+         f"\\node[anchor=north east] at (rel axis cs:0.98,0.98) "
+         f"{{$\\widehat\\rho_{{\\rm pt}}={rad:.3f}$}};",
+         r"\end{axis}", r"\end{tikzpicture}"]
+    return "\n".join(L)
+
+
+def coef_hist_figure(z: dict) -> str:
+    """Histogram of the per-cell estimated lag-1 coefficient surface (its
+    heterogeneity), split by group when available.  Reads
+    ``z['derived']['coef_hist']`` written by ``run_ar2``."""
+    h = z.get("derived", {}).get("coef_hist")
+    if not h:
+        return "% coef_hist not present in JSON (re-run the empirical stage)\n"
+    edges = h["edges"]
+
+    def _series(counts):
+        return " ".join(f"({edges[i]:.4f},{counts[i]})" for i in range(len(counts))) \
+               + f" ({edges[-1]:.4f},0)"
+    L = [r"\begin{tikzpicture}",
+         r"\begin{axis}[width=0.8\textwidth,height=0.45\textwidth,",
+         r"  xlabel={Per-cell lag-1 coefficient $\hat a_{ti}$}, ylabel={count},",
+         r"  ymin=0, grid=major, legend pos=north east, area legend]"]
+    if "counts_g1" in h:
+        lab = h.get("labels", ["group 0", "group 1"])
+        L.append(r"\addplot+[ybar interval,fill opacity=0.45,draw opacity=0.7] "
+                 r"coordinates {" + _series(h["counts_g0"]) + "};")
+        L.append(r"\addplot+[ybar interval,fill opacity=0.45,draw opacity=0.7] "
+                 r"coordinates {" + _series(h["counts_g1"]) + "};")
+        L.append(f"\\legend{{{lab[0].replace('_', chr(92)+'_')}, "
+                 f"{lab[1].replace('_', chr(92)+'_')}}}")
+    else:
+        L.append(r"\addplot+[ybar interval,fill opacity=0.5] coordinates {"
+                 + _series(h["counts_all"]) + "};")
+    L.append(f"\\draw[dashed,thick] ({{axis cs:{h['mean']:.4f},0}}|-{{rel axis cs:0,0}}) "
+             f"-- ({{axis cs:{h['mean']:.4f},0}}|-{{rel axis cs:0,1}});")
+    L += [r"\end{axis}", r"\end{tikzpicture}"]
+    return "\n".join(L)
+
+
 # --------------------------------------------------------------------------- #
 #  theorem-justification table
 # --------------------------------------------------------------------------- #
