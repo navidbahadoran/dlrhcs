@@ -23,7 +23,7 @@ from .design import A, build_blocks
 from .factorridge import fit_factor_ridge
 from .folds import make_folds
 from .onestep import FoldFit, OneStepResult, one_step, white_se, xs_se
-from .ranks import roadmap, select_ranks
+from .ranks import roadmap, select_ranks, _pmap
 from .targets import Target
 
 
@@ -102,18 +102,36 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
             ranks = tuple([1] * B)
 
     # ---- per-fold purged fits ------------------------------------------------
-    foldfits: List[FoldFit] = []
-    mono_ok = True
-    for fd in folds:
-        fit = fit_factor_ridge(Y, blocks, ranks, mask=fd.train, **fit_kwargs)
-        mono_ok = mono_ok and fit.monotone
+    # The J fold first-stage fits are independent.  Two paths, by design:
+    #   * n_jobs == 1 (the default, used inside the rep-parallel Monte Carlo):
+    #     SERIAL with the shared rng -- byte-identical to prior runs, and avoids
+    #     nesting parallelism under the already-parallel replication loop.
+    #   * n_jobs != 1 (single-panel use, e.g. the empirical): PARALLEL over folds
+    #     (joblib loky), each fold seeded from (base, fold) so the result is
+    #     reproducible and independent of the core count.
+    def _make_foldfit(fd, fit):
         resid = Y - A(fit.surfaces, blocks)
-        if oracle:
-            U, V = true_U, true_V
-        else:
-            U, V = fit.U, fit.V
-        foldfits.append(FoldFit(surfaces=fit.surfaces, U=U, V=V, residual=resid,
-                                train=fd.train, val=fd.val, p=fd.p, alpha=fd.alpha))
+        U, V = (true_U, true_V) if oracle else (fit.U, fit.V)
+        return FoldFit(surfaces=fit.surfaces, U=U, V=V, residual=resid,
+                       train=fd.train, val=fd.val, p=fd.p, alpha=fd.alpha)
+    if tuning.n_jobs and tuning.n_jobs != 1:
+        base = fit_kwargs.get("rng", None)
+        seed0 = int(base.integers(2 ** 31)) if base is not None else 0
+        fk = {k: v for k, v in fit_kwargs.items() if k != "rng"}
+
+        def _fit_fold(fi):
+            rng_f = np.random.default_rng(np.random.SeedSequence([seed0, 7919, fi]))
+            return fit_factor_ridge(Y, blocks, ranks, mask=folds[fi].train,
+                                    rng=rng_f, **fk)
+        fits = _pmap(_fit_fold, range(len(folds)), tuning.n_jobs)
+        foldfits = [_make_foldfit(folds[fi], fits[fi]) for fi in range(len(folds))]
+        mono_ok = all(f.monotone for f in fits)
+    else:
+        foldfits, mono_ok = [], True
+        for fd in folds:
+            fit = fit_factor_ridge(Y, blocks, ranks, mask=fd.train, **fit_kwargs)
+            mono_ok = mono_ok and fit.monotone
+            foldfits.append(_make_foldfit(fd, fit))
 
     # ---- one-step + variances ------------------------------------------------
     res = one_step(blocks, foldfits, targets,

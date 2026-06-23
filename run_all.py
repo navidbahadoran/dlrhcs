@@ -82,7 +82,17 @@ def stage_grid(cfg, only=None):
 
 def stage_purge(cfg, only=None):
     p = cfg["purge"]
-    tun = _tuning(cfg)
+    # purge-specific overrides: a larger J keeps the buffered training share
+    # workable up to large q (roadmap Step 2 retention rule), and a slightly
+    # larger riesz_ridge caps any residual near-singular debiasing solve at the
+    # most over-purged windows (numerical regularization) -- so q=6 degrades
+    # gracefully instead of exploding in the occasional starved replication.
+    ov = {}
+    if "J" in p:
+        ov["J"] = p["J"]
+    if "riesz_ridge" in p:
+        ov["riesz_ridge"] = p["riesz_ridge"]
+    tun = _tuning(cfg, ov)
     q_grid = p["q_grid"] if only is None else [int(only)]
     pdgp = cfg.get("purge_dgp", cfg["dgp"])
     paths = run_purge_sweep(p["Tp"], p["N"], p["R"], q_grid, tun, SIM,
@@ -140,19 +150,32 @@ def stage_tables(cfg):
                          os.path.join(TAB, "tab_sim_convergence.tex"))
         report.write_tex(report.precision_table(agg_by_size, sizes),
                          os.path.join(TAB, "tab_sim_precision.tex"))
-        print("[tables] wrote tab_sim_convergence.tex, tab_sim_precision.tex")
+        report.write_tex(report.precision_figure(agg_by_size, sizes),
+                         os.path.join(TAB, "fig_sim_precision_rate.tex"))
+        print("[tables] wrote tab_sim_convergence/precision.tex, fig_sim_precision_rate.tex")
     except FileNotFoundError as ex:
         print(f"[tables] skip convergence/precision ({ex})")
     p = cfg["purge"]
     try:
         agg_by_q = {int(q): a for q, a in
                     json.load(open(os.path.join(SIM, f"purge_{p['Tp']}.json"))).items()}
-        report.write_tex(report.purge_table(agg_by_q, p["q_grid"]),
+        q_grid = [q for q in p["q_grid"] if q in agg_by_q]
+        report.write_tex(report.purge_table(agg_by_q, q_grid),
                          os.path.join(TAB, "tab_sim_purge.tex"))
-        print("[tables] wrote tab_sim_purge.tex")
+        report.write_tex(report.purge_figure(agg_by_q, q_grid),
+                         os.path.join(TAB, "fig_sim_purge.tex"))
+        print("[tables] wrote tab_sim_purge.tex, fig_sim_purge.tex")
     except FileNotFoundError as ex:
         print(f"[tables] skip purge ({ex})")
-    # ---- empirical table (Zillow) ------------------------------------------
+    # ---- theorem-justification table ---------------------------------------
+    try:
+        th = json.load(open(os.path.join(OUT, "theorems.json")))
+        report.write_tex(report.theorems_table(th),
+                         os.path.join(TAB, "tab_theorems.tex"))
+        print("[tables] wrote tab_theorems.tex")
+    except FileNotFoundError as ex:
+        print(f"[tables] skip theorems ({ex})")
+    # ---- empirical table + IRF figure (Zillow) -----------------------------
     try:
         z = json.load(open(os.path.join(EMP, "zillow.json")))
         rows = [("Lag-1 mean", "lag1_mean"), ("Lag-2 mean", "lag2_mean"),
@@ -161,7 +184,9 @@ def stage_tables(cfg):
         rows = [r for r in rows if r[1] in z.get("targets", {})]
         report.write_tex(report.empirical_table(z, rows),
                          os.path.join(TAB, "tab_emp_zillow.tex"))
-        print("[tables] wrote tab_emp_zillow.tex")
+        report.write_tex(report.empirical_irf_figure(z),
+                         os.path.join(TAB, "fig_emp_zillow_irf.tex"))
+        print("[tables] wrote tab_emp_zillow.tex, fig_emp_zillow_irf.tex")
     except FileNotFoundError as ex:
         print(f"[tables] skip empirical ({ex})")
 
