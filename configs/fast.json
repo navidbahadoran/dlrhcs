@@ -1,0 +1,151 @@
+{
+  "name": "fast",
+  "description": "Fast full-scale pass: R halved, n_restarts=1, riesz_tol=1e-6, empirical ranks fixed (skip selection), purge q thinned. For iteration; use full.json for the final submission run.",
+  "master_seed": 2024,
+  "dgp": {
+    "rho_y": 0.85,
+    "sigma_u": 0.3,
+    "c_x": 0.3,
+    "a_rms": 0.55,
+    "bh_rms": 0.5,
+    "noise": "iid"
+  },
+  "tuning": {
+    "ranks": [
+      1,
+      1,
+      1
+    ],
+    "q": 2,
+    "J": 6,
+    "ridge": 0.02,
+    "n_sweeps": 40,
+    "n_restarts": 1,
+    "riesz_tol": 1e-06,
+    "kappa_c": 0.03
+  },
+  "oracle": {
+    "Tp": 100,
+    "N": 100,
+    "R": 400
+  },
+  "grid": [
+    [
+      50,
+      50,
+      500
+    ],
+    [
+      100,
+      100,
+      500
+    ],
+    [
+      200,
+      200,
+      500
+    ],
+    [
+      400,
+      400,
+      250
+    ]
+  ],
+  "purge": {
+    "Tp": 100,
+    "N": 100,
+    "R": 500,
+    "q_grid": [
+      0,
+      2,
+      4,
+      6
+    ],
+    "J": 12,
+    "riesz_ridge": 1e-05
+  },
+  "empirical": {
+    "ranks": [
+      1,
+      1,
+      1
+    ],
+    "q": 1,
+    "J": 6,
+    "ridge": 0.1,
+    "n_restarts": 1,
+    "n_sweeps": 40,
+    "riesz_tol": 1e-05,
+    "riesz_ridge": 1e-06,
+    "riesz_maxiter": 600,
+    "select": false,
+    "r_bar": [
+      2,
+      2,
+      4
+    ],
+    "kappa_c": 0.03
+  },
+  "n_jobs": -1,
+  "theorems": {
+    "R": 150,
+    "R_rank": 50,
+    "rank_grid": [
+      [
+        50,
+        50
+      ],
+      [
+        100,
+        100
+      ],
+      [
+        200,
+        200
+      ]
+    ],
+    "xs_TpN": [
+      120,
+      120
+    ],
+    "irf_TpN": [
+      100,
+      100
+    ],
+    "debias_TpN": [
+      200,
+      200
+    ]
+  },
+  "purge_dgp": {
+    "rho_y": 0.9,
+    "sigma_u": 0.3,
+    "c_x": 0.3,
+    "a_rms": 0.6,
+    "bh_rms": 0.5,
+    "noise": "iid"
+  },
+  "metro": {
+    "enabled": true,
+    "select": false,
+    "ridge": 0.5,
+    "r_bar": [
+      2,
+      2,
+      6
+    ],
+    "q": 1,
+    "J": 6,
+    "n_restarts": 1,
+    "n_sweeps": 40,
+    "riesz_tol": 1e-05,
+    "riesz_ridge": 1e-06,
+    "riesz_maxiter": 600,
+    "kappa_c": 0.03,
+    "ranks": [
+      1,
+      0,
+      1
+    ]
+  }
+}
