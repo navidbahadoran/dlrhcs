@@ -140,7 +140,8 @@ def simulate(Tp, N, rng, *, r=1, rho_y=0.85, sigma_u=0.30, c_x=0.30,
     lx = rng.standard_normal(N)
     Xfull = c_x * fx[:, None] * lx[None, :] + sigma_x * rng.standard_normal(
         (Tp + burn + 1, N))
-    Xfull = (Xfull - Xfull.mean()) / Xfull.std()
+    eff = Xfull[burn + 1: burn + 1 + Tp]          # the effective-sample window
+    Xfull = (Xfull - eff.mean()) / eff.std()      # standardize over the EFFECTIVE sample (eq:sim_x_dgp)
 
     G0 = {"A0": A0, "B0": B0, "H0": H0}
     # ---- recursion with burn-in (coefficients reuse row 0 during burn-in) --

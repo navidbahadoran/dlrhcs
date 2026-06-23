@@ -22,8 +22,7 @@ from .folds import make_folds, assign_folds
 from .factorridge import fit_factor_ridge
 from .mc import standard_targets, true_value
 from .pipeline import Tuning, estimate
-from .ranks import select_ranks, effective_dim, cv_loss
-from .targets import mean_direction, project_tangent, riesz_weights, Target
+from .ranks import select_ranks, rank_penalty
 from .onestep import irf_p1, lrm_p1
 from scipy.stats import norm
 
@@ -103,10 +102,7 @@ def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
             bl = build_blocks(p.Z)
             folds = make_folds(Tp, N, tuning.J, tuning.q, rng=sa)
             sig2 = float(np.var(p.Y))
-            # kappa = c_k * sig^2 * ell^2 * loglog(TN); ell_TN = O(1) for the
-            # standardized design, absorbed into c_k (a literal max|Z|^2 conflates
-            # design scale with localization and over-penalizes -> P(correct)~0).
-            kappa = kappa_c * sig2 * np.log(np.log(Tp * N))
+            kappa = rank_penalty(sig2, Tp, N, tuning.J, kappa_c)  # eq:explicit_rank_penalty
             rhat, _ = select_ranks(p.Y, bl, candidates, folds, kappa, fit_kwargs)
             return int(tuple(rhat) == true_rank)
         hits = sum(_pmap(_one, range(R), n_jobs))
@@ -146,8 +142,17 @@ def irf_lrm_coverage(Tp, N, R, tuning: Tuning, horizons=(1, 2, 4), master=2024,
 # --------------------------------------------------------------------------- #
 #  thm:xs_dependence -- xs s.e. restores coverage under within-period dependence
 # --------------------------------------------------------------------------- #
-def xs_coverage(Tp, N, R, tuning: Tuning, master=2024, n_jobs=1):
-    """Under the 'xs' DGP, compare White vs xs coverage for the full-mean targets."""
+def xs_coverage(Tp, N, R, tuning: Tuning, master=2024, n_jobs=1, buffer_r=1):
+    """Under the 'xs' DGP, compare White vs xs coverage for the full-mean targets.
+
+    Uses the paper's SPACE-time buffer (``buffer_r`` = r_TN > 0) to match the
+    spatially mixing within-date errors, together with the Bartlett-kernel xs
+    s.e.  The buffer volume is (q+1)(2r+1) cells per held-out cell, so r is kept
+    minimal (r=1) to preserve training retention; the local AR(1) error decay
+    (theta^|i-j|) is captured at this radius.
+    """
+    import dataclasses
+    tun = dataclasses.replace(tuning, buffer_r=buffer_r)
     names = ["lag_fmean", "slope_fmean"]
     def _one(rep):
         sa = np.random.default_rng(np.random.SeedSequence([master, rep]))
@@ -155,7 +160,7 @@ def xs_coverage(Tp, N, R, tuning: Tuning, master=2024, n_jobs=1):
         p = simulate(Tp, N, sa, noise="xs")
         bl = build_blocks(p.Z)
         tgs, ctx = standard_targets(bl, Tp, N)
-        r = estimate(p.Y, p.Z, tgs, tuning, rng=sb)
+        r = estimate(p.Y, p.Z, tgs, tun, rng=sb)
         row = {}
         for n in names:
             tg = [t for t in tgs if t.name == n][0]; tv = true_value(p, tg, ctx)

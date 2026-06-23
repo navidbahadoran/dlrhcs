@@ -47,6 +47,8 @@ class Tuning:
     xs_bandwidth: Optional[int] = None   # spatial-kernel xs s.e. bandwidth (None=auto)
     xs_kernel: str = "bartlett"          # "bartlett" (spatial, sim) | "cluster" (empirical)
     n_jobs: int = 1                      # cores for rank selection (single-panel use)
+    buffer_r: int = 0                    # spatial fold-buffer radius r_TN (0 = time-only)
+    r_bar: Optional[tuple] = None        # fixed rank caps for the candidate box
 
 
 @dataclass
@@ -79,7 +81,8 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
     # ---- q, J, ranks, kappa --------------------------------------------------
     ranks, q, J, kappa, candidates = tuning.ranks, tuning.q, tuning.J, None, None
     if tuning.use_roadmap or tuning.select:
-        rm = roadmap(Y, Z_list, P=P, kappa_c=tuning.kappa_c, fit_kwargs=fit_kwargs)
+        rm = roadmap(Y, Z_list, P=P, r_bar=tuning.r_bar,
+                     kappa_c=tuning.kappa_c, fit_kwargs=fit_kwargs)
         q = q if q is not None else rm.q
         J = J if J is not None else rm.J
         kappa, candidates = rm.kappa, rm.candidates
@@ -88,7 +91,7 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
     if J is None:
         J = 6
 
-    folds = make_folds(Tp, N, J, q, P=P, rng=rng,
+    folds = make_folds(Tp, N, J, q, r=tuning.buffer_r, P=P, rng=rng,
                        scheme=tuning.scheme, foldid=foldid)
 
     if ranks is None:

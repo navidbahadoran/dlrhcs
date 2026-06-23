@@ -68,12 +68,22 @@ def assign_folds(Tp: int, N: int, J: int,
     return base.reshape(Tp, N)
 
 
-def make_folds(Tp: int, N: int, J: int, q: int, P: int = 1,
+def make_folds(Tp: int, N: int, J: int, q: int, r: int = 0, P: int = 1,
                rng: Optional[np.random.Generator] = None,
                scheme: str = "scatter",
                foldid: Optional[np.ndarray] = None) -> List[Fold]:
-    """Build the ``J`` purged folds with forward exclusion window ``q``.
+    """Build the ``J`` purged folds with the space--time exclusion buffer.
 
+    The buffered training set (eq:purged_training / ass:purged_folds) removes a
+    cell ``(s, l)`` whenever there is a held-out cell ``(t, i)`` with
+
+        0 <= s - t <= q_TN     (temporal: future dynamic descendants)
+        d_N(l, i) <= r_TN      (spatial: contemporaneous neighbours)
+
+    ``q`` is the forward temporal window, ``r`` the spatial radius.  The unit
+    metric is the index distance ``|l - i|`` (the 1D ordering used by the
+    spatially-mixing DGP); ``r = 0`` recovers the time-only, same-unit purge used
+    for the i.i.d. baseline and the empirical panels (which carry no metric).
     ``foldid`` may be supplied to reuse a fixed assignment across runs.
     """
     if foldid is None:
@@ -83,10 +93,16 @@ def make_folds(Tp: int, N: int, J: int, q: int, P: int = 1,
     for j in range(J):
         val = (foldid == j)
         purged = np.zeros((Tp, N), dtype=bool)
-        # purge same-unit cells in the q dates *after* a held-out cell:
-        # cell (t,i) is purged if (t-h, i) is held out for some 1 <= h <= q.
-        for h in range(1, q + 1):
-            purged[h:, :] |= val[:-h, :]
+        for h in range(q + 1):                 # temporal shift 0 <= s - t <= q
+            for dr in range(-r, r + 1):        # spatial shift |l - i| <= r
+                if h == 0 and dr == 0:
+                    continue                   # the held-out cell itself
+                ts, te = 0, Tp - h             # source / target row windows
+                if dr >= 0:
+                    us, ue, ut = 0, N - dr, dr
+                else:
+                    us, ue, ut = -dr, N, 0
+                purged[h:Tp, ut:ut + (ue - us)] |= val[ts:te, us:ue]
         train = (~val) & (~purged)
         n_pur = int(train.sum())
         p = float(val.sum()) / TpN
@@ -95,6 +111,10 @@ def make_folds(Tp: int, N: int, J: int, q: int, P: int = 1,
     return folds
 
 
-def retained_share(J: int, q: int) -> float:
-    """Approximate training share (1 - 1/J)^{q+1}; keep above ~0.35."""
-    return (1.0 - 1.0 / J) ** (q + 1)
+def retained_share(J: int, q: int, r: int = 0) -> float:
+    """Approx training share after the space-time buffer: (1 - 1/J)^{(q+1)(2r+1)}.
+
+    Each held-out cell purges a (q+1) x (2r+1) space-time block, so the deleted
+    volume per fold scales with (q+1)(2r+1); keep this above ~0.35 (ass:purged_folds
+    retention floor)."""
+    return (1.0 - 1.0 / J) ** ((q + 1) * (2 * r + 1))

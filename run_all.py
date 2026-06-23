@@ -106,6 +106,7 @@ def stage_empirical(cfg):
                  riesz_tol=e["riesz_tol"], riesz_ridge=e.get("riesz_ridge", 1e-6),
                  riesz_maxiter=e.get("riesz_maxiter", 600), kappa_c=e.get("kappa_c", 1.0),
                  n_jobs=cfg.get("n_jobs", 1) if sel else 1,   # parallel rank selection
+                 r_bar=tuple(e["r_bar"]) if e.get("r_bar") else None,  # fixed box caps
                  xs_kernel="cluster")   # metros have no spatial metric -> cluster-by-period
     data = os.path.join(ROOT, "data")
     out = {}

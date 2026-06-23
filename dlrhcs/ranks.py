@@ -39,18 +39,40 @@ def _pmap(fn, items, n_jobs=1):
 # --------------------------------------------------------------------------- #
 #  prediction criterion
 # --------------------------------------------------------------------------- #
-def cv_loss(Y, blocks, folds, ranks, fit_kwargs) -> float:
-    Tp, N = Y.shape
-    tot = 0.0
-    for fd in folds:
-        fit = fit_factor_ridge(Y, blocks, ranks, mask=fd.train, **fit_kwargs)
-        R = (Y - A(fit.surfaces, blocks))
-        tot += float(np.sum((R[fd.val]) ** 2))
-    return tot / (Tp * N)
-
-
 def effective_dim(ranks, Tp, N) -> float:
     return float(sum(r * (Tp + N - r) for r in ranks))
+
+
+def rank_penalty(sigma2, Tp, N, J, kappa_c=1.0, q=8.0, L_TN=None) -> float:
+    """Explicit rank penalty kappa_TN (eq:explicit_rank_penalty; operational
+    residual-scaled form of app:roadmap Step 4):
+
+        kappa_TN = c_kappa * sigma^2 * b_TN^2 * ell_TN^2 * zeta_TN^{-1/2}
+                 = c_kappa * sigma^2 * b_TN * ell_TN / sqrt(a_TN),
+
+    with (sec:assumptions / eq:explicit_rank_penalty)
+        a_TN    = 1/T + 1/N,
+        ell_TN  = sqrt(log(TN * J)),                 ell_TN^2 = log(TN J),
+        b_TN    = (TN)^{1/q} * L_TN,   q = 8 + eta,  L_TN slowly diverging,
+        zeta_TN = a_TN * b_TN^2 * ell_TN^2.
+
+    Defaults: q = 8 (the minimal-moment boundary, the most conservative b_TN),
+    and L_TN = max(1, loglog(TN)) (an arbitrarily slowly diverging envelope).
+
+    c_kappa is the free tuning constant.  IMPORTANT: with this exact b_TN the raw
+    per-rank penalty kappa * (T+N)/(TN) = c_kappa * zeta_TN^{1/2} is ~2.8 sigma^2
+    at c_kappa = 1, which OVER-penalizes the weakly-identified lag block (verified:
+    P(r_hat = r_0) = 0 at c_kappa = 1 on the baseline DGP).  The configs therefore
+    use a calibrated c_kappa ~ 0.03, which matches the validated per-rank scale.
+    Report the selected ranks over a c_kappa grid (e.g. {0.02, 0.03, 0.05}) as a
+    sensitivity check.
+    """
+    a = 1.0 / Tp + 1.0 / N
+    ell = np.sqrt(np.log(Tp * N * max(J, 1)))
+    if L_TN is None:
+        L_TN = max(1.0, np.log(np.log(Tp * N)))
+    b = (Tp * N) ** (1.0 / q) * L_TN
+    return float(kappa_c * sigma2 * b * ell / np.sqrt(a))
 
 
 def select_ranks(Y, blocks, candidates, folds, kappa, fit_kwargs, n_jobs=1):
@@ -160,9 +182,14 @@ def _persistence(surfaces, P, Tp, N):
     return min(0.99, best)
 
 
-def roadmap(Y, Z_list, P=1, r_work=None, kappa_c=1.0, tau_tr=0.45,
-            tau_sv=0.15, fit_kwargs=None):
-    """Run roadmap Steps 0-4; returns a :class:`Roadmap`."""
+def roadmap(Y, Z_list, P=1, r_work=None, r_bar=None, kappa_c=1.0, tau_tr=0.45,
+            fit_kwargs=None):
+    """Run roadmap Steps 0-4; returns a :class:`Roadmap`.
+
+    ``r_bar`` are the FIXED rank caps that define the candidate box
+    (eq:fixed_candidate_box); if ``None`` they default to the generous working
+    rank ``r_work``.
+    """
     fit_kwargs = fit_kwargs or {}
     blocks = build_blocks(Z_list)
     Tp, N = Y.shape
@@ -194,32 +221,19 @@ def roadmap(Y, Z_list, P=1, r_work=None, kappa_c=1.0, tau_tr=0.45,
             J = Jc
             break
 
-    # Step 3: candidate box from singular-value screening of working fit
-    rbar = []
-    for b in range(B):
-        s = fit.svals[b]
-        s = s[s > 0]
-        if len(s) <= 1:
-            rbar.append(1)
-            continue
-        thresh = tau_sv * s[0]
-        rb = int(np.sum(s > thresh))
-        rbar.append(max(1, rb))
-    # candidate box prod_m {0, 1, ..., rbar_m + 1} (app:roadmap, eq:rank_box):
-    # zero ranks are admitted so the selector can drop an absent block.
+    # Step 3: FIXED deterministic candidate box prod_m {0,...,rbar_m}
+    # (eq:fixed_candidate_box).  The caps rbar are fixed inputs chosen >= the
+    # true ranks (Assumption a:signal); zero ranks are admitted so the selector
+    # can drop an absent block.  The preliminary SVD is used only to ORDER the
+    # candidate fits, never to PRUNE the box -- and since the full box is
+    # searched, ordering is moot here.  Default caps = the generous working rank.
+    rbar = tuple(r_bar) if r_bar is not None else tuple(r_work)
     candidates = [tuple(c) for c in itertools.product(
-        *[range(0, rb + 2) for rb in rbar])]
+        *[range(0, rb + 1) for rb in rbar])]
 
-    # Step 4: penalty kappa_TN = c_kappa * sigma^2 * ell^2_TN * loglog(TN)
-    # (app:roadmap Step 4).  The design-localization factor ell_TN is, by
-    # assumption, an O(1) (slowly growing) bound on the *normalized* design
-    # |Z^(m)_ti| <= C_Z ell_TN; for the standardized regressors used here it is a
-    # constant, so it is absorbed into the free tuning constant c_kappa (kappa_c).
-    # (Using a literal max|Z|^2 would conflate the design SCALE with the
-    # localization and over-penalize -- it collapses P(r_hat = r_0) to ~0 in the
-    # MC -- so ell^2 is kept in c_kappa.)  The loglog scale keeps the selector
-    # consistent (verified: P(correct rank) -> 1 in experiments.rank_consistency).
-    kappa = kappa_c * sigma2 * np.log(np.log(Tp * N))
+    # Step 4: explicit penalty kappa_TN = c_kappa sigma^2 b^2 ell^2 zeta^{-1/2}
+    # (eq:explicit_rank_penalty), computed by the shared helper.
+    kappa = rank_penalty(sigma2, Tp, N, J, kappa_c)
 
     return Roadmap(rho_hat=rho, sigma2_hat=sigma2, q=q, J=J,
                    candidates=candidates, kappa=float(kappa), r_work=r_work)
