@@ -82,7 +82,8 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
     ranks, q, J, kappa, candidates = tuning.ranks, tuning.q, tuning.J, None, None
     if tuning.use_roadmap or tuning.select:
         rm = roadmap(Y, Z_list, P=P, r_bar=tuning.r_bar,
-                     kappa_c=tuning.kappa_c, fit_kwargs=fit_kwargs)
+                     kappa_c=tuning.kappa_c, fit_kwargs=fit_kwargs,
+                     r_buffer=tuning.buffer_r)
         q = q if q is not None else rm.q
         J = J if J is not None else rm.J
         kappa, candidates = rm.kappa, rm.candidates

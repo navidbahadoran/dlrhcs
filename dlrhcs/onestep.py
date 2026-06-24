@@ -135,6 +135,38 @@ def joint_cov(res: OneStepResult, names: Sequence[str]) -> np.ndarray:
     return Sig
 
 
+def joint_cov_xs(res: OneStepResult, names: Sequence[str],
+                 kernel: str = "cluster", bandwidth=None) -> np.ndarray:
+    """Within-period cross-sectional-dependence-robust joint covariance of several
+    targets (thm:xs_dependence), for the delta method on LINEAR dynamic summaries
+    such as cumulative persistence a+b.  Mirrors :func:`xs_se`: ``"cluster"`` sums
+    the within-date unit-aggregated scores (robust to arbitrary within-date
+    dependence, no metric); ``"bartlett"`` is the spatial HAC over |i-j|.  PSD by
+    construction (cluster: Gram of period vectors; bartlett: symmetrized lags)."""
+    k = len(names)
+    V = [res.Psi_cf[n] * res.u_cf for n in names]        # score fields (Tp x N)
+    Tp, N = V[0].shape
+    Sig = np.zeros((k, k))
+    if kernel == "cluster":
+        S = [v.sum(axis=1) for v in V]                   # per-date unit sums (Tp,)
+        for a in range(k):
+            for b in range(a, k):
+                Sig[a, b] = Sig[b, a] = float(np.dot(S[a], S[b]))
+    else:
+        bw = bandwidth if bandwidth is not None else max(1, int(round((Tp + N) ** (1.0 / 3.0))))
+        for a in range(k):
+            for b in range(a, k):
+                s2 = float(np.sum(V[a] * V[b]))
+                for d in range(1, min(bw, N)):
+                    w = 1.0 - d / bw
+                    if w <= 0.0:
+                        break
+                    s2 += w * float(np.sum(V[a][:, :N - d] * V[b][:, d:]
+                                           + V[a][:, d:] * V[b][:, :N - d]))
+                Sig[a, b] = Sig[b, a] = s2
+    return Sig
+
+
 def delta_se(res: OneStepResult, names: Sequence[str], grad: np.ndarray) -> float:
     """Delta-method s.e. for g(phi_1..phi_k): sqrt(grad' Sigma grad)."""
     Sig = joint_cov(res, names)

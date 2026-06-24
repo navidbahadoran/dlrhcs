@@ -19,6 +19,14 @@ The signature piece of the method.  Two rules:
   was held out at any of the preceding ``q`` dates.  This deletes exactly the
   future same-unit descendants through which a held-out ``u_{it}`` propagates.
 
+* **Spatial buffer (Assumption a:folds).**  When a radius ``r > 0`` is supplied,
+  the training set ALSO drops cells whose unit lies within ``d_N(l,i) = |l-i| <=
+  r`` of a held-out fold-``j`` cell inside the same forward window, i.e. the full
+  SPACE-TIME block ``{ 0 <= s-t <= q  AND  |l-i| <= r }``, severing the
+  contemporaneous cross-sectional dependence between training and held-out cells.
+  ``make_folds`` implements this full space-time buffer; ``r = 0`` recovers the
+  time-only window above.
+
 Bookkeeping returned per fold:
   * ``p_j``      = |fold j| / (Tp*N)                  realized held-out share
   * ``n_pur_j``  = |I^pur_{-j}|                       training-cell count

@@ -129,7 +129,24 @@ def riesz_weights(direction, blocks, U_list, V_list, train_mask, alpha,
     amask = alpha * train_mask.astype(float)
     rhs_theta = project_tangent(direction, U_list, V_list)
     rhs = theta_flatten(rhs_theta)
-    scale = max(float(np.max(np.abs(rhs))), 1e-12)
+    # Operator-RELATIVE Tikhonov floor: scale ``ridge`` by an estimate of the
+    # largest eigenvalue of the ridge-free normal operator G0 (a few power
+    # iterations), not by |rhs|.  ``ridge`` is then a dimensionless fraction of
+    # the operator's own scale, so a near-singular map -- the weakly identified
+    # lag block once a SPATIAL buffer (a:folds, r_TN>0) removes neighbours -- is
+    # regularized commensurately and ||Psi|| stays bounded instead of exploding
+    # (eq:riesz_equation; the floor is numerical only).
+    def _G0_apply(vec):
+        Px0 = project_tangent(theta_unflatten(vec, blocks), U_list, V_list)
+        adj0 = A_adjoint(amask * A(Px0, blocks), blocks)
+        return theta_flatten(project_tangent(adj0, U_list, V_list))
+    _v = rhs / max(float(np.linalg.norm(rhs)), 1e-12)
+    for _ in range(4):
+        _g = _G0_apply(_v); _nrm = float(np.linalg.norm(_g))
+        if _nrm < 1e-30:
+            break
+        _v = _g / _nrm
+    scale = max(float(_v @ _G0_apply(_v)), 1e-12)        # ~ lambda_max(G0)
 
     def matvec(vec):
         x = theta_unflatten(vec, blocks)

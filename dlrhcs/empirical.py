@@ -40,7 +40,8 @@ import numpy as np
 
 from .design import build_blocks
 from .factorridge import fit_factor_ridge
-from .onestep import (companion_p2, delta_se, irf_p2, joint_cov, lrm_p2)
+from .onestep import (companion_p2, delta_se, irf_p2, joint_cov, joint_cov_xs,
+                      lrm_p2)
 from .pipeline import Tuning, estimate
 from .targets import Target
 
@@ -274,15 +275,21 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
                               ci_xs=res.ci_xs[tg.name])
 
     # Derived dynamics from the lag1/lag2 global means via the delta method.
-    # The joint covariance is the White (sandwich) form -- this is exactly the
-    # studentizer of thm:irf / lem:joint_clt, which is stated under the baseline
-    # (the paper does not define a cross-sectional dependence-robust delta-method
-    # covariance for IRF/LRM).  The scalar lag means above additionally carry a
-    # cross-sectional (cluster) s.e.; the derived functionals follow thm:irf.
+    # CUMULATIVE PERSISTENCE a+b is a LINEAR combination of the lag-mean targets,
+    # so it is an a:target-regular target covered by thm:xs_dependence: it carries
+    # BOTH the White delta-method s.e. AND the within-period cross-sectional
+    # (cluster) s.e., exactly like the scalar lag means.  LRM and the horizon IRFs
+    # are NONLINEAR transforms; the paper defers their dependence-robust inference
+    # to the optional response-path bootstrap (app:irf_bootstrap), so they are
+    # reported with the baseline White delta-method studentizer only.
     a = res.estimates["lag1_mean"]; b = res.estimates["lag2_mean"]
     Sig = joint_cov(res.onestep, ["lag1_mean", "lag2_mean"])
+    Sig_xs = joint_cov_xs(res.onestep, ["lag1_mean", "lag2_mean"],
+                          kernel=tuning.xs_kernel, bandwidth=tuning.xs_bandwidth)
+    one = np.array([1.0, 1.0])
     cum = a + b
-    cum_se = float(np.sqrt(max(np.array([1.0, 1.0]) @ Sig @ np.array([1.0, 1.0]), 0)))
+    cum_se = float(np.sqrt(max(one @ Sig @ one, 0)))            # White
+    cum_se_xs = float(np.sqrt(max(one @ Sig_xs @ one, 0)))      # cross-sectional
     lrm_val, lrm_g = lrm_p2(a, b)
     lrm_se = delta_se(res.onestep, ["lag1_mean", "lag2_mean"], lrm_g)
     radius = float(np.max(np.abs(np.linalg.eigvals(companion_p2(a, b)))))
@@ -292,7 +299,7 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
         irfs[h] = dict(est=val,
                        se=delta_se(res.onestep, ["lag1_mean", "lag2_mean"], g))
 
-    derived = dict(cumulative_persistence=dict(est=cum, se=cum_se),
+    derived = dict(cumulative_persistence=dict(est=cum, se=cum_se, se_xs=cum_se_xs),
                    long_run_multiplier=dict(est=lrm_val, se=lrm_se),
                    companion_radius=radius, irf=irfs)
 

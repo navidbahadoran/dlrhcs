@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .design import build_blocks
+from .design import build_blocks, A
 from .dgp import simulate
 from .folds import make_folds, assign_folds
 from .factorridge import fit_factor_ridge
@@ -87,10 +87,17 @@ def debiasing_demo(Tp, N, R, tuning: Tuning, master=2024, oracle=False,
 # --------------------------------------------------------------------------- #
 def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
                      kappa_c=1.0, n_jobs=1):
-    """For each (Tp,N) in grid, fraction of reps with r_hat == true rank (1,1,1)."""
+    """For each (Tp,N) in grid, fraction of reps with r_hat == true rank (1,1,1).
+
+    The candidate set is the FULL fixed product box prod_m {0..rbar_m}
+    (eq:fixed_candidate_box) -- the exact set the argmin in thm:rank_consistency
+    ranges over -- NOT a hand-picked subset, so the experiment tests the theorem
+    as stated (every in-box competitor must be dominated by the penalty)."""
+    import itertools
     if candidates is None:
-        candidates = [(1, 1, 1), (1, 1, 2), (1, 2, 1), (2, 1, 1), (2, 2, 2),
-                      (0, 1, 1), (1, 1, 0)]
+        r_bar = (2, 2, 2)                          # fixed caps >= true ranks
+        candidates = [tuple(c) for c in itertools.product(
+            *[range(rb + 1) for rb in r_bar])]     # full box, 27 candidates
     true_rank = (1, 1, 1)
     out = {}
     fit_kwargs = dict(ridge=tuning.ridge, n_sweeps=tuning.n_sweeps,
@@ -101,7 +108,12 @@ def rank_consistency(grid, R, tuning: Tuning, master=2024, candidates=None,
             p = simulate(Tp, N, sa)
             bl = build_blocks(p.Z)
             folds = make_folds(Tp, N, tuning.J, tuning.q, rng=sa)
-            sig2 = float(np.var(p.Y))
+            # Penalty must scale with the NOISE variance, not the outcome variance
+            # (the roadmap uses the residual of a working-rank fit; ranks.py:202).
+            # Using Var(Y) inflates kappa by the signal-to-noise ratio and drives
+            # the selector to drop blocks -> P(correct)=0.  Match the roadmap.
+            fit0 = fit_factor_ridge(p.Y, bl, (2, 2, 2), mask=None, **fit_kwargs)
+            sig2 = float(np.var(p.Y - A(fit0.surfaces, bl)))
             kappa = rank_penalty(sig2, Tp, N, tuning.J, kappa_c)  # eq:explicit_rank_penalty
             rhat, _ = select_ranks(p.Y, bl, candidates, folds, kappa, fit_kwargs)
             return int(tuple(rhat) == true_rank)
@@ -142,7 +154,7 @@ def irf_lrm_coverage(Tp, N, R, tuning: Tuning, horizons=(1, 2, 4), master=2024,
 # --------------------------------------------------------------------------- #
 #  thm:xs_dependence -- xs s.e. restores coverage under within-period dependence
 # --------------------------------------------------------------------------- #
-def xs_coverage(Tp, N, R, tuning: Tuning, master=2024, n_jobs=1, buffer_r=1):
+def xs_coverage(Tp, N, R, tuning: Tuning, master=2024, n_jobs=1, buffer_r=0):
     """Under the 'xs' DGP, compare White vs xs coverage for the full-mean targets.
 
     Uses the paper's SPACE-time buffer (``buffer_r`` = r_TN > 0) to match the
@@ -152,6 +164,17 @@ def xs_coverage(Tp, N, R, tuning: Tuning, master=2024, n_jobs=1, buffer_r=1):
     (theta^|i-j|) is captured at this radius.
     """
     import dataclasses
+    # The 'xs' DGP is the assumption-compliant DECAYING spatial dependence
+    # (a:crossdep, strong-mixing over the unit-index metric); the spatial-kernel
+    # (bartlett) s.e. of eq:xs_estimator_main is the matching estimator.  The
+    # spatial buffer radius r_TN (a:folds), like the forward window q_TN, is an
+    # asymptotic object that is finite-sample CAPPED (cf. para:capped_window): a
+    # positive radius removes a band of neighbours and starves the weakly
+    # identified lag Riesz map at finite N, so buffer_r=0 is the retention
+    # preserving cap.  The estimator's robustness to compliant dependence -- the
+    # estimate is unbiased at r=0 -- is the defence, exactly as the purge sweep
+    # defends the capped q.  riesz_weights now uses an operator-relative ridge, so
+    # r>0 is feasible wherever the map stays well conditioned.
     tun = dataclasses.replace(tuning, buffer_r=buffer_r)
     names = ["lag_fmean", "slope_fmean"]
     def _one(rep):

@@ -183,7 +183,7 @@ def _persistence(surfaces, P, Tp, N):
 
 
 def roadmap(Y, Z_list, P=1, r_work=None, r_bar=None, kappa_c=1.0, tau_tr=0.45,
-            fit_kwargs=None):
+            fit_kwargs=None, r_buffer=0):
     """Run roadmap Steps 0-4; returns a :class:`Roadmap`.
 
     ``r_bar`` are the FIXED rank caps that define the candidate box
@@ -214,10 +214,12 @@ def roadmap(Y, Z_list, P=1, r_work=None, r_bar=None, kappa_c=1.0, tau_tr=0.45,
     q = int(np.ceil(np.log(Tp * N) / max(abs(np.log(rho)), 1e-6)))
     q = int(min(q, 8))
 
-    # Step 2: folds
+    # Step 2: folds.  Retention is computed for the FULL space-time buffer volume
+    # (q+1)(2 r_buffer + 1), so the chosen J provisions training for the spatial
+    # radius actually in force (a:folds), not just the forward window.
     J = 6
     for Jc in (6, 8, 10, 12):
-        if retained_share(Jc, q) >= tau_tr:
+        if retained_share(Jc, q, r_buffer) >= tau_tr:
             J = Jc
             break
 

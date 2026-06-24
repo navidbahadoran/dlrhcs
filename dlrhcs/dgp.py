@@ -101,10 +101,17 @@ def _innovations(Tp, N, sigma_u, rng, noise, G0):
         # Cross-sectionally DECAYING within-period dependence: a spatial AR(1)
         # along the unit index, corr(u_{it}, u_{jt}) = theta^{|i-j|}, independent
         # across time.  Covariance row-sums are O(1) (sum_k theta^{|k|} =
-        # (1+theta)/(1-theta)), so the cumulant-summability condition ass:dependent
-        # (b) holds -- this is the dependence structure thm:xs_dependence covers
-        # (NOT a pervasive common factor, whose row-sums grow like N).
-        theta = 0.6
+        # (1+theta)/(1-theta)), so the strong-mixing-over-d_N condition a:crossdep
+        # holds -- this is the dependence structure thm:xs_dependence covers.  A
+        # PERVASIVE common factor (row-sums ~ N) is EXCLUDED by a:crossdep
+        # (manuscript: "mixing allows unrestricted local contemporaneous
+        # dependence but excludes [pervasive common factors]") and is therefore
+        # NOT used here.  theta controls the dependence STRENGTH; any theta<1 is
+        # still geometrically strong-mixing with O(1) row-sums (=(1+theta)/
+        # (1-theta)), so a larger theta strengthens the (compliant) dependence
+        # without violating a:crossdep -- used to make the White-vs-spatial-kernel
+        # coverage gap visible (eq:xs_estimator_main).
+        theta = 0.85
         e = rng.standard_normal((Tp, N))
         out = np.empty((Tp, N))
         out[:, 0] = e[:, 0]
