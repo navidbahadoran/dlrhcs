@@ -304,6 +304,7 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
                            n_sweeps=tuning.n_sweeps, tol=tuning.tol,
                            n_restarts=tuning.n_restarts, rng=rng)
     a_surf = np.asarray(fit.surfaces[0], dtype=float)
+    flat = a_surf.ravel()
     lo, hi = float(np.percentile(flat, 0.5)), float(np.percentile(flat, 99.5))
     edges = np.linspace(lo, hi, 41)
     hist = dict(edges=edges.tolist(),
