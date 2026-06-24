@@ -216,13 +216,26 @@ def _to_float(v):
 # --------------------------------------------------------------------------- #
 #  AR(2) panel construction
 # --------------------------------------------------------------------------- #
-def build_ar2(Ymat: np.ndarray):
-    """From a (T x N) stationary series matrix build (Y_eff, [lag1, lag2])."""
+def build_ar2(Ymat: np.ndarray, covars=None):
+    """From a (T x N) stationary series build ``(Y_eff, [lag1, lag2, *covars])``.
+
+    ``covars`` is an optional list of (T x N) covariate matrices aligned to
+    ``Ymat`` by (time, unit).  Each enters as a PREDETERMINED (once-lagged)
+    regressor ``X_{i,t-1}`` -- aligned with ``lag1`` -- so weak exogeneity
+    (a:exog) is preserved.  The returned design list is ordered
+    ``[lag1, lag2, covar_1, ..., covar_M]``; ``build_blocks`` then appends the
+    interactive H block, giving ``B = M + 3`` coefficient blocks in total."""
     T, N = Ymat.shape
     Y = Ymat[2:]                                # effective sample t = 3..T
     lag1 = Ymat[1:-1]
     lag2 = Ymat[0:-2]
-    return Y, [lag1, lag2]
+    Z = [lag1, lag2]
+    for c in (covars or []):
+        c = np.asarray(c, dtype=float)
+        if c.shape != Ymat.shape:
+            raise ValueError("each covariate must match Ymat shape (T, N)")
+        Z.append(c[1:-1])                       # X_{i,t-1}: predetermined, aligned to lag1
+    return Y, Z
 
 
 # --------------------------------------------------------------------------- #
@@ -234,8 +247,11 @@ def _cellmean_dir(blocks, block, W):
     return D
 
 
-def ar2_targets(blocks, Tp, N, groups=None, group_labels=("g0", "g1")):
-    """Global-mean lag1/lag2, optional group means and a between-group contrast."""
+def ar2_targets(blocks, Tp, N, groups=None, group_labels=("g0", "g1"),
+                covar_names=()):
+    """Global-mean lag1/lag2 (+ optional group means/contrast), plus a global-mean
+    target for each covariate coefficient block.  Covariate blocks occupy indices
+    ``2, 3, ..., 1+len(covar_names)`` (block order ``[lag1, lag2, covars..., H]``)."""
     Wall = np.full((Tp, N), 1.0 / (Tp * N))
     targets = [
         Target("lag1_mean", 0, _cellmean_dir(blocks, 0, Wall)),
@@ -251,6 +267,8 @@ def ar2_targets(blocks, Tp, N, groups=None, group_labels=("g0", "g1")):
             Target(f"lag1_{group_labels[1]}", 0, _cellmean_dir(blocks, 0, W1)),
             Target("lag1_contrast", 0, _cellmean_dir(blocks, 0, W0 - W1)),
         ]
+    for m, nm in enumerate(covar_names):                 # covariate coefficient means
+        targets.append(Target(f"{nm}_mean", 2 + m, _cellmean_dir(blocks, 2 + m, Wall)))
     return targets
 
 
@@ -258,14 +276,21 @@ def ar2_targets(blocks, Tp, N, groups=None, group_labels=("g0", "g1")):
 #  runner
 # --------------------------------------------------------------------------- #
 def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
-            rng=None):
-    """Estimate the heterogeneous AR(2) and all targets; add derived dynamics."""
+            rng=None, covars=None, covar_names=()):
+    """Estimate the heterogeneous AR(2) and all targets; add derived dynamics.
+
+    ``covars`` (list of T x N matrices) and ``covar_names`` add predetermined
+    covariate regressor blocks; each gets a global-mean coefficient target named
+    ``f"{name}_mean"``.  The lag-1/lag-2 dynamics (companion radius, IRF) are
+    unchanged -- the covariate blocks enter the model but the dynamic summaries
+    remain functions of the autoregressive coefficients."""
     if rng is None:
         rng = np.random.default_rng(0)
-    Y, Z = build_ar2(Ymat)
+    Y, Z = build_ar2(Ymat, covars)
     Tp, N = Y.shape
     blocks = build_blocks(Z)
-    targets = ar2_targets(blocks, Tp, N, groups=groups, group_labels=group_labels)
+    targets = ar2_targets(blocks, Tp, N, groups=groups, group_labels=group_labels,
+                          covar_names=covar_names)
     res = estimate(Y, Z, targets, tuning, P=2, rng=rng)
 
     table = {}
