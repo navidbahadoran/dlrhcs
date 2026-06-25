@@ -26,8 +26,8 @@ PANEL = os.path.join(ROOT, "data", "unemp",
 SEED = 13
 
 
-def run_spec(label, start, end, with_cov, n_jobs=1):
-    d = load_unemp_panel(PANEL, start=start, end=end)
+def run_spec(label, start, end, with_cov, require_cov, n_jobs=1):
+    d = load_unemp_panel(PANEL, start=start, end=end, require_cov=require_cov)
     Y = d["Y"]
     g = (d["mean_level"] > np.median(d["mean_level"])).astype(int)
     covars, covar_names = None, ()
@@ -50,9 +50,9 @@ def run_spec(label, start, end, with_cov, n_jobs=1):
 def main():
     nj = int(os.environ.get("N_JOBS", "1"))
     specs = {
-        "A": run_spec("A_main", "2000-01", "2026-05", False, nj),
-        "B": run_spec("B_restricted", "2001-01", "2025-12", False, nj),
-        "C": run_spec("C_covariates", "2001-01", "2025-12", True, nj),
+        "A": run_spec("A_main", "2000-01", "2026-05", False, False, nj),
+        "B": run_spec("B_restricted", "2001-01", "2025-12", False, True, nj),
+        "C": run_spec("C_covariates", "2001-01", "2025-12", True, True, nj),
     }
     os.makedirs(os.path.join(ROOT, "outputs", "empirical"), exist_ok=True)
     json.dump(specs, open(os.path.join(ROOT, "outputs", "empirical", "unemp_abc.json"), "w"),

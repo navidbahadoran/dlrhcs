@@ -44,7 +44,7 @@ def _ws(c):
     return (out - mu) / sd if sd > 0 else out - mu
 
 
-def load_unemp_panel(path, start="2000-01", end="2026-12", deseasonalize=True,
+def load_unemp_panel(path, start="2000-01", end="2026-12", deseasonalize=True, require_cov=True,
                      rate_col="unemployment_rate", cov_col="payroll_growth_12m"):
     """Return dict with Y (rate, deseasonalized), payroll (standardized covariate),
     months, metros -- all aligned (T x N)."""
@@ -69,7 +69,9 @@ def load_unemp_panel(path, start="2000-01", end="2026-12", deseasonalize=True,
         U[i, j] = f(r, rate_col)
         P[i, j] = f(r, cov_col)
 
-    keep = ((np.isnan(U).sum(0) <= MAX_GAP) & (np.isnan(P).sum(0) <= MAX_GAP))
+    keep = np.isnan(U).sum(0) <= MAX_GAP                # complete unemployment
+    if require_cov:                                  # require complete payroll only when used
+        keep &= np.isnan(P).sum(0) <= MAX_GAP
     U, P = U[:, keep], P[:, keep]
     metros = [m for m, k in zip(metros, keep) if k]
     for j in range(U.shape[1]):                      # interpolate sparse gaps

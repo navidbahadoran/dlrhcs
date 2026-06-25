@@ -29,16 +29,19 @@ XW = os.path.join(DATA, "zillow", "cbsa_county_crosswalk_2023.csv")
 SEED = 7
 
 
-def run_spec(label, start, end, with_cov, n_jobs=1):
+def run_spec(label, start, end, mode, n_jobs=1):
+    # mode: "full" | "matched_nocov" | "matched_cov".  B and C use the SAME
+    # covariate-matched metros so B->C isolates the covariate, not the sample.
     z = load_zillow(ZT, ZB, start=start, end=end)
     Y, tier = z["Y"], z["tier"]
     covars, covar_names, ranks = None, (), (1, 1, 1)
-    if with_cov:
+    if mode in ("matched_nocov", "matched_cov"):
         mats, names, matched = load_zillow_covariates(list(z["col_region"]), z["months"], COV, XW)
         Y, tier = Y[:, matched], tier[matched]
-        covars = [m[:, matched] for m in mats]
-        covar_names = names
-        ranks = (1, 1, 1, 1, 1, 1)             # lag1, lag2, 3 covariates, H (all rank-1)
+        if mode == "matched_cov":
+            covars = [m[:, matched] for m in mats]
+            covar_names = names
+            ranks = (1, 1, 1, 1, 1, 1)         # lag1, lag2, 3 covariates, H (all rank-1)
     tun = Tuning(ranks=ranks, q=1, J=6, ridge=0.1, n_restarts=2, n_sweeps=60,
                  riesz_tol=1e-5, riesz_ridge=1e-6, riesz_maxiter=600,
                  kappa_c=0.03, xs_kernel="cluster", n_jobs=n_jobs)
@@ -53,9 +56,9 @@ def run_spec(label, start, end, with_cov, n_jobs=1):
 def main():
     nj = int(os.environ.get("N_JOBS", "1"))
     specs = {
-        "A": run_spec("A_main", None, None, False, nj),
-        "B": run_spec("B_restricted", "2005-01", "2024-12", False, nj),
-        "C": run_spec("C_covariates", "2005-01", "2024-12", True, nj),
+        "A": run_spec("A_main", None, None, "full", nj),
+        "B": run_spec("B_restricted", "2005-01", "2024-12", "matched_nocov", nj),
+        "C": run_spec("C_covariates", "2005-01", "2024-12", "matched_cov", nj),
     }
     os.makedirs(os.path.join(ROOT, "outputs", "empirical"), exist_ok=True)
     json.dump(specs, open(os.path.join(ROOT, "outputs", "empirical", "zillow_abc.json"), "w"),
