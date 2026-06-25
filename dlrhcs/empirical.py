@@ -119,28 +119,40 @@ def stationarize_panel(levels):
     return out, transforms
 
 
-def load_zillow(path_top, path_bottom, stationarize=True):
+def load_zillow(path_top, path_bottom, stationarize=True, start=None, end=None):
     """Zillow ZHVI tier panel: parse RAW price levels, stack top & bottom tiers
     as units, balance, then (default) apply the minimal per-series
     stationarization and standardize.  House-price levels are a unit root, so in
-    practice nearly every series is log-differenced (returns)."""
+    practice nearly every series is log-differenced (returns).
+
+    ``start``/``end`` (``"YYYY-MM"``) optionally window the monthly columns -- used
+    for the restricted-sample specifications B and C.  The return dict adds
+    ``months`` (the effective post-differencing month labels) and ``col_region``
+    (the metro RegionName for each panel column), so covariate matrices can be
+    aligned to the panel by :func:`dlrhcs.covariates.load_zillow_covariates`."""
     import csv
 
     def read(path):
         with open(path) as fh:
             rows = list(csv.reader(fh))
         head = rows[0]
-        date_cols = [k for k, c in enumerate(head) if _looks_like_date(c)]
+        dcols = [(k, head[k][:7]) for k in range(len(head)) if _looks_like_date(head[k])]
+        if start:
+            dcols = [(k, ym) for k, ym in dcols if ym >= start]
+        if end:
+            dcols = [(k, ym) for k, ym in dcols if ym <= end]
+        cols = [k for k, _ in dcols]
+        labels = [ym for _, ym in dcols]
         ids, mat = [], []
         for r in rows[1:]:
             if r[3] != "msa":
                 continue
             ids.append(r[2])
-            mat.append([_to_float(r[k]) for k in date_cols])
-        return ids, np.array(mat)
+            mat.append([_to_float(r[k]) for k in cols])
+        return ids, np.array(mat), labels
 
-    idt, top = read(path_top)
-    idb, bot = read(path_bottom)
+    idt, top, labels = read(path_top)
+    idb, bot, _ = read(path_bottom)
     common = [r for r in idt if r in set(idb)]
     it = {r: k for k, r in enumerate(idt)}
     ib = {r: k for k, r in enumerate(idb)}
@@ -148,16 +160,20 @@ def load_zillow(path_top, path_bottom, stationarize=True):
                         np.array([bot[ib[r]] for r in common])]).T   # (T x 2*regions)
     good = ~np.any(~np.isfinite(levels), axis=0)
     levels = levels[:, good]
+    col_region = np.array(common + common)[good]                     # RegionName per column
     tier = np.array([0] * len(common) + [1] * len(common))[good]
     if stationarize:
         X, transforms = stationarize_panel(levels)
+        months = labels[1:]                          # differencing drops the first month
     else:
         X, transforms = levels, ["level"] * levels.shape[1]
+        months = labels
     vol = X.std(0)
     X = (X - X.mean(0)) / X.std(0)
     return dict(Y=X, tier=tier, vol=vol, transforms=transforms,
                 n_differenced=int(sum(t != "level" for t in transforms)),
-                regions=common, T=X.shape[0], N=X.shape[1],
+                regions=common, col_region=col_region, months=months,
+                T=X.shape[0], N=X.shape[1],
                 fingerprint=data_fingerprint(path_top)[:8] + data_fingerprint(path_bottom)[:8],
                 source="Zillow")
 
