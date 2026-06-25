@@ -98,3 +98,29 @@ def load_zillow_covariates(region_names, months, cov_path, xw_path, covs=COVARIA
     if standardize:
         mats = [_winsorize_standardize(m) for m in mats]
     return mats, [COV_LABELS.get(c, c) for c in covs], matched
+
+
+def load_cbsa_covariates(cbsa_codes, months, cov_path,
+                         covs=("population_growth_12m", "real_gdp_growth_1y"),
+                         labels=("population", "gdp"), standardize=True):
+    """Covariate matrices matched DIRECTLY by CBSA code (for the unemployment
+    panel, whose ces_cbsa_code is the modern CBSA).  Leading zeros are stripped on
+    both sides.  Returns (mats, labels, matched) like load_zillow_covariates."""
+    rows = list(csv.reader(open(cov_path)))
+    h = {c: i for i, c in enumerate(rows[0])}
+    tab = {}
+    for r in rows[1:]:
+        tab[(r[h["cbsa_code"]].lstrip("0"), r[h["date"]][:7])] = {c: r[h[c]] for c in covs}
+    T, N = len(months), len(cbsa_codes)
+    mats = [np.full((T, N), np.nan) for _ in covs]
+    matched = np.zeros(N, dtype=bool)
+    for j, code in enumerate(cbsa_codes):
+        cc = str(code).lstrip("0")
+        col = np.array([[_f(tab.get((cc, m), {}).get(c, "")) for c in covs] for m in months])
+        if not np.isnan(col).any():
+            for k in range(len(covs)):
+                mats[k][:, j] = col[:, k]
+            matched[j] = True
+    if standardize:
+        mats = [_winsorize_standardize(m) for m in mats]
+    return mats, list(labels), matched

@@ -51,6 +51,10 @@ def load_unemp_panel(path, start="2000-01", end="2026-12", deseasonalize=True, r
     rows = list(csv.reader(open(path)))
     h = {c: i for i, c in enumerate(rows[0])}
     body = [r for r in rows[1:] if start <= r[h["date"]][:7] <= end]
+    ces_col = h.get("ces_cbsa_code", h["cbsa_code"])
+    code2ces = {}
+    for r in body:
+        code2ces.setdefault(r[h["cbsa_code"]], r[ces_col].strip())
     months = sorted({r[h["date"]][:7] for r in body})
     metros = sorted({r[h["cbsa_code"]] for r in body})
     mi = {m: i for i, m in enumerate(months)}
@@ -74,6 +78,7 @@ def load_unemp_panel(path, start="2000-01", end="2026-12", deseasonalize=True, r
         keep &= np.isnan(P).sum(0) <= MAX_GAP
     U, P = U[:, keep], P[:, keep]
     metros = [m for m, k in zip(metros, keep) if k]
+    ces = [code2ces.get(m, m) for m in metros]
     for j in range(U.shape[1]):                      # interpolate sparse gaps
         U[:, j] = _interp(list(U[:, j]))
         P[:, j] = _interp(list(P[:, j]))
@@ -86,5 +91,5 @@ def load_unemp_panel(path, start="2000-01", end="2026-12", deseasonalize=True, r
             mask = moy == mo
             U[mask] -= (U[mask].mean(0, keepdims=True) - grand)
 
-    return dict(Y=U, payroll=_ws(P), months=months, metros=metros,
+    return dict(Y=U, payroll=_ws(P), months=months, metros=metros, ces=ces,
                 mean_level=mean_level, T=int(U.shape[0]), N=int(U.shape[1]))
