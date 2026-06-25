@@ -121,8 +121,8 @@ def stage_empirical(cfg):
     data = os.path.join(ROOT, "data")
     out = {}
     # ---- Application 1: Zillow metro-tier house values ----------------------
-    zt = os.path.join(data, "zillow_metro_top.csv")
-    zb = os.path.join(data, "zillow_metro_bottom.csv")
+    zt = os.path.join(data, "zillow", "zillow_metro_top.csv")
+    zb = os.path.join(data, "zillow", "zillow_metro_bottom.csv")
     if os.path.exists(zt) and os.path.exists(zb):
         z = load_zillow(zt, zb)
         r = run_ar2(z["Y"], tun, groups=z["tier"], group_labels=("top", "bottom"),
@@ -136,7 +136,7 @@ def stage_empirical(cfg):
     else:
         print("[empirical] Zillow CSVs not found in data/ -- skipping.")
     # ---- Application 2: metro-area unemployment (levels) --------------------
-    mu = os.path.join(data, "metro", "metro_unemployment.csv")
+    mu = os.path.join(data, "unemp", "metro_unemployment.csv")
     me = cfg.get("metro", {})
     if me.get("enabled", False) and os.path.exists(mu):
         msel = bool(me.get("select", True))

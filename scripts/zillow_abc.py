@@ -22,10 +22,10 @@ from dlrhcs.covariates import load_zillow_covariates       # noqa: E402
 from dlrhcs.pipeline import Tuning                          # noqa: E402
 
 DATA = os.path.join(ROOT, "data")
-ZT = os.path.join(DATA, "zillow_metro_top.csv")
-ZB = os.path.join(DATA, "zillow_metro_bottom.csv")
-COV = os.path.join(DATA, "covariates", "metro_monthly_covariates_2000_present.csv")
-XW = os.path.join(DATA, "covariates", "cbsa_county_crosswalk_2023.csv")
+ZT = os.path.join(DATA, "zillow", "zillow_metro_top.csv")
+ZB = os.path.join(DATA, "zillow", "zillow_metro_bottom.csv")
+COV = os.path.join(DATA, "zillow", "metro_monthly_covariates_2000_present.csv")
+XW = os.path.join(DATA, "zillow", "cbsa_county_crosswalk_2023.csv")
 SEED = 7
 
 

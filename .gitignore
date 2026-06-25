@@ -19,7 +19,8 @@ paper/
 /EMPIRICAL_FINDINGS.md
 
 # ---- Data: NOT included. Download + prepare per the README (section 7). ----
-/data/
+# (data/ is committed under Option 1 -- only the raw/intermediate
+#  downloads below are ignored; model-ready data is tracked)
 
 # ---- Generated outputs (regenerate with run_all.py) ----
 outputs/*
@@ -27,3 +28,14 @@ outputs/*
 
 # ---- git bundle artifacts ----
 *.bundle
+
+# --- Phase-2 raw/intermediate downloads (regenerable by the build scripts) ---
+data/**/la.data.*
+data/**/la.series
+data/**/*.zip
+data/**/CAINC1/
+data/**/bps_county_*.csv
+data/**/bea_county_*.csv
+data/**/bea_msa_*.csv
+data/**/census_county_*.csv
+data/**/list1_*.xlsx
