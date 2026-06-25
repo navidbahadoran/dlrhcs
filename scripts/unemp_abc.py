@@ -31,11 +31,12 @@ def run_spec(label, start, end, with_cov, require_cov, n_jobs=1):
     Y = d["Y"]
     g = (d["mean_level"] > np.median(d["mean_level"])).astype(int)
     covars, covar_names = None, ()
-    ranks = (1, 1, 2)                                 # lag1, lag2, H(rank2: strong common cycle)
+    ranks = (1, 0, 3)                                 # AR(1): 2nd lag unidentified at monthly freq
+    #                                                (near-integrated); matches annual selection (1,0,1)
     if with_cov:
         covars = [d["payroll"]]
         covar_names = ["payroll"]
-        ranks = (1, 1, 1, 2)                          # + payroll (rank1)
+        ranks = (1, 0, 1, 3)                          # AR(1) + payroll (rank1)
     tun = Tuning(ranks=ranks, q=1, J=6, ridge=0.5, n_restarts=2, n_sweeps=60,
                  riesz_tol=1e-5, riesz_ridge=1e-5, riesz_maxiter=600,
                  kappa_c=0.03, xs_kernel="cluster", n_jobs=n_jobs)
