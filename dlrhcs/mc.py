@@ -84,10 +84,14 @@ def run_replication(Tp, N, rep, tuning: Tuning, *, oracle=False,
         v = true_value(panel, tg, ctx)
         lo, hi = res.ci[tg.name]
         lox, hix = res.ci_xs[tg.name]
+        plug = res.onestep.plugins.get(tg.name, float("nan"))
         rec[tg.name] = dict(err=res.estimates[tg.name] - v,
+                            plugin_err=float(plug - v),
                             se=res.se[tg.name], se_xs=res.se_xs[tg.name],
                             cov=int(lo <= v <= hi), cov_xs=int(lox <= v <= hix))
     rec["_q"], rec["_J"], rec["_ranks"] = res.q, res.J, list(res.ranks)
+    rec["_r"] = int(getattr(tuning, "buffer_r", 0))
+    rec["_retained"] = float(res.diagnostics.get("retained", float("nan")))
     rec["_monotone"] = bool(res.diagnostics["monotone"])
     return rec
 
@@ -157,21 +161,53 @@ def run_purge_sweep(Tp, N, R, q_grid, base_tuning: Tuning, out_dir, *,
 #  aggregation
 # --------------------------------------------------------------------------- #
 def aggregate(path) -> Dict[str, dict]:
+    """Full per-target Monte Carlo battery: bias / abs bias / RMSE / MC sd; mean White
+    and cross-sectional s.e. and 95% coverage and interval length; plug-in bias and
+    RMSE (debiasing gain); and the studentized statistic's mean, sd, and 5/50/95
+    quantiles (CLT evidence).  A ``_meta`` entry carries the retained share,
+    monotonicity success rate, and the (q, r, J) exclusion settings."""
     recs = [json.loads(l) for l in open(path)]
     names = [k for k in recs[0] if not k.startswith("_") and k != "rep"]
+    z95 = 1.959963984540054
     out = {}
     for nm in names:
-        err = np.array([r[nm]["err"] for r in recs])
-        se = np.array([r[nm]["se"] for r in recs])
-        se_xs = np.array([r[nm]["se_xs"] for r in recs])
-        cov = np.array([r[nm]["cov"] for r in recs])
-        cov_xs = np.array([r[nm]["cov_xs"] for r in recs])
-        out[nm] = dict(R=len(recs), bias=float(err.mean()),
-                       rmse=float(np.sqrt((err ** 2).mean())),
-                       mean_se=float(se.mean()), mean_se_xs=float(se_xs.mean()),
-                       mc_sd=float(err.std()), cov=float(cov.mean()),
-                       cov_xs=float(cov_xs.mean()))
+        err = np.array([r[nm]["err"] for r in recs], float)
+        se = np.array([r[nm]["se"] for r in recs], float)
+        se_xs = np.array([r[nm]["se_xs"] for r in recs], float)
+        cov = np.array([r[nm]["cov"] for r in recs], float)
+        cov_xs = np.array([r[nm]["cov_xs"] for r in recs], float)
+        plug = np.array([r[nm].get("plugin_err", np.nan) for r in recs], float)
+        zt = err / np.where(se > 0, se, np.nan)
+        ztx = err / np.where(se_xs > 0, se_xs, np.nan)
+        out[nm] = dict(
+            R=len(recs), bias=float(err.mean()), abs_bias=float(np.abs(err).mean()),
+            rmse=float(np.sqrt((err ** 2).mean())), mc_sd=float(err.std()),
+            mean_se=float(se.mean()), mean_se_xs=float(se_xs.mean()),
+            cov=float(cov.mean()), cov_xs=float(cov_xs.mean()),
+            ci_len=float(2 * z95 * se.mean()), ci_len_xs=float(2 * z95 * se_xs.mean()),
+            plugin_bias=float(np.nanmean(plug)),
+            plugin_rmse=float(np.sqrt(np.nanmean(plug ** 2))),
+            z_mean=float(np.nanmean(zt)), z_sd=float(np.nanstd(zt)),
+            z_q05=float(np.nanpercentile(zt, 5)), z_q50=float(np.nanpercentile(zt, 50)),
+            z_q95=float(np.nanpercentile(zt, 95)),
+            z_xs_mean=float(np.nanmean(ztx)), z_xs_sd=float(np.nanstd(ztx)))
+    ret = np.array([r.get("_retained", np.nan) for r in recs], float)
+    mono = np.array([float(r.get("_monotone", True)) for r in recs], float)
+    out["_meta"] = dict(retained=float(np.nanmean(ret)),
+                        monotone_rate=float(mono.mean()),
+                        q=int(recs[0].get("_q", 0)), r=int(recs[0].get("_r", 0)),
+                        J=int(recs[0].get("_J", 0)))
     return out
+
+
+def studentized_sample(path, target, kind="white"):
+    """Per-replication studentized statistic (err / s.e.) for one target -- the raw
+    input for the QQ / histogram CLT figure.  ``kind`` is 'white' or 'xs'."""
+    recs = [json.loads(l) for l in open(path)]
+    key = "se" if kind == "white" else "se_xs"
+    out = [r[target]["err"] / r[target][key]
+           for r in recs if r[target].get(key, 0) and r[target][key] > 0]
+    return np.array(out, float)
 
 
 def print_table(agg, title=""):
@@ -180,5 +216,7 @@ def print_table(agg, title=""):
     head = f"{'target':16s} {'bias':>8s} {'rmse':>8s} {'mean_se':>8s} {'mc_sd':>8s} {'cov95':>6s}"
     print(head)
     for nm, r in agg.items():
+        if nm.startswith("_"):
+            continue
         print(f"{nm:16s} {r['bias']:8.4f} {r['rmse']:8.4f} {r['mean_se']:8.4f} "
               f"{r['mc_sd']:8.4f} {r['cov']:6.3f}")
