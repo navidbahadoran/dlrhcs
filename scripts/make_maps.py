@@ -1,29 +1,52 @@
 #!/usr/bin/env python3
-"""Render the two heterogeneity choropleths (real US-state geography) to PDF for the
-paper, from the empirical JSON outputs.  Uses Plotly's built-in USA-states geometry
-(no shapefile) and a continuous colour scale, so the tight unemployment range shows a
-proper gradient.  Writes paper/fig_emp_map_housing.pdf and paper/fig_emp_map_unemp.pdf.
+"""Render the two heterogeneity choropleths to PDF using matplotlib ONLY -- no Plotly,
+no Kaleido, no headless browser.  Downloads a small US-states GeoJSON once (cached at
+data/us_states_geo.json; commit it for full offline reproducibility), projects it with
+the Albers Equal-Area Conic projection, and shades each state by its estimated dynamic
+persistence.  Alaska and Hawaii are omitted for a clean lower-48 map (their values are
+in the data).  Writes paper/fig_emp_map_housing.pdf and paper/fig_emp_map_unemp.pdf.
 
-Requires plotly + kaleido + a local Chrome/Chromium (Kaleido renders via headless
-Chrome).  Run from the repo root after the empirical run:
-    python scripts/make_maps.py
+Run from the repo root after the empirical run:  python scripts/make_maps.py
 """
 import csv
 import json
+import math
 import os
 import re
+import urllib.request
 from collections import defaultdict
 
 import numpy as np
-import plotly.graph_objects as go
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.cm import ScalarMappable
+from matplotlib.collections import PatchCollection
+from matplotlib.colors import Normalize
+from matplotlib.patches import Polygon
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EMP = os.path.join(ROOT, "outputs", "empirical")
 COV = os.path.join(ROOT, "data", "zillow", "metro_monthly_covariates_2000_present.csv")
 PAPER = os.path.join(ROOT, "paper")
-STATES = set("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN "
-             "MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV "
-             "WI WY".split())
+GEO_PATH = os.path.join(ROOT, "data", "us_states_geo.json")
+GEO_URL = ("https://raw.githubusercontent.com/PublicaMundi/MappingAPI/"
+           "master/data/geojson/us-states.json")
+ABBR2NAME = {"AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "DC": "District of Columbia", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii",
+    "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming"}
+NAME2ABBR = {v: k for k, v in ABBR2NAME.items()}
+STATES = set(ABBR2NAME)
 
 
 def _state(name):
@@ -62,17 +85,60 @@ def state_means():
             {k: float(np.mean(v)) for k, v in ust.items()})
 
 
-def choropleth(data, title, scale, cbar_title, path):
-    st = sorted(data)
-    fig = go.Figure(go.Choropleth(
-        locations=st, locationmode="USA-states", z=[data[s] for s in st],
-        colorscale=scale, marker_line_color="white", marker_line_width=0.5,
-        colorbar=dict(title=cbar_title, thickness=14, len=0.85),
-        zmin=min(data.values()), zmax=max(data.values())))
-    fig.update_layout(geo=dict(scope="usa", lakecolor="white", bgcolor="rgba(0,0,0,0)"),
-                      title=dict(text=title, x=0.5, font=dict(size=15)),
-                      margin=dict(l=0, r=0, t=40, b=0), paper_bgcolor="rgba(0,0,0,0)")
-    fig.write_image(path, format="pdf", width=760, height=470)
+def _albers(lon, lat):
+    lat, lon = math.radians(lat), math.radians(lon)
+    lat0, lon0 = math.radians(23.0), math.radians(-96.0)
+    p1, p2 = math.radians(29.5), math.radians(45.5)
+    n = (math.sin(p1) + math.sin(p2)) / 2.0
+    C = math.cos(p1) ** 2 + 2 * n * math.sin(p1)
+    rho0 = math.sqrt(max(C - 2 * n * math.sin(lat0), 0)) / n
+    theta = n * (lon - lon0)
+    rho = math.sqrt(max(C - 2 * n * math.sin(lat), 0)) / n
+    return rho * math.sin(theta), rho0 - rho * math.cos(theta)
+
+
+def load_geojson():
+    if not os.path.exists(GEO_PATH):
+        print("downloading US-states GeoJSON (one time) ...")
+        urllib.request.urlretrieve(GEO_URL, GEO_PATH)
+    return json.load(open(GEO_PATH))
+
+
+def _rings(geom):
+    t, coords = geom["type"], geom["coordinates"]
+    if t == "Polygon":
+        return [coords[0]]
+    if t == "MultiPolygon":
+        return [poly[0] for poly in coords]
+    return []
+
+
+def choropleth(data, title, cmap_name, cbar_title, path, gj):
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    cmap = matplotlib.colormaps[cmap_name]
+    norm = Normalize(vmin=min(data.values()), vmax=max(data.values()))
+    patches, colors = [], []
+    for feat in gj["features"]:
+        ab = NAME2ABBR.get(feat["properties"].get("name", ""))
+        if ab is None or ab in ("AK", "HI"):
+            continue
+        v = data.get(ab)
+        col = cmap(norm(v)) if v is not None else (0.92, 0.92, 0.92, 1.0)
+        for ring in _rings(feat["geometry"]):
+            patches.append(Polygon([_albers(x, y) for x, y in ring], closed=True))
+            colors.append(col)
+    ax.add_collection(PatchCollection(patches, facecolors=colors,
+                                      edgecolors="white", linewidths=0.4))
+    ax.autoscale_view()
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.set_title(title, fontsize=12)
+    sm = ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    cb = fig.colorbar(sm, ax=ax, fraction=0.030, pad=0.02)
+    cb.set_label(cbar_title)
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
     print("wrote", path)
 
 
@@ -80,10 +146,11 @@ def main():
     zillow, unemp = state_means()
     print(f"housing states={len(zillow)} range=[{min(zillow.values()):.3f},{max(zillow.values()):.3f}]")
     print(f"unemp states={len(unemp)} range=[{min(unemp.values()):.3f},{max(unemp.values()):.3f}]")
+    gj = load_geojson()
     choropleth(zillow, "House-price momentum: cumulative persistence a+b by state",
-               "Blues", "a+b", os.path.join(PAPER, "fig_emp_map_housing.pdf"))
+               "Blues", "a + b", os.path.join(PAPER, "fig_emp_map_housing.pdf"), gj)
     choropleth(unemp, "Idiosyncratic unemployment persistence: lag-1 a by state",
-               "Tealgrn", "a", os.path.join(PAPER, "fig_emp_map_unemp.pdf"))
+               "Greens", "a", os.path.join(PAPER, "fig_emp_map_unemp.pdf"), gj)
 
 
 if __name__ == "__main__":
