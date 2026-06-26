@@ -57,7 +57,7 @@ def stage_oracle(cfg):
     agg = aggregate(path)
     json.dump(agg, open(os.path.join(SIM, f"oracle_{o['Tp']}.json"), "w"), indent=2)
     print_table(agg, "[oracle] aggregated")
-    mean_cov = np.mean([v["cov"] for v in agg.values()])
+    mean_cov = np.mean([v["cov"] for k, v in agg.items() if not k.startswith("_")])
     print(f"[oracle] mean coverage = {mean_cov:.3f}  (target band [0.93, 0.96])")
     return agg
 
