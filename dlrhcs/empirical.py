@@ -38,7 +38,9 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .design import build_blocks
+from .design import A, build_blocks
+from .diagnostics import (heterogeneity_stats, no_dynamics_resid_var,
+                          residual_diagnostics)
 from .factorridge import fit_factor_ridge
 from .onestep import (companion_p2, delta_se, irf_p2, joint_cov, joint_cov_xs,
                       lrm_p2)
@@ -282,6 +284,8 @@ def ar2_targets(blocks, Tp, N, groups=None, group_labels=("g0", "g1"),
             Target(f"lag1_{group_labels[0]}", 0, _cellmean_dir(blocks, 0, W0)),
             Target(f"lag1_{group_labels[1]}", 0, _cellmean_dir(blocks, 0, W1)),
             Target("lag1_contrast", 0, _cellmean_dir(blocks, 0, W0 - W1)),
+            Target(f"lag2_{group_labels[0]}", 1, _cellmean_dir(blocks, 1, W0)),
+            Target(f"lag2_{group_labels[1]}", 1, _cellmean_dir(blocks, 1, W1)),
         ]
     for m, nm in enumerate(covar_names):                 # covariate coefficient means
         targets.append(Target(f"{nm}_mean", 2 + m, _cellmean_dir(blocks, 2 + m, Wall)))
@@ -313,7 +317,8 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
     for tg in targets:
         table[tg.name] = dict(est=res.estimates[tg.name], se=res.se[tg.name],
                               se_xs=res.se_xs[tg.name], ci=res.ci[tg.name],
-                              ci_xs=res.ci_xs[tg.name])
+                              ci_xs=res.ci_xs[tg.name],
+                              plugin=res.onestep.plugins.get(tg.name))
 
     # Derived dynamics from the lag1/lag2 global means via the delta method.
     # CUMULATIVE PERSISTENCE a+b is a LINEAR combination of the lag-mean targets,
@@ -335,7 +340,7 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
     lrm_se = delta_se(res.onestep, ["lag1_mean", "lag2_mean"], lrm_g)
     radius = float(np.max(np.abs(np.linalg.eigvals(companion_p2(a, b)))))
     irfs = {}
-    for h in (1, 2, 4, 8):
+    for h in (1, 2, 4, 8, 12):
         val, g = irf_p2(a, b, h)
         irfs[h] = dict(est=val,
                        se=delta_se(res.onestep, ["lag1_mean", "lag2_mean"], g))
@@ -343,6 +348,20 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
     derived = dict(cumulative_persistence=dict(est=cum, se=cum_se, se_xs=cum_se_xs),
                    long_run_multiplier=dict(est=lrm_val, se=lrm_se),
                    companion_radius=radius, irf=irfs)
+
+    # Per-group cumulative persistence a+b (linear, so both s.e.'s are valid).  For
+    # the AR(1) unemployment fit b==0, so the group cumulative equals the group lag-1.
+    if groups is not None:
+        gcum = {}
+        for lab in group_labels:
+            ag = res.estimates[f"lag1_{lab}"]; bg = res.estimates[f"lag2_{lab}"]
+            Sg = joint_cov(res.onestep, [f"lag1_{lab}", f"lag2_{lab}"])
+            Sg_xs = joint_cov_xs(res.onestep, [f"lag1_{lab}", f"lag2_{lab}"],
+                                 kernel=tuning.xs_kernel, bandwidth=tuning.xs_bandwidth)
+            gcum[lab] = dict(est=ag + bg,
+                             se=float(np.sqrt(max(one @ Sg @ one, 0))),
+                             se_xs=float(np.sqrt(max(one @ Sg_xs @ one, 0))))
+        derived["cumulative_persistence_by_group"] = gcum
 
     # Per-cell heterogeneity of the lag-1 surface, for the reproducible histogram
     # figure.  One full-sample first-stage fit at the selected ranks recovers the
@@ -370,19 +389,109 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
                                          bins=edges)[0].tolist()
     derived["coef_hist"] = hist
 
+    # Coefficient time-series and per-unit averages, for the educative figures.
+    # a_surf is the lag-1 surface a_{ti}; surfaces[1] is the lag-2 surface b_{ti}
+    # (a (Tp x N) zero matrix when the second lag has rank 0, e.g. the AR(1)
+    # unemployment fit).  a_t,b_t average across units within each period; a_i,b_i
+    # average across periods within each unit.  Month and region labels are attached
+    # by the calling script, which holds the panel's index.
+    b_surf = (np.asarray(fit.surfaces[1], dtype=float)
+              if len(fit.surfaces) > 1 else np.zeros_like(a_surf))
+    a_t, b_t = a_surf.mean(axis=1), b_surf.mean(axis=1)
+    a_i, b_i = a_surf.mean(axis=0), b_surf.mean(axis=0)
+    derived["coef_path"] = dict(a_t=a_t.tolist(), b_t=b_t.tolist(),
+                                cum_t=(a_t + b_t).tolist())
+    derived["coef_by_unit"] = dict(a_i=a_i.tolist(), cum_i=(a_i + b_i).tolist())
+
+    # Residual adequacy, goodness of fit, and coefficient-surface heterogeneity,
+    # all from the full-sample first-stage residual matrix (one SVD + one cheap
+    # H-only baseline fit; no extra debiasing).  Plus solver/fold diagnostics from
+    # the one-step result, and the panel's effective dimensions.
+    Rfull = Y - A(fit.surfaces, blocks)
+    rd = residual_diagnostics(Rfull, float(np.var(Y)))
+    derived["residual_diag"] = rd
+    derived["heterogeneity"] = heterogeneity_stats(a_surf, groups, group_labels)
+    fitkw = dict(ridge=tuning.ridge, n_sweeps=tuning.n_sweeps, tol=tuning.tol,
+                 n_restarts=tuning.n_restarts, rng=rng)
+    base_var = no_dynamics_resid_var(Y, blocks, res.ranks, fitkw)
+    derived["fit"] = dict(rmse=rd["rmse"], r2_vs_outcome=rd["r2_vs_outcome"],
+                          r2_vs_nodynamics=float(1.0 - rd["resid_var"] / base_var)
+                          if base_var > 0 else 0.0)
+    rz = res.onestep.riesz_diag
+    conv = [c for tg in rz.values() for c in tg.get("converged", [])]
+    cgit = [c for tg in rz.values() for c in tg.get("cg_iters", [])]
+    meig = [c for tg in rz.values() for c in tg.get("min_eig", [])]
+    derived["solver"] = dict(monotone=bool(res.diagnostics.get("monotone", True)),
+                             retained=float(res.diagnostics.get("retained", float("nan"))),
+                             cg_converged_frac=float(np.mean(conv)) if conv else 1.0,
+                             cg_iters_mean=float(np.mean(cgit)) if cgit else 0.0,
+                             min_eig_mean=float(np.mean(meig)) if meig else 0.0)
+    derived["data"] = dict(T=int(Ymat.shape[0]), Tp=int(Tp), N=int(N))
+
     return dict(targets=table, derived=derived, ranks=res.ranks,
                 q=res.q, J=res.J, Tp=Tp, N=N)
 
 
-def rank_robustness(Ymat, rH_list, base_tuning, groups=None,
-                    group_labels=("g0", "g1"), seed=2024):
-    """Re-estimate at several nuisance ranks r_H; report the headline targets
-    so the empirical conclusions can be shown robust to r_H (spec sec 13)."""
+def rank_robustness(Ymat, base_ranks, rH_values, base_tuning, groups=None,
+                    group_labels=("g0", "g1"), covars=None, covar_names=(), seed=2024):
+    """Re-estimate at several interactive-block ranks r_H (the LAST block), holding
+    the lag and covariate ranks fixed at ``base_ranks``; report the headline dynamic
+    summaries so the empirical conclusions can be shown robust to the nuisance rank
+    (spec sec 13).  Works for AR(1)/AR(2) and for covariate-augmented designs."""
     import dataclasses
     out = {}
-    for rH in rH_list:
-        t = dataclasses.replace(base_tuning, ranks=(1, 1, int(rH)))
+    for rH in rH_values:
+        ranks = tuple(list(base_ranks[:-1]) + [int(rH)])
+        t = dataclasses.replace(base_tuning, ranks=ranks)
         r = run_ar2(Ymat, t, groups=groups, group_labels=group_labels,
-                    rng=np.random.default_rng(seed))
-        out[int(rH)] = r
+                    rng=np.random.default_rng(seed), covars=covars,
+                    covar_names=covar_names)
+        out[int(rH)] = dict(ranks=list(ranks),
+                            lag1_mean=r["targets"]["lag1_mean"]["est"],
+                            lag1_se=r["targets"]["lag1_mean"]["se"],
+                            cumulative=r["derived"]["cumulative_persistence"]["est"],
+                            radius=r["derived"]["companion_radius"])
     return out
+
+
+def covariate_robustness(Ymat, base_ranks, base_tuning, covars, covar_names,
+                         groups=None, group_labels=("g0", "g1"), seed=2024):
+    """Forced-rank robustness for each covariate (spec sec 13, point 10).  For each
+    covariate block in turn, re-estimate with that block's rank forced to 0 -- i.e.
+    the covariate is present in the design but its coefficient is pinned at zero
+    (effectively dropped) -- and report the resulting lag dynamics, so the autoregressive
+    conclusions can be shown invariant to whether the covariate is retained.  Covariate
+    blocks occupy indices ``2 .. 1+len(covar_names)`` in ``base_ranks``
+    ``[lag1, lag2, cov1, ..., H]``."""
+    import dataclasses
+    out = {}
+    for m, nm in enumerate(covar_names):
+        ranks = list(base_ranks); ranks[2 + m] = 0
+        t = dataclasses.replace(base_tuning, ranks=tuple(ranks))
+        r = run_ar2(Ymat, t, groups=groups, group_labels=group_labels,
+                    rng=np.random.default_rng(seed), covars=covars,
+                    covar_names=covar_names)
+        out[nm] = dict(dropped=nm, ranks=ranks,
+                       lag1_mean=r["targets"]["lag1_mean"]["est"],
+                       cumulative=r["derived"]["cumulative_persistence"]["est"],
+                       radius=r["derived"]["companion_radius"])
+    return out
+
+
+def rank_selection_table(Ymat, base_tuning, covars=None, covar_names=(),
+                         groups=None, group_labels=("g0", "g1"), top_k=8, seed=2024):
+    """Run the cross-fitted rank criterion over the roadmap candidate box and return
+    the selected rank vector plus the top-k candidates ranked by the criterion
+    (spec sec 13, point 1): each row is (rank, CV loss, effective dim, criterion)."""
+    import dataclasses
+    Y, Z = build_ar2(Ymat, covars)
+    blocks = build_blocks(Z)
+    targets = ar2_targets(blocks, Y.shape[0], Y.shape[1], groups=groups,
+                          group_labels=group_labels, covar_names=covar_names)
+    t = dataclasses.replace(base_tuning, ranks=None, select=True, use_roadmap=True)
+    res = estimate(Y, Z, targets, t, P=2, rng=np.random.default_rng(seed))
+    rt = res.diagnostics.get("rank_table", [])
+    rt = sorted(rt, key=lambda row: row[3])[:top_k]
+    return dict(selected=list(res.ranks),
+                candidates=[dict(rank=row[0], cv_loss=row[1], eff_dim=row[2],
+                                 criterion=row[3]) for row in rt])

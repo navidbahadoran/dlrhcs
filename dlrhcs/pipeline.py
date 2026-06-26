@@ -80,6 +80,7 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
 
     # ---- q, J, ranks, kappa --------------------------------------------------
     ranks, q, J, kappa, candidates = tuning.ranks, tuning.q, tuning.J, None, None
+    rank_table = None
     if tuning.use_roadmap or tuning.select:
         rm = roadmap(Y, Z_list, P=P, r_bar=tuning.r_bar,
                      kappa_c=tuning.kappa_c, fit_kwargs=fit_kwargs,
@@ -97,8 +98,8 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
 
     if ranks is None:
         if tuning.select and candidates:
-            ranks, _ = select_ranks(Y, blocks, candidates, folds, kappa, fit_kwargs,
-                                    n_jobs=tuning.n_jobs)
+            ranks, rank_table = select_ranks(Y, blocks, candidates, folds, kappa,
+                                             fit_kwargs, n_jobs=tuning.n_jobs)
         else:
             ranks = tuple([1] * B)
 
@@ -149,6 +150,9 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
 
     diag = dict(monotone=mono_ok, ranks=ranks, q=q, J=J,
                 retained=float(np.mean([fd.n_pur for fd in folds]) / (Tp * N)))
+    if rank_table is not None:
+        diag["rank_table"] = [(list(r), float(L), float(d), float(crit))
+                              for (r, L, d, crit) in rank_table]
     return EstimateResult(estimates=res.estimates, se=se, se_xs=se_xs,
                           ci=ci, ci_xs=ci_xs, ranks=tuple(ranks), q=q, J=J,
                           onestep=res, diagnostics=diag)
