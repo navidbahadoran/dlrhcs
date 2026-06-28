@@ -194,7 +194,7 @@ isolates the covariate effect.
 set N_JOBS=4                         # Windows; or: export N_JOBS=4
 python scripts/zillow_abc.py         # housing AR(2)  -> outputs/empirical/zillow_{A,B,C}.json + zillow_abc.json
 python scripts/unemp_abc.py          # unemployment AR(1) -> outputs/empirical/unemp_{A,B,C}.json + unemp_abc.json
-python scripts/make_maps.py          # geographic heterogeneity maps -> paper/fig_emp_map_{housing,unemp}.pdf
+python scripts/make_maps.py          # geographic heterogeneity maps -> paper/figures/fig_emp_map_{housing,unemp}.pdf
 ```
 
 Each run reports, per specification: the lag means and group/contrast targets with both

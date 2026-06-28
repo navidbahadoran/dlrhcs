@@ -28,7 +28,7 @@ from matplotlib.patches import Polygon
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EMP = os.path.join(ROOT, "outputs", "empirical")
 COV = os.path.join(ROOT, "data", "zillow", "metro_monthly_covariates_2000_present.csv")
-PAPER = os.path.join(ROOT, "paper")
+PAPER = os.path.join(ROOT, "paper", "figures")
 GEO_PATH = os.path.join(ROOT, "data", "us_states_geo.json")
 GEO_URL = ("https://raw.githubusercontent.com/PublicaMundi/MappingAPI/"
            "master/data/geojson/us-states.json")
@@ -143,6 +143,7 @@ def choropleth(data, title, cmap_name, cbar_title, path, gj):
 
 
 def main():
+    os.makedirs(PAPER, exist_ok=True)
     zillow, unemp = state_means()
     print(f"housing states={len(zillow)} range=[{min(zillow.values()):.3f},{max(zillow.values()):.3f}]")
     print(f"unemp states={len(unemp)} range=[{min(unemp.values()):.3f},{max(unemp.values()):.3f}]")
