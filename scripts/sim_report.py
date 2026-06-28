@@ -81,7 +81,7 @@ def target_type(aggs):
          r"Target type & bias & RMSE & cov. & xs cov. \\"]
     for obj in ("lag", "slope"):
         L.append(r"\midrule")
-        L.append(r"\multicolumn{5}{l}{\emph{" + OBJ[obj] + f"}} (\\,$T{{=}}N{{=}}{T}$) \\\\")
+        L.append(r"\multicolumn{5}{l}{\emph{" + OBJ[obj] + f"}}}} (\\,$T{{=}}N{{=}}{T}$) \\\\")
         for tt in ("entry", "gmean", "fmean", "contrast"):
             d = a[f"{obj}_{tt}"]
             L.append(f"\\quad {TYPE[tt]} & {f(d['bias'])} & {f(d['rmse'])} "
@@ -100,7 +100,7 @@ def debiased_vs_plugin(aggs):
          r"Target & plug-in bias & plug-in RMSE & debiased bias & debiased RMSE & cov. \\"]
     for obj in ("lag", "slope"):
         L.append(r"\midrule")
-        L.append(r"\multicolumn{6}{l}{\emph{" + OBJ[obj] + f"}} (\\,$T{{=}}N{{=}}{T}$) \\\\")
+        L.append(r"\multicolumn{6}{l}{\emph{" + OBJ[obj] + f"}}}} (\\,$T{{=}}N{{=}}{T}$) \\\\")
         for tt in ("fmean", "contrast"):
             d = a[f"{obj}_{tt}"]
             L.append(f"\\quad {TYPE[tt]} & {f(d['plugin_bias'])} & {f(d['plugin_rmse'])} "

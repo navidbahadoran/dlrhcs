@@ -6,15 +6,16 @@ empirical sections.
     python run_all.py --config configs/full.json  --stage oracle   # sec-12 gate
     python run_all.py --config configs/full.json  --stage grid
     python run_all.py --config configs/full.json  --stage purge
-    python run_all.py --config configs/full.json  --stage empirical
-    python run_all.py --config configs/full.json  --stage tables
+    python run_all.py --config configs/full.json  --stage theorems
 
 Stages are resume-safe (per-replication JSONL checkpoints in outputs/sim/), so a
 long grid can be stopped and restarted, or split across machines by replication.
+The simulation tables and figure coordinates are then built by
+``scripts/sim_report.py``; the two empirical applications run separately via
+``scripts/zillow_abc.py`` and ``scripts/unemp_abc.py``.
 
 Reproducibility: single-thread BLAS so every worker is deterministic; per-rep
-seeds are SeedSequence([master, rep]).  All tables are written into
-outputs/tables/ by dlrhcs.report -- nothing is transcribed by hand.
+seeds are SeedSequence([master, rep]).  Nothing is transcribed by hand.
 """
 import os
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -29,7 +30,6 @@ import numpy as np
 
 from dlrhcs.mc import aggregate, print_table, run_grid, run_purge_sweep
 from dlrhcs.pipeline import Tuning
-from dlrhcs import report
 from dlrhcs import experiments as X
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -169,90 +169,6 @@ def stage_empirical(cfg):
         print("[empirical] metro_unemployment.csv not found -- run "
               "scripts/build_metro_panel.py first.")
     return out
-
-
-def stage_tables(cfg):
-    os.makedirs(TAB, exist_ok=True)
-    sizes = [g[0] for g in cfg["grid"]]
-    o = cfg["oracle"]
-    try:
-        agg_by_size = {s: json.load(open(os.path.join(SIM, f"grid_{s}.json")))
-                       for s in sizes}
-        oracle_agg = json.load(open(os.path.join(SIM, f"oracle_{o['Tp']}.json")))
-        report.write_tex(report.convergence_table(agg_by_size, oracle_agg, sizes, o["Tp"]),
-                         os.path.join(TAB, "tab_sim_convergence.tex"))
-        report.write_tex(report.precision_table(agg_by_size, sizes),
-                         os.path.join(TAB, "tab_sim_precision.tex"))
-        report.write_tex(report.precision_figure(agg_by_size, sizes),
-                         os.path.join(TAB, "fig_sim_precision_rate.tex"))
-        print("[tables] wrote tab_sim_convergence/precision.tex, fig_sim_precision_rate.tex")
-    except FileNotFoundError as ex:
-        print(f"[tables] skip convergence/precision ({ex})")
-    p = cfg["purge"]
-    try:
-        agg_by_q = {int(q): a for q, a in
-                    json.load(open(os.path.join(SIM, f"purge_{p['Tp']}.json"))).items()}
-        q_grid = [q for q in p["q_grid"] if q in agg_by_q]
-        report.write_tex(report.purge_table(agg_by_q, q_grid),
-                         os.path.join(TAB, "tab_sim_purge.tex"))
-        report.write_tex(report.purge_figure(agg_by_q, q_grid),
-                         os.path.join(TAB, "fig_sim_purge.tex"))
-        print("[tables] wrote tab_sim_purge.tex, fig_sim_purge.tex")
-    except FileNotFoundError as ex:
-        print(f"[tables] skip purge ({ex})")
-    # ---- theorem-justification table ---------------------------------------
-    try:
-        th = json.load(open(os.path.join(OUT, "theorems.json")))
-        report.write_tex(report.theorems_table(th),
-                         os.path.join(TAB, "tab_theorems.tex"))
-        print("[tables] wrote tab_theorems.tex")
-    except FileNotFoundError as ex:
-        print(f"[tables] skip theorems ({ex})")
-    # ---- empirical table + IRF figure (Zillow) -----------------------------
-    try:
-        z = json.load(open(os.path.join(EMP, "zillow.json")))
-        rows = [("Lag-1 mean", "lag1_mean"), ("Lag-2 mean", "lag2_mean"),
-                ("Lag-1, top tier", "lag1_top"), ("Lag-1, bottom tier", "lag1_bottom"),
-                ("Lag-1 top-vs-bottom contrast", "lag1_contrast")]
-        rows = [r for r in rows if r[1] in z.get("targets", {})]
-        report.write_tex(report.empirical_table(z, rows),
-                         os.path.join(TAB, "tab_emp_zillow.tex"))
-        report.write_tex(report.empirical_forest_figure(z, rows),
-                         os.path.join(TAB, "fig_emp_zillow_forest.tex"))
-        report.write_tex(report.companion_root_figure(z),
-                         os.path.join(TAB, "fig_emp_zillow_roots.tex"))
-        report.write_tex(report.coef_hist_figure(z),
-                         os.path.join(TAB, "fig_emp_zillow_hist.tex"))
-        report.write_tex(report.empirical_irf_figure(z),
-                         os.path.join(TAB, "fig_emp_zillow_irf.tex"))
-        print("[tables] wrote tab_emp_zillow.tex + 4 Zillow figures")
-    except FileNotFoundError as ex:
-        print(f"[tables] skip empirical ({ex})")
-    # ---- metro unemployment table + IRF figure -----------------------------
-    try:
-        u = json.load(open(os.path.join(EMP, "metro_unemployment.json")))
-        rows = [("Lag-1 mean", "lag1_mean"), ("Lag-2 mean", "lag2_mean"),
-                ("Lag-1, high-unemployment", "lag1_hi_unemp"),
-                ("Lag-1, low-unemployment", "lag1_lo_unemp"),
-                ("Lag-1 high-vs-low contrast", "lag1_contrast")]
-        rb = (u.get("ranks") or [1, 1, 1])[1]   # lag-2 block rank
-        rows = [r for r in rows if r[1] in u.get("targets", {})
-                and not (r[1] == "lag2_mean" and rb == 0)]  # drop absent lag-2 block
-        report.write_tex(report.empirical_table(u, rows),
-                         os.path.join(TAB, "tab_emp_metro.tex"))
-        report.write_tex(report.empirical_forest_figure(u, rows),
-                         os.path.join(TAB, "fig_emp_metro_forest.tex"))
-        report.write_tex(report.companion_root_figure(u),
-                         os.path.join(TAB, "fig_emp_metro_roots.tex"))
-        report.write_tex(report.coef_hist_figure(u),
-                         os.path.join(TAB, "fig_emp_metro_hist.tex"))
-        report.write_tex(report.empirical_irf_figure(u),
-                         os.path.join(TAB, "fig_emp_metro_irf.tex"))
-        print("[tables] wrote tab_emp_metro.tex + 4 metro figures")
-    except FileNotFoundError as ex:
-        print(f"[tables] skip metro ({ex})")
-
-
 def stage_theorems(cfg):
     """Run the theorem-justification suite (small, illustrative scales).
 
@@ -292,7 +208,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/pilot.json")
     ap.add_argument("--stage", default="all",
-                    choices=["all", "oracle", "grid", "purge", "empirical", "theorems", "tables"])
+                    choices=["all", "oracle", "grid", "purge", "empirical", "theorems"])
     ap.add_argument("--only", default=None,
                     help="restrict 'grid' to one panel size (e.g. --only 200) or "
                          "'purge' to one window q (e.g. --only 4)")
@@ -311,8 +227,6 @@ def main():
         stage_empirical(cfg)
     if args.stage in ("all", "theorems"):
         stage_theorems(cfg)
-    if args.stage in ("all", "tables"):
-        stage_tables(cfg)
     print(f"[run_all] stage={args.stage} done in {time.time()-t0:.0f}s")
 
 
