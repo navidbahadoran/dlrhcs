@@ -310,5 +310,6 @@ data sources are public: cite **Zillow** (ZHVI), the **U.S. Bureau of Labor Stat
 (LAUS), the **U.S. Census Bureau** (Building Permits Survey; population estimates), and
 the **U.S. Bureau of Economic Analysis** (metropolitan GDP) per their terms.
 
-No license file is included yet — add one (e.g. MIT) before making the repository public
-if you intend to permit reuse.
+The code is released under the **MIT License** (see `LICENSE`) — permissive reuse with
+attribution. The license covers the code only; the empirical data remain subject to their
+providers' terms (Zillow, BLS, Census, BEA), as noted above.
