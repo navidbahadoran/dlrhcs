@@ -1,33 +1,30 @@
 """
-Empirical applications (spec sec 13): the heterogeneous low-rank AR(2)
+Empirical applications: the heterogeneous low-rank dynamic panel applied to two real
+metropolitan panels, run via ``scripts/zillow_abc.py`` and ``scripts/unemp_abc.py``.
 
-    y_tilde_{it} = a_{0,ti} y_tilde_{i,t-1} + b_{0,ti} y_tilde_{i,t-2}
-                   + h_{0,ti} + u_{it}
+    y_tilde_{it} = a_{ti} y_tilde_{i,t-1} (+ b_{ti} y_tilde_{i,t-2})
+                   (+ sum_m beta^m_{ti} X^m_{i,t-1}) + h_{ti} + u_{it}
 
-estimated by the same cross-fitted debiased one-step.  Blocks are
-``[lag1, lag2, ones]`` so ``B = 3`` and the default ranks are ``(1, 1, 2)``.
+estimated by the cross-fitted debiased one-step.  Blocks are
+``[lag1, lag2, covariates..., ones]``; :func:`run_ar2` threads optional predetermined
+covariate blocks and reports, per specification, the lag / group / contrast targets
+(each with a White and a within-period cross-sectional s.e.), cumulative persistence
+(global and by group), the long-run multiplier, horizon IRFs, the companion spectral
+radius, and a diagnostics battery (plug-in vs debiased, residual adequacy, fit,
+coefficient heterogeneity), plus rank- and covariate-robustness sweeps.
 
 Datasets:
-  * Zillow (``load_zillow``) -- metro-tier house-value panel (top vs bottom price
-    tier).  This is the SHIPPED empirical application run by ``run_all.py``.
-  * Metro unemployment (``load_metro``) -- BLS LAUS metro-area annual-average
-    unemployment rates.  OPTIONAL / not in the default run; build it with
-    ``data/metro/build_metro_panel.py`` and see the README (section 7) and
-    ``data/metro/README.md`` for download + preparation.
+  * Housing (:func:`load_zillow`) -- Zillow ZHVI metro-tier panel (top vs bottom price
+    tier), monthly log price growth; heterogeneous AR(2).
+  * Unemployment (:func:`dlrhcs.unemp.load_unemp_panel`) -- BLS LAUS monthly metro
+    unemployment rate, not-seasonally-adjusted and deseasonalized; heterogeneous AR(1).
 
-Both panels are homogeneous (one variable across comparable units).  Data are
-the RAW downloads; cleaning = balance + align; each series is made stationary by
-the lightest step that works (per-series ADF: difference once only if a unit
-root, else keep the level) and standardized.  No database-supplied or arbitrary
-transforms.  See the data-cleaning appendix.
-
-Every target is reported with both the White s.e. and the within-period
-(cross-sectional) s.e.  Derived dynamic functionals (cumulative persistence,
-long-run multiplier, horizon IRFs, companion spectral radius) use the delta
-method on the joint covariance of the lag-1/lag-2 global means.
-
-Provenance: record the data file and its content hash (``data_fingerprint``) in
-the output so a Data Editor can confirm the exact vintage.
+Covariates for specification C are loaded by :mod:`dlrhcs.covariates`.  Each application
+is run in three specifications -- A (full sample), B (covariate window, no covariates),
+C (covariate-augmented) -- so that A->B isolates the sample-restriction effect and
+B->C the covariate effect.  :func:`homogeneous_benchmark` gives the pooled
+common-coefficient comparison.  Provenance: each output records the data file's content
+hash (``data_fingerprint``) so a Data Editor can confirm the exact vintage.
 """
 from __future__ import annotations
 
@@ -495,3 +492,27 @@ def rank_selection_table(Ymat, base_tuning, covars=None, covar_names=(),
     return dict(selected=list(res.ranks),
                 candidates=[dict(rank=row[0], cv_loss=row[1], eff_dim=row[2],
                                  criterion=row[3]) for row in rt])
+
+
+def homogeneous_benchmark(Ymat, P):
+    """Pooled two-way fixed-effects AR(P): the homogeneous (common-coefficient)
+    benchmark.  Returns dict(coef, cum, rmse, r2) -- the single common lag vector, its
+    sum, the in-sample RMSE, and R^2 over the within-transformed outcome -- used to
+    quantify what the heterogeneous low-rank estimator adds over a model that forces one
+    coefficient for every cell.  The two-way within transform removes additive unit and
+    time effects (the homogeneous analogue of the interactive block)."""
+    Y = np.asarray(Ymat, dtype=float)
+    T, N = Y.shape
+    yt = Y[P:]
+    Xl = [Y[P - l - 1:T - l - 1] for l in range(P)]
+
+    def _w(M):
+        return M - M.mean(0, keepdims=True) - M.mean(1, keepdims=True) + M.mean()
+
+    yw = _w(yt).ravel()
+    Xw = np.column_stack([_w(x).ravel() for x in Xl])
+    beta = np.linalg.lstsq(Xw, yw, rcond=None)[0]
+    resid = yw - Xw @ beta
+    return dict(coef=[float(b) for b in beta], cum=float(beta.sum()),
+                rmse=float(np.sqrt(np.mean(resid ** 2))),
+                r2=float(1.0 - resid.var() / yw.var()))
