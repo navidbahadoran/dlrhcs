@@ -30,7 +30,8 @@ sys.path.insert(0, ROOT)
 from dlrhcs.unemp import load_unemp_panel                              # noqa: E402
 from dlrhcs.covariates import load_cbsa_covariates                     # noqa: E402
 from dlrhcs.empirical import (covariate_robustness, data_fingerprint,  # noqa: E402
-                              rank_robustness, rank_selection_table, run_ar2)
+                              homogeneous_benchmark, rank_robustness,
+                              rank_selection_table, run_ar2)
 from dlrhcs.pipeline import Tuning                                      # noqa: E402
 
 PANEL = os.path.join(ROOT, "data", "unemp",
@@ -73,6 +74,7 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
     r["data_summary"] = dict(fingerprint=data_fingerprint(PANEL), n_units=int(Y.shape[1]),
                              n_units_total=n_total, n_dropped=int(n_total - Y.shape[1]),
                              date_range=f"{d['months'][0]}..{d['months'][-1]}")
+    r["homogeneous_benchmark"] = homogeneous_benchmark(Y, 1)   # pooled two-way FE AR(1)
     if "rank_select" in extras:
         sel = dataclasses.replace(tun, r_bar=RBAR)
         r["rank_selection"] = rank_selection_table(Y, sel, groups=g,
@@ -119,6 +121,14 @@ def main():
         t = specs["C"]["targets"].get(nm + "_mean")
         if t:
             print(f"  {nm:11s}: {t['est']:+.4f}  (White {t['se']:.4f}, cross-sec {t['se_xs']:.4f})")
+    print("\nHomogeneous benchmark (pooled two-way FE AR(1)) vs heterogeneous, by spec:")
+    print(f"  {'spec':5s}{'homog a':>9}{'homog cum':>11}{'homog RMSE':>12}{'homog R2':>10}"
+          f"{'  |  het mean':>14}{'het RMSE':>10}{'het R2':>9}")
+    for k in ("A", "B", "C"):
+        hb = specs[k]["homogeneous_benchmark"]; d = specs[k]["derived"]
+        t = specs[k]["targets"]
+        print(f"  {k:5s}{hb['coef'][0]:>9.3f}{hb['cum']:>11.3f}{hb['rmse']:>12.3f}{hb['r2']:>10.3f}"
+              f"  |  {t['lag1_mean']['est']:>10.3f}{d['fit']['rmse']:>10.3f}{d['fit']['r2_vs_outcome']:>9.3f}")
 
 
 if __name__ == "__main__":

@@ -153,6 +153,34 @@ def empirical_irf_figure(z: dict) -> str:
     return "\n".join(L)
 
 
+def empirical_coefpath_figure(z: dict, series_key: str, ylabel: str, ref: float,
+                              ymin: float, ymax: float) -> str:
+    """Per-period coefficient path (fig:emp_coefpath): cross-sectional average of the
+    estimated persistence in each period, with a dashed full-sample headline line and a
+    dotted stationarity boundary at one.  ``series_key`` is ``cum_t`` (housing AR(2),
+    a_t+b_t) or ``a_t`` (unemployment AR(1)).  ``ref`` is the headline value."""
+    cp = z["derived"]["coef_path"][series_key]
+    months = z["months"]
+
+    def _yr(m):
+        y, mm = str(m).split("-")[:2]
+        return int(y) + (int(mm) - 1) / 12.0
+
+    xs = [_yr(m) for m in months]
+    co = " ".join(f"({x:.3f},{v:.4f})" for x, v in zip(xs, cp))
+    x0, x1 = int(min(xs)), int(max(xs)) + 1
+    color = "red!70!black" if series_key == "a_t" else "blue!70!black"
+    L = [r"\begin{tikzpicture}",
+         r"\begin{axis}[width=0.8\textwidth,height=0.40\textwidth,",
+         f"  xlabel={{Year}}, ylabel={{{ylabel}}}, grid=major,",
+         f"  ymin={ymin}, ymax={ymax}, xmin={x0}, xmax={x1}]",
+         f"\\addplot[mark=none,thick,{color}] coordinates {{{co}}};",
+         f"\\draw[dashed] (axis cs:{x0},{ref:.3f}) -- (axis cs:{x1},{ref:.3f});",
+         f"\\draw[densely dotted] (axis cs:{x0},1) -- (axis cs:{x1},1);",
+         r"\end{axis}", r"\end{tikzpicture}"]
+    return "\n".join(L)
+
+
 def empirical_forest_figure(z: dict, rows: List[tuple]) -> str:
     """Forest (caterpillar) plot of the empirical targets: each estimate with its
     95\\% diagonal and cross-sectional intervals.  Because real data carry no
