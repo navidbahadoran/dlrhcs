@@ -65,7 +65,7 @@ dlrhcs/                package (NumPy/SciPy)
   folds.py             scattered cross-fitting folds + forward-exclusion window
   targets.py           target directions, tangent projector, matrix-free Riesz (CG)
   ranks.py             cross-fitted rank criterion + data-driven roadmap
-  onestep.py           one-step debiasing + White/xs variances + IRF/LRM delta method
+  onestep.py           one-step debiasing + diagonal (cell-heteroskedastic sandwich) / xs variances + IRF/LRM delta method
   pipeline.py          end-to-end feasible procedure (+ infeasible oracle mode)
   dgp.py               Monte Carlo DGP (iid baseline; hetero / decaying-xs variants)
   mc.py                Monte Carlo harness (checkpointed, resumable, parallel)
@@ -75,15 +75,19 @@ dlrhcs/                package (NumPy/SciPy)
   covariates.py        metro covariate loaders (CBSA permits / population / GDP)
   unemp.py             monthly LAUS unemployment panel loader (NSA deseasonalization)
   diagnostics.py       residual adequacy, fit, and coefficient-heterogeneity diagnostics
-  report.py            LaTeX table/figure helpers
+  report.py            empirical figure-snippet generators (coef-path, IRF, companion, histogram)
 configs/
   pilot.json           tiny config — smoke test, runs in minutes
   fast.json            reduced-cost full pass (for iteration)
   full.json            submission-scale config
 scripts/
-  zillow_abc.py        housing application: AR(2) specs A/B/C + full diagnostics
-  unemp_abc.py         unemployment application: AR(1) specs A/B/C + full diagnostics
+  zillow_abc.py        housing application: AR(2) specs A/B/C/D + diagnostics + homogeneous benchmark
+  unemp_abc.py         unemployment application: AR(1) specs A/B/C/D + diagnostics + homogeneous benchmark
   sim_report.py        builds the simulation LaTeX tables + figure coordinates
+  emp_report.py        builds the empirical figure snippets (coef-path, IRF, ...) from the run JSONs
+  fold_comparison.py   stress test: scattered vs contiguous folds + buffer sizes (no-buffer failure)
+  xs_stress.py         stress test: cross-sectional-dependence coverage (diagonal vs spatial-kernel) vs N
+  stress_tests.py      stress tests: fixed-J, rank misspecification, persistence near the stability boundary
   make_maps.py         renders the geographic heterogeneity choropleths (matplotlib)
   build_metro_panel.py BLS LAUS panel builder (raw flat files -> model-ready CSV)
 data/                  model-ready data (committed); raw downloads are git-ignored
@@ -178,33 +182,48 @@ python run_all.py --config configs/full.json --stage purge --only 2     # one pu
 The grid is geometric (each step doubles `T+N`) so the `sqrt(T+N)` standard-error
 contraction reads straight off the precision table. The main grid uses iid innovations
 (the baseline for bias/RMSE/coverage); the cross-sectional dependence that distinguishes
-the White from the cross-sectional standard error is exercised separately in the
-`theorems` stage, under the decaying-mixing DGP that satisfies the paper's dependence
-assumption (a pervasive common factor is excluded).
+the diagonal from the spatial-kernel standard error is exercised separately in the
+`theorems` stage (and in the appendix stress tests below), under the decaying-mixing DGP
+that satisfies the paper's dependence assumption (a pervasive common factor is excluded).
 
 ## 7. Reproducing the empirical applications
 
 The two applications run directly from `scripts/` (not through `run_all.py`). Each
-fits the heterogeneous dynamic panel in three specifications — **A** (full sample, no
+fits the heterogeneous dynamic panel in four specifications — **A** (full sample, no
 covariates), **B** (restricted to the covariate window, no covariates), **C**
-(covariate-augmented) — so that A→B isolates the sample-restriction effect and B→C
-isolates the covariate effect.
+(covariate-augmented), and **D** (pre-COVID robustness sub-sample) — so that A→B
+isolates the sample-restriction effect, B→C the covariate effect, and B→D the
+COVID-window effect.
 
 ```bash
 set N_JOBS=4                         # Windows; or: export N_JOBS=4
-python scripts/zillow_abc.py         # housing AR(2)  -> outputs/empirical/zillow_{A,B,C}.json + zillow_abc.json
-python scripts/unemp_abc.py          # unemployment AR(1) -> outputs/empirical/unemp_{A,B,C}.json + unemp_abc.json
+python scripts/zillow_abc.py         # housing AR(2)  -> outputs/empirical/zillow_{A,B,C,D}.json + zillow_abc.json
+python scripts/unemp_abc.py          # unemployment AR(1) -> outputs/empirical/unemp_{A,B,C,D}.json + unemp_abc.json
+python scripts/emp_report.py         # empirical figure snippets (coef-path, IRF, ...) -> outputs/empirical/tex/*.tex
 python scripts/make_maps.py          # geographic heterogeneity maps -> paper/figures/fig_emp_map_{housing,unemp}.pdf
 ```
 
 Each run reports, per specification: the lag means and group/contrast targets with both
-the White and the within-period cross-sectional standard error; cumulative persistence
+the diagonal (cell-heteroskedastic sandwich) and the by-period cluster standard error; cumulative persistence
 (global and by group), the long-run multiplier, the companion spectral radius, and
 impulse responses to h=12; plug-in vs debiased estimates; residual adequacy (lagged
 autocorrelation, average cross-sectional residual correlation, residual first-singular-
 value share); fit (RMSE, R² over a no-dynamics baseline); coefficient-surface
-heterogeneity; the cross-fitted rank-selection candidate table; and r_H- and
-covariate-forced-rank robustness sweeps.
+heterogeneity; the cross-fitted rank-selection candidate table; r_H- and
+covariate-forced-rank robustness sweeps; a pooled two-way fixed-effects **homogeneous
+benchmark**; and a printed **B-vs-D COVID robustness** comparison (persistence and the
+pre-COVID selected rank).
+
+### Appendix stress tests
+
+Simulation-based method validation (synthetic DGP; not tied to either dataset). All are
+resume-safe and write to `outputs/sim/`:
+
+```bash
+python scripts/fold_comparison.py   # scattered vs contiguous folds + buffer sizes (no-buffer failure)
+python scripts/xs_stress.py         # cross-sectional-dependence coverage (diagonal vs spatial-kernel) vs N
+python scripts/stress_tests.py      # fixed-J, rank misspecification, persistence near the stability boundary
+```
 
 ## 8. Data
 
@@ -269,22 +288,33 @@ Regenerated by the commands above; indicative values from the submission run.
   across {50,100,200,400} — shown separately for the lag and covariate coefficients.
 - Forward-exclusion: coverage is at nominal for `q in {0,1,2,3}` and degrades only when
   the purge is so long (`q=6`) that too much training data is removed.
+- Stress tests (appendix): coverage is stable across `J in {6,8,10,12}`; under-ranking
+  biases the estimate more than mild over-ranking; coverage holds near the stability
+  boundary (`rho_y -> 0.99`); and contiguous time-block folds are singular while the
+  scattered design is well conditioned (the no-buffer / contiguous-fold failure).
 
 **Housing (Zillow, spec A — full sample, N=610 metro-tiers, T=315 months).**
 - lag-1 mean **+1.250**, lag-2 mean **−0.419** (momentum then partial reversal).
 - companion spectral radius **0.648** (< 1, stationary); cumulative persistence
   `a+b` ≈ **0.831**; long-run multiplier ≈ **5.9**.
-- robust across A/B/C: building-permit, population, and GDP-growth covariates are
-  statistically indistinguishable from zero, and the dynamics are unchanged.
+- robust across A/B/C (building-permit, population, and GDP-growth covariates are
+  statistically indistinguishable from zero) and **D** (pre-COVID 2000–2019: cumulative
+  persistence **0.832**, same selected ranks (1,1,1) — the momentum structure is
+  invariant to the pandemic window).
 
 **Unemployment (BLS LAUS, spec B — 2005–2024, N=315 metros, T=240 months).**
 - heterogeneous **AR(1)** (the criterion drops the second lag at monthly frequency);
-  idiosyncratic lag-1 persistence **+0.948**, companion radius **0.948** (stationary).
-- robust across A/B/C: population and GDP-growth covariates are insignificant; the
-  high- vs low-unemployment group contrast is small and not distinguishable from zero.
+  the cross-fitted criterion selects ranks **(1,0,1)**, our headline. Idiosyncratic
+  lag-1 persistence **+0.909**, companion radius **0.909** (stationary).
+- robust across A/B/C (population and GDP-growth covariates insignificant; the high-
+  vs low-unemployment group contrast is small and not distinguishable from zero).
+  Pre-COVID (**spec D**, 2005–2019): persistence rises to **0.988** (near unit root)
+  and the criterion drops the interactive factor entirely ((1,0,0)) — the COVID common
+  shock is precisely what the interactive block absorbs in the full sample.
 
-Both applications report every target with the White and the within-period
-cross-sectional standard error, and the diagnostics in section 7.
+Both applications report every target with the **diagonal cell-heteroskedastic sandwich**
+standard error and the **by-period cluster** sensitivity standard error, plus the
+diagnostics in section 7.
 
 ## 10. Reproducibility notes
 
