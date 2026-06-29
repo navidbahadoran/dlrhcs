@@ -23,8 +23,8 @@ import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from dlrhcs.empirical import (covariate_robustness, load_zillow,        # noqa: E402
-                              rank_robustness, rank_selection_table, run_ar2)
+from dlrhcs.empirical import (covariate_robustness, homogeneous_benchmark,  # noqa: E402
+                              load_zillow, rank_robustness, rank_selection_table, run_ar2)
 from dlrhcs.covariates import load_zillow_covariates                    # noqa: E402
 from dlrhcs.pipeline import Tuning                                       # noqa: E402
 
@@ -66,6 +66,7 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
                              n_units_total=int(z["N"]), n_dropped=int(z["N"] - Y.shape[1]),
                              date_range=f"{z['months'][0]}..{z['months'][-1]}",
                              n_differenced=int(z.get("n_differenced", 0)))
+    r["homogeneous_benchmark"] = homogeneous_benchmark(Y, 2)   # pooled two-way FE AR(2)
     if "rank_select" in extras:
         sel = dataclasses.replace(tun, r_bar=RBAR)
         r["rank_selection"] = rank_selection_table(Y, sel, groups=tier,
@@ -84,7 +85,9 @@ def main():
     nj = int(os.environ.get("N_JOBS", "-1") or -1)   # all cores by default
     plan = [("A", "A_main", None, None, "full", ("rank_select", "rank_robust")),
             ("B", "B_restricted", "2005-01", "2024-12", "matched_nocov", ()),
-            ("C", "C_covariates", "2005-01", "2024-12", "matched_cov", ("cov_robust",))]
+            ("C", "C_covariates", "2005-01", "2024-12", "matched_cov", ("cov_robust",)),
+            # COVID robustness: pre-pandemic sub-sample (parallels unemployment spec D)
+            ("D", "D_precovid", "2000-01", "2019-12", "full", ("rank_select",))]
     outdir = os.path.join(ROOT, "outputs", "empirical")
     os.makedirs(outdir, exist_ok=True)
     specs = {}
@@ -98,11 +101,16 @@ def main():
               f"radius={d['companion_radius']:.3f} rmse={d['fit']['rmse']:.4f}", flush=True)
     json.dump(specs, open(os.path.join(outdir, "zillow_abc.json"), "w"), indent=2, default=str)
     print(f"\n{'spec':14s}{'sample':18s}{'N':>5}{'T':>5}{'lag1':>8}{'lag2':>8}{'cum':>8}{'radius':>8}")
-    for k in ("A", "B", "C"):
+    for k in ("A", "B", "C", "D"):
         r = specs[k]; t = r["targets"]; d = r["derived"]
         print(f"{r['spec']:14s}{r['sample']:18s}{r['N']:>5}{r['T']:>5}"
               f"{t['lag1_mean']['est']:>8.3f}{t['lag2_mean']['est']:>8.3f}"
               f"{d['cumulative_persistence']['est']:>8.3f}{d['companion_radius']:>8.3f}")
+    ac, dc = (specs["A"]["derived"]["cumulative_persistence"]["est"],
+              specs["D"]["derived"]["cumulative_persistence"]["est"])
+    dr = specs["D"].get("rank_selection", {}).get("candidates", [{}])[0].get("rank")
+    print(f"\nCOVID robustness (A full 2000-2026 vs D pre-COVID 2000-2019): "
+          f"cum {ac:.3f} vs {dc:.3f} (delta {dc-ac:+.3f}); pre-COVID selected rank {dr}")
     if "rank_selection" in specs["A"]:
         print("\nSpec A rank selection (top 5 by criterion):")
         for c in specs["A"]["rank_selection"]["candidates"][:5]:

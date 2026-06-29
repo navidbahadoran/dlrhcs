@@ -93,7 +93,10 @@ def main():
     nj = int(os.environ.get("N_JOBS", "-1") or -1)   # all cores by default
     plan = [("A", "A_main", "2000-01", "2026-05", "full", ()),
             ("B", "B_restricted", "2005-01", "2024-12", "matched_nocov", ("rank_select", "rank_robust")),
-            ("C", "C_covariates", "2005-01", "2024-12", "matched_cov", ("cov_robust",))]
+            ("C", "C_covariates", "2005-01", "2024-12", "matched_cov", ("cov_robust",)),
+            # COVID robustness: pre-pandemic sub-sample on the same matched metros, so
+            # B vs D isolates whether the low-rank AR(1) structure survives the 2020 shock.
+            ("D", "D_precovid", "2005-01", "2019-12", "matched_nocov", ("rank_select",))]
     outdir = os.path.join(ROOT, "outputs", "empirical")
     os.makedirs(outdir, exist_ok=True)
     specs = {}
@@ -107,11 +110,15 @@ def main():
               f"rmse={d['fit']['rmse']:.4f}", flush=True)
     json.dump(specs, open(os.path.join(outdir, "unemp_abc.json"), "w"), indent=2, default=str)
     print(f"\n{'spec':14s}{'sample':20s}{'N':>5}{'T':>5}{'lag1':>8}{'lag2':>8}{'cum':>8}{'radius':>8}")
-    for k in ("A", "B", "C"):
+    for k in ("A", "B", "C", "D"):
         r = specs[k]; t = r["targets"]; d = r["derived"]
         print(f"{r['spec']:14s}{r['sample']:20s}{r['N']:>5}{r['T']:>5}"
               f"{t['lag1_mean']['est']:>8.3f}{t['lag2_mean']['est']:>8.3f}"
               f"{d['cumulative_persistence']['est']:>8.3f}{d['companion_radius']:>8.3f}")
+    bl, dl = specs["B"]["targets"]["lag1_mean"]["est"], specs["D"]["targets"]["lag1_mean"]["est"]
+    drs = specs["D"].get("rank_selection", {}).get("candidates", [{}])[0].get("rank")
+    print(f"\nCOVID robustness (B full 2005-2024 vs D pre-COVID 2005-2019): "
+          f"lag-1 {bl:.3f} vs {dl:.3f} (delta {dl-bl:+.3f}); pre-COVID selected rank {drs}")
     if "rank_selection" in specs["B"]:
         print("\nSpec B rank selection (top 5 by criterion):")
         for c in specs["B"]["rank_selection"]["candidates"][:5]:
