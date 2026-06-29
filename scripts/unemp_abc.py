@@ -6,7 +6,9 @@
   C. Covariate-augmented 2005-2024, population + real-GDP growth (local-fundamentals)
 
 Heterogeneous AR(1): the second lag is unidentified at monthly frequency (near-
-integrated), so ranks are (1,0,3); the rate is NSA, deseasonalized via month-of-year
+integrated).  The cross-fitted rank criterion selects $(1,0,1)$, which is the HEADLINE
+specification; the more heavily factor-absorbing $(1,0,3)$ is reported only as a
+robustness row (the r_H sweep).  The rate is NSA, deseasonalized via month-of-year
 means (level-preserving).  Covariates are CBSA population/GDP growth (NOT employment,
 a labor-market identity), matched by ces_cbsa_code, predetermined, winsorized +
 standardized.  B and C use the SAME covariate-matched metros so B->C isolates the
@@ -36,7 +38,8 @@ PANEL = os.path.join(ROOT, "data", "unemp",
 COV = os.path.join(ROOT, "data", "zillow", "metro_monthly_covariates_2000_present.csv")
 SEED = 13
 RBAR = (2, 2, 4)          # candidate-box caps (lag1, lag2, H) for rank selection
-RH_SWEEP = [2, 3, 4]      # interactive-block ranks for the r_H robustness sweep
+RH_SWEEP = [1, 2, 3, 4]   # interactive-block ranks for the r_H robustness sweep
+                          # (headline r_H=1; 2/3/4 show stability when absorbing more cycle)
 
 
 def run_spec(label, start, end, mode, n_jobs=1, extras=()):
@@ -44,7 +47,7 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
     Y, ml = d["Y"], d["mean_level"]
     metros, ces = list(d["metros"]), list(d["ces"])
     n_total = int(Y.shape[1])
-    covars, covar_names, ranks = None, (), (1, 0, 3)       # AR(1): lag2 dropped, H rank 3
+    covars, covar_names, ranks = None, (), (1, 0, 1)       # AR(1): lag2 dropped, H rank 1 (criterion-selected headline)
     if mode in ("matched_nocov", "matched_cov"):
         mats, names, matched = load_cbsa_covariates(d["ces"], d["months"], COV)
         Y, ml = Y[:, matched], ml[matched]
@@ -53,7 +56,7 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
         if mode == "matched_cov":
             covars = [m[:, matched] for m in mats]
             covar_names = names
-            ranks = (1, 0, 1, 1, 3)                        # lag1, lag2(drop), pop, gdp, H
+            ranks = (1, 0, 1, 1, 1)                        # lag1, lag2(drop), pop, gdp, H (rank 1 headline)
     g = (ml > np.median(ml)).astype(int)
     tun = Tuning(ranks=ranks, q=1, J=6, ridge=0.5, n_restarts=2, n_sweeps=60,
                  riesz_tol=1e-5, riesz_ridge=1e-4, riesz_maxiter=600,
