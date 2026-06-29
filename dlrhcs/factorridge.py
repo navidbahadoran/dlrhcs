@@ -57,6 +57,8 @@ class FitResult:
     objective: float
     n_sweeps: int
     monotone: bool = field(default=True)
+    restart_objs: List[float] = field(default_factory=list)
+    obj_rel_improve: float = field(default=0.0)
 
 
 def _softimpute_block(obs, mask, r, iters=4):
@@ -197,6 +199,7 @@ def fit_factor_ridge(Y, blocks, ranks, mask=None, ridge=0.02, n_sweeps=80,
         F0 = [rng.standard_normal((Tp, r)) * 0.1 for r in ranks]
         Lam0 = [rng.standard_normal((N, r)) * 0.1 for r in ranks]
     best = None
+    restart_objs = []
     for restart in range(max(1, n_restarts)):
         if restart == 0:
             Fi, Li = [f.copy() for f in F0], [l.copy() for l in Lam0]
@@ -206,13 +209,18 @@ def fit_factor_ridge(Y, blocks, ranks, mask=None, ridge=0.02, n_sweeps=80,
         surfaces, Fb, Lb, path, ns = _annealed_als(
             Y, blocks, ranks, mask, ridge, n_sweeps, tol, Fi, Li, n_anneal)
         obj = float(path[-1]) if len(path) else np.inf
+        restart_objs.append(obj)
         monotone = bool(np.all(np.diff(path) <= 1e-9 * (1 + np.abs(path[:-1]))))
         if best is None or obj < best[0]:
             best = (obj, surfaces, Fb, Lb, path, ns, monotone)
     obj, surfaces, Fb, Lb, path, ns, monotone = best
+    # final-sweep relative objective improvement (how close the iterate is to a fixed point)
+    rel_improve = (float(abs(path[-2] - path[-1]) / (1.0 + abs(path[-1])))
+                   if len(path) > 1 else 0.0)
     U, V, svals = [], [], []
     for surf, r in zip(surfaces, ranks):
         Ub, sb, Vb = block_svd(surf, r)
         U.append(Ub); V.append(Vb); svals.append(sb)
     return FitResult(surfaces=surfaces, F=Fb, Lam=Lb, U=U, V=V, svals=svals,
-                     obj_path=path, objective=obj, n_sweeps=ns, monotone=monotone)
+                     obj_path=path, objective=obj, n_sweeps=ns, monotone=monotone,
+                     restart_objs=restart_objs, obj_rel_improve=rel_improve)

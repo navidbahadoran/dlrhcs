@@ -418,11 +418,17 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
     conv = [c for tg in rz.values() for c in tg.get("converged", [])]
     cgit = [c for tg in rz.values() for c in tg.get("cg_iters", [])]
     meig = [c for tg in rz.values() for c in tg.get("min_eig", [])]
+    robj = list(getattr(fit, "restart_objs", []) or [])
+    restart_disp = (float((max(robj) - min(robj)) / (1.0 + abs(min(robj))))
+                    if len(robj) > 1 else 0.0)
     derived["solver"] = dict(monotone=bool(res.diagnostics.get("monotone", True)),
                              retained=float(res.diagnostics.get("retained", float("nan"))),
                              cg_converged_frac=float(np.mean(conv)) if conv else 1.0,
                              cg_iters_mean=float(np.mean(cgit)) if cgit else 0.0,
-                             min_eig_mean=float(np.mean(meig)) if meig else 0.0)
+                             min_eig_mean=float(np.mean(meig)) if meig else 0.0,
+                             obj_rel_improve_final=float(getattr(fit, "obj_rel_improve", 0.0)),
+                             n_restarts=len(robj),
+                             restart_obj_dispersion=restart_disp)
     derived["data"] = dict(T=int(Ymat.shape[0]), Tp=int(Tp), N=int(N))
 
     return dict(targets=table, derived=derived, ranks=res.ranks,
