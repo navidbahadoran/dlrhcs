@@ -88,7 +88,7 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
 
 
 def main():
-    nj = int(os.environ.get("N_JOBS", "1"))
+    nj = int(os.environ.get("N_JOBS", "4"))
     plan = [("A", "A_main", "2000-01", "2026-05", "full", ()),
             ("B", "B_restricted", "2005-01", "2024-12", "matched_nocov", ("rank_select", "rank_robust")),
             ("C", "C_covariates", "2005-01", "2024-12", "matched_cov", ("cov_robust",))]
