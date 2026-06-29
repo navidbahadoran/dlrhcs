@@ -81,7 +81,7 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
 
 
 def main():
-    nj = int(os.environ.get("N_JOBS", "1"))
+    nj = int(os.environ.get("N_JOBS", "-1") or -1)   # all cores by default
     plan = [("A", "A_main", None, None, "full", ("rank_select", "rank_robust")),
             ("B", "B_restricted", "2005-01", "2024-12", "matched_nocov", ()),
             ("C", "C_covariates", "2005-01", "2024-12", "matched_cov", ("cov_robust",))]
