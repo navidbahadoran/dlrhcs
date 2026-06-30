@@ -70,6 +70,14 @@ def _winsorize_standardize(c):
     return (out - mu) / sd if sd > 0 else out - mu
 
 
+def cbsa_codes_for_zillow(region_names, xw_path):
+    """Map each Zillow ``RegionName`` to its 5-digit CBSA code via the same name-key
+    crosswalk used by :func:`load_zillow_covariates`; ``''`` where unmatched.  Used to
+    attach metro centroids (the geographic metric) to the housing panel's units."""
+    k2c = _crosswalk(xw_path)
+    return [k2c.get(_key(z), "") for z in region_names]
+
+
 def load_zillow_covariates(region_names, months, cov_path, xw_path, covs=COVARIATES,
                            standardize=True):
     """Build covariate matrices for the Zillow metros over ``months``.
