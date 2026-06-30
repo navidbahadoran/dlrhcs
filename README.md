@@ -75,6 +75,7 @@ dlrhcs/                package (NumPy/SciPy)
   covariates.py        metro covariate loaders (CBSA permits / population / GDP)
   unemp.py             monthly LAUS unemployment panel loader (NSA deseasonalization)
   diagnostics.py       residual adequacy, fit, and coefficient-heterogeneity diagnostics
+  spatial.py           great-circle metric + CBSA centroids for the spatial-kernel (Conley) s.e.
   report.py            empirical figure-snippet generators (coef-path, IRF, companion, histogram)
 configs/
   pilot.json           tiny config — smoke test, runs in minutes
@@ -88,6 +89,8 @@ scripts/
   fold_comparison.py   stress test: scattered vs contiguous folds + buffer sizes (no-buffer failure)
   xs_stress.py         stress test: cross-sectional-dependence coverage (diagonal vs spatial-kernel) vs N
   stress_tests.py      stress tests: fixed-J, rank misspecification, persistence near the stability boundary
+  spatial_kernel_se.py geographic spatial-kernel (Conley) s.e. for the empirical targets (explicit metric)
+  build_metro_coords.py downloads Census CBSA centroids (metric for the spatial-kernel s.e.)
   make_maps.py         renders the geographic heterogeneity choropleths (matplotlib)
   build_metro_panel.py BLS LAUS panel builder (raw flat files -> model-ready CSV)
 data/                  model-ready data (committed); raw downloads are git-ignored
@@ -213,6 +216,19 @@ heterogeneity; the cross-fitted rank-selection candidate table; r_H- and
 covariate-forced-rank robustness sweeps; a pooled two-way fixed-effects **homogeneous
 benchmark**; and a printed **B-vs-D COVID robustness** comparison (persistence and the
 pre-COVID selected rank).
+
+### Geographic spatial-kernel standard errors (empirical)
+
+The headline tables report the diagonal sandwich and the by-period cluster sensitivity
+intervals. With metro coordinates supplied, the code also computes the **theorem-backed
+spatial-kernel (Conley 1999) standard error** — the dependence-robust object of
+`thm:xs_dependence` with an *explicit* great-circle metric — at admissible Bartlett
+bandwidths:
+
+```bash
+python scripts/build_metro_coords.py   # one-time: Census CBSA centroids -> data/coords/cbsa_centroids.csv
+python scripts/spatial_kernel_se.py    # diagonal / cluster / geographic-kernel s.e. at 300 & 600 km
+```
 
 ### Appendix stress tests
 

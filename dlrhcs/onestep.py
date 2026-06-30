@@ -123,6 +123,28 @@ def xs_se(res: OneStepResult, name: str, bandwidth: Optional[int] = None,
     return np.sqrt(s2)
 
 
+def xs_se_geo(res: OneStepResult, name: str, D: np.ndarray, bandwidth: float) -> float:
+    """Geographic spatial-kernel HAC standard error (Conley 1999): the theorem-backed
+    object of thm:xs_dependence with an *explicit* metric.  ``D`` is the (N x N)
+    great-circle distance matrix between the units' geographic centroids (km) and
+    ``bandwidth`` is the Bartlett radius (km).  Within each period (independent across
+    periods) it forms the quadratic form
+
+        s^2 = sum_t V_t' W V_t,   W_{ij} = max(0, 1 - D_{ij}/bandwidth),
+              V = Psi_cf * u_cf.
+
+    This is the same estimand as :func:`xs_se` with ``kernel="bartlett"`` but with a
+    credible geographic metric in place of the unit-index distance |i-j|, so it is the
+    spatial-mixing-robust standard error the theory is stated for.  PSD is not guaranteed
+    on a 2-D metric (as in Conley's HAC); a numerical floor keeps the variance positive."""
+    V = res.Psi_cf[name] * res.u_cf          # cross-fitted score field (Tp x N)
+    Tp, N = V.shape
+    W = np.maximum(0.0, 1.0 - np.asarray(D, dtype=float) / float(bandwidth))
+    s2 = float(np.sum(V * (V @ W)))          # sum_t V_t' W V_t
+    s2 = max(s2, (Tp * N) ** -2.0)           # numerical floor only
+    return np.sqrt(s2)
+
+
 def joint_cov(res: OneStepResult, names: Sequence[str]) -> np.ndarray:
     """Joint covariance of several targets (White form) for the delta method."""
     k = len(names)

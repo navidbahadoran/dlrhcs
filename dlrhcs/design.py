@@ -47,10 +47,6 @@ def build_blocks(Z_list: Sequence[np.ndarray]) -> List[np.ndarray]:
     return list(Z_list) + [np.ones((Tp, N))]
 
 
-def num_blocks(blocks: Sequence[np.ndarray]) -> int:
-    return len(blocks)
-
-
 # --------------------------------------------------------------------------- #
 #  A and A*
 # --------------------------------------------------------------------------- #
@@ -72,11 +68,6 @@ def A_adjoint(R: np.ndarray, blocks: Sequence[np.ndarray]) -> Theta:
 # --------------------------------------------------------------------------- #
 def zeros_like_theta(blocks: Sequence[np.ndarray]) -> Theta:
     return [np.zeros_like(zb) for zb in blocks]
-
-
-def theta_axpy(alpha: float, x: Theta, y: Theta) -> Theta:
-    """Return alpha * x + y, blockwise."""
-    return [alpha * xb + yb for xb, yb in zip(x, y)]
 
 
 def theta_dot(x: Theta, y: Theta) -> float:

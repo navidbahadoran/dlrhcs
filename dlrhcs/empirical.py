@@ -293,7 +293,7 @@ def ar2_targets(blocks, Tp, N, groups=None, group_labels=("g0", "g1"),
 #  runner
 # --------------------------------------------------------------------------- #
 def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
-            rng=None, covars=None, covar_names=()):
+            rng=None, covars=None, covar_names=(), return_onestep=False):
     """Estimate the heterogeneous AR(2) and all targets; add derived dynamics.
 
     ``covars`` (list of T x N matrices) and ``covar_names`` add predetermined
@@ -431,8 +431,11 @@ def run_ar2(Ymat, tuning: Tuning, groups=None, group_labels=("g0", "g1"),
                              restart_obj_dispersion=restart_disp)
     derived["data"] = dict(T=int(Ymat.shape[0]), Tp=int(Tp), N=int(N))
 
-    return dict(targets=table, derived=derived, ranks=res.ranks,
-                q=res.q, J=res.J, Tp=Tp, N=N)
+    out = dict(targets=table, derived=derived, ranks=res.ranks,
+               q=res.q, J=res.J, Tp=Tp, N=N)
+    if return_onestep:
+        out["onestep"] = res.onestep          # in-memory only (not JSON-serialised)
+    return out
 
 
 def rank_robustness(Ymat, base_ranks, rH_values, base_tuning, groups=None,
