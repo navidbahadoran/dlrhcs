@@ -23,7 +23,7 @@ from .design import A, build_blocks
 from .factorridge import fit_factor_ridge
 from .folds import make_folds
 from .onestep import FoldFit, OneStepResult, one_step, white_se, xs_se
-from .ranks import roadmap, select_ranks, _pmap
+from .ranks import rank_penalty, roadmap, select_ranks, _pmap
 from .targets import Target
 
 
@@ -31,7 +31,10 @@ from .targets import Target
 class Tuning:
     ranks: Optional[tuple] = None       # fixed ranks; else select / roadmap
     q: Optional[int] = None
-    J: Optional[int] = None
+    J: Optional[int] = None             # fixed fold count override
+    J_override: Optional[int] = None    # explicit fixed-J alias for debugging/configs
+    J_min: int = 10                     # finite-sample floor for rule-chosen J
+    c_J: float = 1.0                    # constant in ceil(c_J * B_TN * L_TN^J)
     ridge: float = 0.02
     n_sweeps: int = 80
     n_restarts: int = 4
@@ -65,6 +68,31 @@ class EstimateResult:
     diagnostics: Dict = field(default_factory=dict)
 
 
+def _resolve_fold_count(Tp: int, N: int, q: int, r: int, tuning: Tuning):
+    """Choose J by explicit override or the finite-fold-floor rule."""
+    if tuning.J is not None and tuning.J_override is not None and int(tuning.J) != int(tuning.J_override):
+        raise ValueError(f"conflicting J={tuning.J!r} and J_override={tuning.J_override!r}")
+    explicit_J = tuning.J_override if tuning.J_override is not None else tuning.J
+    TpN = int(Tp * N)
+    B_TN = int((int(q) + 1) * (2 * int(r) + 1))
+    n_eff = float(Tp * N) / float(Tp + N)
+    L_TN_J = float(max(1.0, np.log(np.log(max(n_eff, np.exp(np.exp(1.0)))))))
+    J_rule_term = int(np.ceil(float(tuning.c_J) * B_TN * L_TN_J))
+    manual = explicit_J is not None
+    J = int(explicit_J) if manual else max(int(tuning.J_min), J_rule_term, 2)
+    if J < 2 or J > TpN:
+        source = "manual override" if manual else "finite-fold-floor rule"
+        raise ValueError(f"{source} produced invalid J={J}; expected 2 <= J <= T*N={TpN}")
+    diag = dict(J_realized=J,
+                J_min=int(tuning.J_min),
+                c_J=float(tuning.c_J),
+                J_rule_term=J_rule_term,
+                J_manual_override=bool(manual),
+                B_TN_fold_rule=B_TN,
+                L_TN_J=L_TN_J)
+    return J, diag
+
+
 def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
              P=1, rng=None, foldid=None,
              oracle=False, true_U=None, true_V=None) -> EstimateResult:
@@ -79,19 +107,20 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
                       tol=tuning.tol, n_restarts=tuning.n_restarts, rng=rng)
 
     # ---- q, J, ranks, kappa --------------------------------------------------
-    ranks, q, J, kappa, candidates = tuning.ranks, tuning.q, tuning.J, None, None
+    ranks, q, kappa, candidates = tuning.ranks, tuning.q, None, None
     rank_table = None
+    rm = None
     if tuning.use_roadmap or tuning.select:
         rm = roadmap(Y, Z_list, P=P, r_bar=tuning.r_bar,
                      kappa_c=tuning.kappa_c, fit_kwargs=fit_kwargs,
                      r_buffer=tuning.buffer_r)
         q = q if q is not None else rm.q
-        J = J if J is not None else rm.J
         kappa, candidates = rm.kappa, rm.candidates
     if q is None:
         q = 3
-    if J is None:
-        J = 6
+    J, J_diag = _resolve_fold_count(Tp, N, q, tuning.buffer_r, tuning)
+    if rm is not None:
+        kappa = rank_penalty(rm.sigma2_hat, Tp, N, J, tuning.kappa_c)
 
     folds = make_folds(Tp, N, J, q, r=tuning.buffer_r, P=P, rng=rng,
                        scheme=tuning.scheme, foldid=foldid)
@@ -148,8 +177,25 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
         ci[tg.name] = (e - z * s, e + z * s)
         ci_xs[tg.name] = (e - z * sx, e + z * sx)
 
+    TpN = float(Tp * N)
+    train_counts = np.array([fd.n_pur for fd in folds], dtype=float)
+    val_counts = np.array([fd.val.sum() for fd in folds], dtype=float)
+    retained_total_by_fold = train_counts / TpN
+    nonvalidation_counts = np.maximum(TpN - val_counts, 1.0)
+    retained_nonvalidation_by_fold = train_counts / nonvalidation_counts
+    retained_total = float(np.mean(retained_total_by_fold))
+    retained_nonvalidation = float(np.mean(retained_nonvalidation_by_fold))
     diag = dict(monotone=mono_ok, ranks=ranks, q=q, J=J,
-                retained=float(np.mean([fd.n_pur for fd in folds]) / (Tp * N)))
+                retained=retained_nonvalidation,
+                retained_total=retained_total,
+                retained_nonvalidation=retained_nonvalidation,
+                retained_total_by_fold=retained_total_by_fold.tolist(),
+                retained_nonvalidation_by_fold=retained_nonvalidation_by_fold.tolist(),
+                retained_nonvalidation_min=float(np.min(retained_nonvalidation_by_fold)),
+                retained_nonvalidation_max=float(np.max(retained_nonvalidation_by_fold)),
+                validation_fold_size_mean=float(np.mean(val_counts)),
+                validation_fold_share_mean=float(np.mean(val_counts / TpN)))
+    diag.update(J_diag)
     if rank_table is not None:
         diag["rank_table"] = [(list(r), float(L), float(d), float(crit))
                               for (r, L, d, crit) in rank_table]

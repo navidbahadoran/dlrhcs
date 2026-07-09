@@ -1,375 +1,822 @@
-# dlrhcs — Replication Package
+# DLRHCS Replication Package
 
-**Cross-Fitted Debiased Inference for Dynamic Panels with Low-Rank Heterogeneous
-Coefficients.**
+**Cross-Fitted Debiased Inference for Dynamic Panels with Low-Rank Heterogeneous Coefficients**
 
-This repository contains the code that *generates* every number in the paper's
-simulation and empirical sections from scratch. Nothing is transcribed by hand: the
-simulation is reproduced with `run_all.py`, the two empirical applications with the
-scripts in `scripts/`, and whatever the code prints is what goes in the tables. If the
-code's output ever disagreed with an earlier draft, the draft was corrected, never the
-code.
+This repository contains code for the estimator, Monte Carlo design, simulation reporting, and empirical pipelines used in the paper. The Monte Carlo pipeline has been reorganized around a fully specified, reproducible simulation design with three DGPs, theorem-aligned standard errors, finite-fold-floor cross-fitting, retained-training diagnostics, and resume-safe batch execution.
 
-The package implements the estimator, the cross-fitting scheme, the debiasing step,
-data-driven rank selection, the Monte Carlo design, and two empirical applications;
-each simulation experiment corresponds to a theorem in the paper.
+> **Current status.** The Monte Carlo code and reporting pipeline are the current focus of this replication package. The empirical scripts remain in the repository, but the empirical data construction, interpolation rules, seasonal adjustment, outlier diagnostics, and clustered/spatial inference reporting are still under revision. Treat the empirical commands as development tools until the empirical README section is updated.
 
 ---
 
 ## Contents
 
-1. [What the method does](#1-what-the-method-does)
+1. [Repository goals](#1-repository-goals)
 2. [Repository layout](#2-repository-layout)
 3. [Installation](#3-installation)
-4. [Quick check (minutes)](#4-quick-check-minutes)
-5. [The oracle checkpoint](#5-the-oracle-checkpoint)
-6. [Reproducing the simulation](#6-reproducing-the-simulation)
-7. [Reproducing the empirical applications](#7-reproducing-the-empirical-applications)
-8. [Data](#8-data)
-9. [Headline results](#9-headline-results)
-10. [Reproducibility notes](#10-reproducibility-notes)
-11. [Design notes](#11-design-notes)
-12. [Citation and license](#12-citation-and-license)
+4. [Quick smoke checks](#4-quick-smoke-checks)
+5. [Monte Carlo design](#5-monte-carlo-design)
+6. [Fold rule and tuning defaults](#6-fold-rule-and-tuning-defaults)
+7. [Running Monte Carlo simulations](#7-running-monte-carlo-simulations)
+8. [Simulation outputs and tables](#8-simulation-outputs-and-tables)
+9. [Rank-selection diagnostics](#9-rank-selection-diagnostics)
+10. [Fold-retention diagnostics](#10-fold-retention-diagnostics)
+11. [Resume-safe production runs](#11-resume-safe-production-runs)
+12. [Empirical code status](#12-empirical-code-status)
+13. [Reproducibility notes](#13-reproducibility-notes)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Citation and license](#15-citation-and-license)
 
 ---
 
-## 1. What the method does
+## 1. Repository goals
 
-The model is a heterogeneous dynamic panel in which every coefficient varies across
-both unit *i* and time *t*, but the coefficient *surfaces* are low rank:
+The package implements a low-rank heterogeneous dynamic-panel estimator with:
 
-```
-y_it = sum_m  Z^(m)_it * Gamma^(m)_it  +  h_it  +  u_it
-```
+- rank-constrained first-stage least squares;
+- scattered cross-fitting with forward space--time buffers;
+- matrix-free Riesz/debiasing-weight construction;
+- one-step debiased linear-target estimation;
+- theorem-aligned diagonal and spatial-kernel standard errors in simulation;
+- Monte Carlo DGPs with independent heteroskedastic errors, spatially dependent heteroskedastic errors, and predetermined covariates;
+- rank-selection and retained-training-share diagnostics;
+- resume-safe batch execution for large simulation grids.
 
-Each coefficient surface `Gamma^(m)` (and the interactive nuisance `h`) is an unknown
-low-rank `T x N` matrix. The target is not a single scalar but a smooth functional of
-these surfaces — an individual entry, a (group) average coefficient, a between-group
-contrast, or a derived dynamic functional such as cumulative persistence, an impulse
-response, the long-run multiplier, or the companion spectral radius.
+The simulation code is designed so that the Monte Carlo section can report:
 
-The estimator (a) fits the low-rank surfaces by an alternating factor-ridge procedure
-on *cross-fitted, forward-purged* folds, (b) solves for the Riesz representer of the
-target functional matrix-free by conjugate gradients on the tangent space, (c) applies
-a one-step debiasing correction, and (d) studentizes with both a White
-(heteroskedasticity-robust) and a within-period (cross-sectional-dependence-robust)
-standard error. The theory delivers a `sqrt(T+N)` central limit theorem with valid
-confidence intervals.
+- true values;
+- mean estimates;
+- bias;
+- RMSE;
+- mean standard errors;
+- empirical size;
+- coverage;
+- Monte Carlo standard errors for size and coverage;
+- rank-selection frequencies;
+- retained-training shares;
+- fold-choice diagnostics.
+
+---
 
 ## 2. Repository layout
 
-```
-dlrhcs/                package (NumPy/SciPy)
-  design.py            design map A and its adjoint A*; H as the "ones" block
-  factorridge.py       alternating factor-ridge ALS + warm start + ridge annealing
-  folds.py             scattered cross-fitting folds + forward-exclusion window
-  targets.py           target directions, tangent projector, matrix-free Riesz (CG)
-  ranks.py             cross-fitted rank criterion + data-driven roadmap
-  onestep.py           one-step debiasing + diagonal (cell-heteroskedastic sandwich) / xs variances + IRF/LRM delta method
-  pipeline.py          end-to-end feasible procedure (+ infeasible oracle mode)
-  dgp.py               Monte Carlo DGP (iid baseline; hetero / decaying-xs variants)
-  mc.py                Monte Carlo harness (checkpointed, resumable, parallel)
-  experiments.py       theorem-justification experiments
-  empirical.py         heterogeneous AR(2)/AR(1) pipeline (run_ar2 + targets + diagnostics
-                       + rank/covariate robustness) and the data loaders
-  covariates.py        metro covariate loaders (CBSA permits / population / GDP)
-  unemp.py             monthly LAUS unemployment panel loader (NSA deseasonalization)
-  diagnostics.py       residual adequacy, fit, and coefficient-heterogeneity diagnostics
-  spatial.py           great-circle metric + CBSA centroids for the spatial-kernel (Conley) s.e.
-  report.py            empirical figure-snippet generators (coef-path, IRF, companion, histogram)
+```text
+dlrhcs/
+  design.py              Design map A and adjoint A*
+  factorridge.py         Rank-constrained alternating least squares / factor-ridge fitting
+  folds.py               Scattered folds and forward buffer construction
+  targets.py             Target directions, tangent projections, Riesz weights
+  ranks.py               Cross-fitted rank-selection criterion
+  onestep.py             One-step estimator and standard-error routines
+  pipeline.py            End-to-end estimator and finite-fold rule
+  dgp.py                 Canonical Monte Carlo DGPs 1--3
+  mc.py                  Monte Carlo replication and aggregation helpers
+  empirical.py           Empirical application pipeline; currently under revision
+  covariates.py          Empirical covariate loaders; currently under revision
+  unemp.py               Unemployment data loader; currently under revision
+  diagnostics.py         Diagnostic helpers
+  spatial.py             Geographic distance tools for empirical spatial kernels
+  report.py              Empirical reporting helpers
+
 configs/
-  pilot.json           tiny config — smoke test, runs in minutes
-  fast.json            reduced-cost full pass (for iteration)
-  full.json            submission-scale config
+  pilot.json             Small/debug config
+  fast.json              Medium/debug config
+  full.json              Production config
+
 scripts/
-  zillow_abc.py        housing application: AR(2) specs A/B/C/D + diagnostics + homogeneous benchmark
-  unemp_abc.py         unemployment application: AR(1) specs A/B/C/D + diagnostics + homogeneous benchmark
-  sim_report.py        builds the simulation LaTeX tables + figure coordinates
-  emp_report.py        builds the empirical figure snippets (coef-path, IRF, ...) from the run JSONs
-  fold_comparison.py   stress test: scattered vs contiguous folds + buffer sizes (no-buffer failure)
-  xs_stress.py         stress test: cross-sectional-dependence coverage (diagonal vs spatial-kernel) vs N
-  stress_tests.py      stress tests: fixed-J, rank misspecification, persistence near the stability boundary
-  spatial_kernel_se.py geographic spatial-kernel (Conley) s.e. for the empirical targets (explicit metric)
-  build_metro_coords.py downloads Census CBSA centroids (metric for the spatial-kernel s.e.)
-  make_maps.py         renders the geographic heterogeneity choropleths (matplotlib)
-  build_metro_panel.py BLS LAUS panel builder (raw flat files -> model-ready CSV)
-data/                  model-ready data (committed); raw downloads are git-ignored
-tests/test_core.py     spec section-15 unit checklist
-run_all.py             one-command simulation reproduction (stage-by-stage)
-requirements.txt       pinned dependencies
-pyproject.toml         editable install (pip install -e .)
+  run_mc_batches.py      Resume-safe Monte Carlo batch runner
+  sim_report.py          Simulation CSV/LaTeX table generator
+  stress_tests.py        Simulation stress-test runner; still under revision
+  xs_stress.py           Spatial-dependence stress runner; still under revision
+  fold_comparison.py     Fold/buffer comparison runner; still under revision
+  zillow_abc.py          Housing empirical script; under revision
+  unemp_abc.py           Unemployment empirical script; under revision
+  spatial_kernel_se.py   Empirical spatial-kernel script; under revision
+
+tests/
+  test_core.py           Unit and smoke checks
+
+outputs/
+  sim/                   Simulation JSONL outputs and generated tables
 ```
 
-Generated results land in `outputs/` (git-ignored; regenerate with the commands below).
+Generated outputs are written under `outputs/`. Large output files are intended to be regenerated, not manually edited.
+
+---
 
 ## 3. Installation
 
-Python 3.10–3.13. Core dependencies are NumPy, SciPy, and joblib; matplotlib is needed
-only for the heterogeneity maps (`scripts/make_maps.py`).
+Use Python 3.10 or newer. On Windows, Git Bash or PowerShell both work.
+
+### Git Bash / Unix-style shell
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python -m venv .venv
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
-`run_all.py` pins BLAS to a single thread automatically (so the parallel workers are
-deterministic and contention-free). To do it by hand in an interactive session:
+### PowerShell
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Run the unit checks:
 
 ```bash
-export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+./.venv/Scripts/python.exe tests/test_core.py
 ```
 
-## 4. Quick check (minutes)
+For deterministic and stable parallel performance, it is often useful to restrict BLAS threading:
 
 ```bash
-python tests/test_core.py                               # unit checklist must pass
-python run_all.py --config configs/pilot.json --stage all
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
 ```
 
-`tests/test_core.py` is the specification's section-15 checklist: the `A`/`A*` adjoint
-identity, the forward-exclusion index set on a hand-checked grid, ALS objective
-monotonicity, tangent-projector idempotency, the Riesz representer identity, exact
-recovery in the noiseless case, and the Gram-scale convention. All must pass before any
-large run.
+In PowerShell:
 
-## 5. The oracle checkpoint
+```powershell
+$env:OMP_NUM_THREADS="1"
+$env:OPENBLAS_NUM_THREADS="1"
+$env:MKL_NUM_THREADS="1"
+```
 
-The single most important gate (specification section 12). The *infeasible* oracle
-passes the true tangent spaces into the Riesz solve, isolating the influence-function +
-martingale-CLT core from first-stage estimation error.
+---
+
+## 4. Quick smoke checks
+
+Run the core test suite:
 
 ```bash
-python run_all.py --config configs/full.json --stage oracle
+./.venv/Scripts/python.exe tests/test_core.py
 ```
 
-Theory predicts essentially unbiased estimates and **coverage in [0.93, 0.96]**, with
-the mean standard error matching the Monte Carlo standard deviation. Our validation run
-gives **mean coverage 0.960** across the eight targets (lag and covariate coefficient,
-each on entry / group / full / contrast). If the oracle does not land in the band on
-your machine, stop and debug before running the feasible grid — a feasible failure
-downstream of a passing oracle is a first-stage issue, not a core one.
-
-## 6. Reproducing the simulation
-
-Every stage is independent, resume-safe (per-replication JSONL checkpoints in
-`outputs/sim/`), and uses all cores (`n_jobs: -1` in the config). Run in order:
-
-| Command | What it computes | Output(s) |
-|---|---|---|
-| `--stage oracle` | infeasible oracle benchmark (Tp=N=100) | `outputs/sim/oracle_100.json` |
-| `--stage grid` | feasible convergence over T=N in {50,100,200,400} | `outputs/sim/grid_*.json` |
-| `--stage purge` | forward-exclusion window `q` sweep (q in {0..6}) | `outputs/sim/purge_*.json` |
-| `--stage theorems` | rank-consistency, cross-sectional-dependence, IRF, debiased-vs-plugin | `outputs/theorems.json` |
+Run a tiny resume-safe Monte Carlo job:
 
 ```bash
-python run_all.py --config configs/full.json --stage oracle
-python run_all.py --config configs/full.json --stage grid
-python run_all.py --config configs/full.json --stage purge
-python run_all.py --config configs/full.json --stage theorems
-python scripts/sim_report.py        # -> outputs/sim/tables/*.tex  (LaTeX tables + figure coords)
+./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+  --dgp-type dgp1 --T 30 --N 30 --R-total 5 --batch-size 2 \
+  --out-path outputs/sim/batch_smoke_dgp1_30.jsonl \
+  --config configs/full.json --select false --fixed-ranks 1,1,1
 ```
 
-`scripts/sim_report.py` builds the simulation tables and figure coordinates, reporting
-the **lag coefficient `a`** and the **covariate coefficient `b`** as distinct theory
-objects throughout (main performance, target-type, debiased-vs-plugin,
-oracle-vs-feasible, purge sensitivity, plus RMSE / coverage convergence and the
-studentized QQ).
-
-Useful flags — the grid's 400-cell is the long pole, so run it separately if needed:
+Regenerate simulation tables:
 
 ```bash
-python run_all.py --config configs/full.json --stage grid  --only 400   # one panel size
-python run_all.py --config configs/full.json --stage purge --only 2     # one purge window
+./.venv/Scripts/python.exe scripts/sim_report.py
 ```
 
-The grid is geometric (each step doubles `T+N`) so the `sqrt(T+N)` standard-error
-contraction reads straight off the precision table. The main grid uses iid innovations
-(the baseline for bias/RMSE/coverage); the cross-sectional dependence that distinguishes
-the diagonal from the spatial-kernel standard error is exercised separately in the
-`theorems` stage (and in the appendix stress tests below), under the decaying-mixing DGP
-that satisfies the paper's dependence assumption (a pervasive common factor is excluded).
+The table files are written to:
 
-## 7. Reproducing the empirical applications
+```text
+outputs/sim/tables/tab_mc_performance.csv
+outputs/sim/tables/tab_mc_performance.tex
+outputs/sim/tables/tab_rank_frequency.csv
+outputs/sim/tables/tab_rank_frequency.tex
+outputs/sim/tables/tab_fold_retention.csv
+outputs/sim/tables/tab_fold_retention.tex
+```
 
-The two applications run directly from `scripts/` (not through `run_all.py`). Each
-fits the heterogeneous dynamic panel in four specifications — **A** (full sample, no
-covariates), **B** (restricted to the covariate window, no covariates), **C**
-(covariate-augmented), and **D** (pre-COVID robustness sub-sample) — so that A→B
-isolates the sample-restriction effect, B→C the covariate effect, and B→D the
-COVID-window effect.
+---
+
+## 5. Monte Carlo design
+
+The simulation model has one lagged outcome and one scalar observed covariate:
+
+\[
+y_{it}
+=
+a_{it}y_{i,t-1}
++
+\beta_{it}x_{it}
++
+c_\xi(h_{it}+u_{it}),
+\qquad
+ i=1,\ldots,N,\quad t=-49,\ldots,0,1,\ldots,T.
+\]
+
+The initial condition is \(y_{i,-50}=0\). The first 50 periods are burn-in; estimation uses \(t=1,\ldots,T\).
+
+### Coefficient matrices
+
+The autoregression matrix \(A=(a_{it})\), slope matrix \(B=(\beta_{it})\), and interactive-effect matrix \(H=(h_{it})\) are rank one in the canonical DGP.
+
+Raw autoregression coefficients are
+
+\[
+a_{it}^{raw}=\lambda_{a,i}f_{a,t}.
+\]
+
+Slope coefficients are
+
+\[
+\beta_{it}=\lambda_{b,i}f_{b,t}.
+\]
+
+For \(m\in\{a,b\}\),
+
+\[
+f_{m,t}=\mu_{f,m}+\kappa_{f,m}g_{m,t},
+\]
+
+where
+
+\[
+g_{m,t}
+=
+\rho_g g_{m,t-1}
++
+(1-\rho_g^2)^{1/2}v_{m,t},
+\qquad
+v_{m,t}\overset{iid}{\sim}N(0,1),
+\qquad
+g_{m,-50}=0,
+\]
+
+with \(\rho_g=0.5\).
+
+For the autoregression coefficients,
+
+\[
+\mu_{f,a}=0.5,
+\qquad
+\kappa_{f,a}=0.1,
+\qquad
+\lambda_{a,i}\overset{iid}{\sim}N(1,0.1^2).
+\]
+
+Stability is imposed by
+
+\[
+a_{it}=c_a a_{it}^{raw},
+\qquad
+c_a=\min\left\{1,\frac{0.85}{\max_{i,t}|a_{it}^{raw}|}\right\}.
+\]
+
+For the slope coefficients,
+
+\[
+\mu_{f,b}=0.6,
+\qquad
+\kappa_{f,b}=0.2,
+\qquad
+\lambda_{b,i}\overset{iid}{\sim}N(1,0.4^2).
+\]
+
+The interactive effect is
+
+\[
+h_{it}=c_h\lambda_{h,i}g_{h,t},
+\qquad
+\lambda_{h,i}\overset{iid}{\sim}N(0,1),
+\]
+
+where
+
+\[
+g_{h,t}
+=
+\rho_g g_{h,t-1}
++
+(1-\rho_g^2)^{1/2}v_{h,t},
+\qquad
+v_{h,t}\overset{iid}{\sim}N(0,1),
+\qquad
+g_{h,-50}=0.
+\]
+
+The scale \(c_h\) is set to
+
+\[
+c_h=\left(\frac{0.3}{0.7}\right)^{1/2}\approx 0.655,
+\]
+
+so that the interactive effect contributes 30 percent of the variance of the composite disturbance in the population normalization.
+
+### DGP 1: independent heteroskedastic errors
+
+\[
+u_{it}=\sigma_i\varepsilon_{it},
+\qquad
+\varepsilon_{it}\overset{iid}{\sim}N(0,1),
+\qquad
+\sigma_i^2\overset{iid}{\sim}U(0.5,1.5).
+\]
+
+### DGP 2: spatially dependent heteroskedastic errors
+
+Units are placed on a one-dimensional lattice with distance
+
+\[
+d_N(i,j)=|i-j|.
+\]
+
+The idiosyncratic error vector is generated as
+
+\[
+u_t=D_\sigma R_N^{1/2}\varepsilon_t,
+\]
+
+where \(D_\sigma=\operatorname{diag}(\sigma_1,\ldots,\sigma_N)\) and
+
+\[
+(R_N)_{ij}=\rho_s^{|i-j|},
+\qquad
+\rho_s=0.5.
+\]
+
+The implementation uses an equivalent AR(1) recursive construction along the lattice, giving
+
+\[
+\operatorname{Cov}(u_{it},u_{jt}\mid\sigma_1,\ldots,\sigma_N)
+=
+\sigma_i\sigma_j\rho_s^{|i-j|}.
+\]
+
+### DGP 3: predetermined covariates
+
+DGP 3 uses the same error process as DGP 2, but the covariate depends on lagged idiosyncratic shocks.
+
+For DGP 1 and DGP 2,
+
+\[
+x_{it}
+=
+\rho_x x_{i,t-1}
++
+\delta_x\lambda_{x,i}f_{x,t}
++
+(1-\rho_x^2)^{1/2}e_{it}.
+\]
+
+For DGP 3,
+
+\[
+x_{it}
+=
+\rho_x x_{i,t-1}
++
+\delta_x\lambda_{x,i}f_{x,t}
++
+\eta_x u_{i,t-1}
++
+(1-\rho_x^2)^{1/2}e_{it}.
+\]
+
+The parameter values are
+
+\[
+\rho_x=0.5,
+\qquad
+\delta_x=0.5,
+\qquad
+\eta_x=0.3,
+\]
+
+\[
+\lambda_{x,i}\overset{iid}{\sim}N(0,1),
+\qquad
+e_{it}\overset{iid}{\sim}N(0,\sigma_{e,i}^2),
+\qquad
+\sigma_{e,i}^2\overset{iid}{\sim}U(0.5,1.5).
+\]
+
+The common factor in \(x_{it}\) follows
+
+\[
+f_{x,t}
+=
+\rho_{fx}f_{x,t-1}
++
+(1-\rho_{fx}^2)^{1/2}v_{x,t},
+\qquad
+v_{x,t}\overset{iid}{\sim}N(0,1),
+\qquad
+f_{x,-50}=0,
+\]
+
+with \(\rho_{fx}=0.5\). The initial covariate is \(x_{i,-50}=0\).
+
+### \(c_\xi\) calibration
+
+The scalar \(c_\xi\) controls the overall signal-to-noise ratio. For each DGP and panel size, the code calibrates one fixed value of \(c_\xi\) using 100 deterministic calibration draws. The calibrated value solves
+
+\[
+\frac{1}{100}\sum_{k=1}^{100}PR_k^2(c_\xi)=0.5.
+\]
+
+That value is then held fixed across ordinary Monte Carlo replications for that DGP and panel size.
+
+Each returned panel stores:
+
+```text
+c_a
+c_h
+c_xi
+PR2_target
+PR2_realized
+PR2_calibration_mean
+PR2_calibration_std
+c_xi_calibration_draws
+a_it_summary
+beta_it_summary
+max_abs_a_it
+```
+
+The estimator receives the model-scale matrices
+
+\[
+A_{it}=a_{it},
+\qquad
+B_{it}=\beta_{it},
+\qquad
+H_{it}=c_\xi h_{it},
+\]
+
+and the model-scale innovation
+
+\[
+\varepsilon_{it}^{model}=c_\xi u_{it}.
+\]
+
+---
+
+## 6. Fold rule and tuning defaults
+
+The asymptotic theory uses a slowly growing number of folds. The implementation uses a finite-sample floor rule:
+
+\[
+J_{TN}
+=
+\max\left\{
+J_{\min},
+\left\lceil c_J B_{TN}L^J_{TN}\right\rceil
+\right\},
+\]
+
+where
+
+\[
+n_{\mathrm{eff}}=\frac{TN}{T+N},
+\qquad
+L^J_{TN}=\max\{1,\log\log n_{\mathrm{eff}}\}.
+\]
+
+For the lattice buffer used in simulation,
+
+\[
+B_{TN}=(q+1)(2r+1).
+\]
+
+The current production defaults are:
+
+```text
+J_min = 10
+c_J = 1.0
+kappa_c = 0.015
+c_xi_calibration_draws = 100
+q = 2
+r = 0
+```
+
+The robustness grids include:
+
+```text
+J_min in {5, 6, 8, 10, 12}
+kappa_c in {0.015, 0.03}
+```
+
+The finite fold count should be interpreted as the finite-sample floor of a growing theorem-admissible sequence, not as a separate fixed-\(J\) asymptotic theorem.
+
+---
+
+## 7. Running Monte Carlo simulations
+
+### Fixed-rank performance runs
+
+Fixed-rank runs estimate the model with the true rank vector \((1,1,1)\). These runs populate the main performance table.
+
+Example:
 
 ```bash
-set N_JOBS=4                         # Windows; or: export N_JOBS=4
-python scripts/zillow_abc.py         # housing AR(2)  -> outputs/empirical/zillow_{A,B,C,D}.json + zillow_abc.json
-python scripts/unemp_abc.py          # unemployment AR(1) -> outputs/empirical/unemp_{A,B,C,D}.json + unemp_abc.json
-python scripts/emp_report.py         # empirical figure snippets (coef-path, IRF, ...) -> outputs/empirical/tex/*.tex
-python scripts/make_maps.py          # geographic heterogeneity maps -> paper/figures/fig_emp_map_{housing,unemp}.pdf
+./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+  --dgp-type dgp1 --T 100 --N 100 --R-total 1000 --batch-size 25 \
+  --out-path outputs/sim/grid_dgp1_100.jsonl \
+  --config configs/full.json --select false --fixed-ranks 1,1,1
 ```
 
-Each run reports, per specification: the lag means and group/contrast targets with both
-the diagonal (cell-heteroskedastic sandwich) and the by-period cluster standard error; cumulative persistence
-(global and by group), the long-run multiplier, the companion spectral radius, and
-impulse responses to h=12; plug-in vs debiased estimates; residual adequacy (lagged
-autocorrelation, average cross-sectional residual correlation, residual first-singular-
-value share); fit (RMSE, R² over a no-dynamics baseline); coefficient-surface
-heterogeneity; the cross-fitted rank-selection candidate table; r_H- and
-covariate-forced-rank robustness sweeps; a pooled two-way fixed-effects **homogeneous
-benchmark**; and a printed **B-vs-D COVID robustness** comparison (persistence and the
-pre-COVID selected rank).
-
-### Geographic spatial-kernel standard errors (empirical)
-
-The headline tables report the diagonal sandwich and the by-period cluster sensitivity
-intervals. With metro coordinates supplied, the code also computes the **theorem-backed
-spatial-kernel (Conley 1999) standard error** — the dependence-robust object of
-`thm:xs_dependence` with an *explicit* great-circle metric — at admissible Bartlett
-bandwidths:
+Run the main grid:
 
 ```bash
-python scripts/build_metro_coords.py   # one-time: Census CBSA centroids -> data/coords/cbsa_centroids.csv
-python scripts/spatial_kernel_se.py    # diagonal / cluster / geographic-kernel s.e. at 300 & 600 km
+for dgp in dgp1 dgp2 dgp3; do
+  for n in 50 100 200 400; do
+    ./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+      --dgp-type "$dgp" --T "$n" --N "$n" --R-total 1000 --batch-size 25 \
+      --out-path "outputs/sim/grid_${dgp}_${n}.jsonl" \
+      --config configs/full.json --select false --fixed-ranks 1,1,1
+  done
+done
 ```
 
-### Appendix stress tests
+### Rank-selection runs
 
-Simulation-based method validation (synthetic DGP; not tied to either dataset). All are
-resume-safe and write to `outputs/sim/`:
+Rank-selection runs allow the cross-fitted rank criterion to choose the rank. The true rank is passed only for diagnostic scoring.
 
 ```bash
-python scripts/fold_comparison.py   # scattered vs contiguous folds + buffer sizes (no-buffer failure)
-python scripts/xs_stress.py         # cross-sectional-dependence coverage (diagonal vs spatial-kernel) vs N
-python scripts/stress_tests.py      # fixed-J, rank misspecification, persistence near the stability boundary
+./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+  --dgp-type dgp3 --T 100 --N 100 --R-total 1000 --batch-size 25 \
+  --out-path outputs/sim/grid_rank_dgp3_100.jsonl \
+  --config configs/full.json --select true --true-ranks 1,1,1 --rank-caps 1,1,1
 ```
 
-## 8. Data
+Run the rank-selection grid:
 
-**The model-ready data is committed** (so a Data Editor can run on a clean checkout
-without any downloads). Only the large raw/intermediate downloads are git-ignored; the
-build scripts below regenerate the model-ready files from them.
+```bash
+for dgp in dgp1 dgp2 dgp3; do
+  for n in 50 100 200; do
+    ./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+      --dgp-type "$dgp" --T "$n" --N "$n" --R-total 1000 --batch-size 25 \
+      --out-path "outputs/sim/grid_rank_${dgp}_${n}.jsonl" \
+      --config configs/full.json --select true --true-ranks 1,1,1 --rank-caps 1,1,1
+  done
+done
+```
 
-### Housing — Zillow Home Value Index (`data/zillow/`)
+### Fold-floor robustness runs
 
-- `zillow_metro_top.csv`, `zillow_metro_bottom.csv` — ZHVI by metro, top and bottom
-  price tiers (Zillow Research, "ZHVI by tier", Metro & U.S.). Stacked as two units per
-  metro; monthly log price growth after a per-series ADF stationarization.
-- `metro_monthly_covariates_2000_present.csv` — CBSA monthly covariates for spec C:
-  building-permit growth (Census Building Permits Survey), population growth (Census
-  annual estimates, interpolated to monthly), and real-GDP growth (BEA annual
-  metropolitan GDP, interpolated). Counties are aggregated to CBSAs with
-  `cbsa_county_crosswalk_2023.csv` (2023 OMB delineation).
-- `zillow-covariate.py` — the build script that downloads the raw permit/population/GDP
-  sources and produces the covariate file. `README.md` documents the sources.
+Use these to support the \(J_{\min}=10\) baseline.
 
-### Unemployment — BLS LAUS (`data/unemp/`)
+```bash
+for jmin in 5 6 8 10 12; do
+  ./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+    --dgp-type dgp1 --T 100 --N 100 --R-total 1000 --batch-size 25 \
+    --out-path "outputs/sim/fold_floor_dgp1_100_Jmin${jmin}.jsonl" \
+    --config configs/full.json --select false --fixed-ranks 1,1,1 --J-min "$jmin"
+done
+```
 
-- `unemployment_metro_model_panel_bls_only_name_matched.csv` — monthly,
-  not-seasonally-adjusted metropolitan unemployment rate (BLS Local Area Unemployment
-  Statistics), 2000–2026, carrying the modern CBSA code (`ces_cbsa_code`) used to match
-  covariates. The loader (`dlrhcs/unemp.py`) deseasonalizes metro-by-metro by month-of-
-  year means (level-preserving) and linearly interpolates short gaps. Covariates for
-  spec C are CBSA population and real-GDP growth from the housing covariate file
-  (employment is deliberately excluded — it is a labor-market identity with the
-  unemployment rate). `scripts/build_metro_panel.py` rebuilds the panel from the LAUS
-  flat files.
+---
 
-### Other
+## 8. Simulation outputs and tables
 
-- `data/us_states_geo.json` — US-state GeoJSON cached by `scripts/make_maps.py` for the
-  heterogeneity choropleths (committed so the maps render offline).
+Regenerate all simulation tables with:
 
-The content fingerprint recorded in each `outputs/empirical/*.json` pins the exact data
-vintage used.
+```bash
+./.venv/Scripts/python.exe scripts/sim_report.py
+```
 
-### Primary sources (cite these)
+The table files are:
 
-- **U.S. Bureau of Labor Statistics (2025).** Local Area Unemployment Statistics
-  (LAUS): model-based *monthly*, not-seasonally-adjusted estimates of the unemployment
-  rate for metropolitan statistical areas. Accessed June 2026. Public-domain flat files:
-  <https://download.bls.gov/pub/time.series/la/>; program documentation:
-  <https://www.bls.gov/lau/>.
-- **Zillow Research (2024).** Zillow Home Value Index (ZHVI): a measure of the typical
-  home value across a region and home type. Data:
-  <https://www.zillow.com/research/data/>; methodology:
-  <https://www.zillow.com/research/methodology-neural-zhvi-32128/>.
-- **U.S. Census Bureau** — Building Permits Survey; population estimates. **U.S. Bureau
-  of Economic Analysis** — metropolitan GDP. (Spec-C covariates only.)
+```text
+outputs/sim/tables/tab_mc_performance.csv
+outputs/sim/tables/tab_mc_performance.tex
 
-## 9. Headline results
+outputs/sim/tables/tab_rank_frequency.csv
+outputs/sim/tables/tab_rank_frequency.tex
 
-Regenerated by the commands above; indicative values from the submission run.
+outputs/sim/tables/tab_fold_retention.csv
+outputs/sim/tables/tab_fold_retention.tex
+```
 
-**Simulation.**
-- Oracle coverage **0.960** (target band [0.93, 0.96]); mean s.e. ≈ Monte Carlo s.d.
-- Feasible grid: coverage climbs to nominal and RMSE contracts at the `sqrt(T+N)` rate
-  across {50,100,200,400} — shown separately for the lag and covariate coefficients.
-- Forward-exclusion: coverage is at nominal for `q in {0,1,2,3}` and degrades only when
-  the purge is so long (`q=6`) that too much training data is removed.
-- Stress tests (appendix): coverage is stable across `J in {6,8,10,12}`; under-ranking
-  biases the estimate more than mild over-ranking; coverage holds near the stability
-  boundary (`rho_y -> 0.99`); and contiguous time-block folds are singular while the
-  scattered design is well conditioned (the no-buffer / contiguous-fold failure).
+The main Monte Carlo performance table reports:
 
-**Housing (Zillow, spec A — full sample, N=610 metro-tiers, T=315 months).**
-- lag-1 mean **+1.250**, lag-2 mean **−0.419** (momentum then partial reversal).
-- companion spectral radius **0.648** (< 1, stationary); cumulative persistence
-  `a+b` ≈ **0.831**; long-run multiplier ≈ **5.9**.
-- robust across A/B/C (building-permit, population, and GDP-growth covariates are
-  statistically indistinguishable from zero) and **D** (pre-COVID 2000–2019: cumulative
-  persistence **0.832**, same selected ranks (1,1,1) — the momentum structure is
-  invariant to the pandemic window).
+```text
+DGP
+target
+T
+N
+true value
+mean estimate
+bias
+RMSE
+mean s.e.
+empirical size
+coverage
+Monte Carlo s.e. for size/coverage
+replications
+```
 
-**Unemployment (BLS LAUS, spec B — 2005–2024, N=315 metros, T=240 months).**
-- heterogeneous **AR(1)** (the criterion drops the second lag at monthly frequency);
-  the cross-fitted criterion selects ranks **(1,0,1)**, our headline. Idiosyncratic
-  lag-1 persistence **+0.909**, companion radius **0.909** (stationary).
-- robust across A/B/C (population and GDP-growth covariates insignificant; the high-
-  vs low-unemployment group contrast is small and not distinguishable from zero).
-  Pre-COVID (**spec D**, 2005–2019): persistence rises to **0.988** (near unit root)
-  and the criterion drops the interactive factor entirely ((1,0,0)) — the COVID common
-  shock is precisely what the interactive block absorbs in the full sample.
+DGP 1 uses the diagonal cell-heteroskedastic standard error. DGP 2 and DGP 3 use the Bartlett spatial-kernel standard error on the lattice.
 
-Both applications report every target with the **diagonal cell-heteroskedastic sandwich**
-standard error and the **by-period cluster** sensitivity standard error, plus the
-diagnostics in section 7.
+The simulation tables do not report by-period clustered standard errors.
 
-## 10. Reproducibility notes
+---
 
-**Determinism.** Per-replication seeds are `SeedSequence([master_seed, rep])`; SVD signs
-are canonicalized after every decomposition, so factors, Riesz weights, and the
-downstream estimates are reproducible. Record `python --version`, `numpy.__version__`,
-and the BLAS in your run log.
+## 9. Rank-selection diagnostics
 
-**Resumable & parallel.** Each simulation replication writes one JSONL line keyed by its
-index, so a stopped grid resumes where it left off and can be split across machines by
-replication range. Set `n_jobs` in the config (`-1` = all cores); the empirical scripts
-read the `N_JOBS` environment variable. The joblib `loky` backend is used because
-NumPy/OpenBLAS can deadlock under `fork` — do not change the backend.
+Rank-selection output is generated only when `--select true` is used. Fixed-rank runs are not treated as rank-selection evidence.
 
-**Runtime (rough, full settings).** Oracle and the small grid cells are quick; the
-`(400,400)` grid cell at R=500 is the long pole (several core-hours, fully resumable).
-The purge and theorems stages are a few hours each. The empirical scripts take tens of
-minutes each; the pilot config finishes in minutes.
+Rank-selection table columns include:
 
-## 11. Design notes
+```text
+DGP
+T
+N
+J_min
+kappa_c
+retained_nonvalidation
+P(correct rank)
+P(underfit)
+P(overfit)
+modal selected rank
+replications
+```
 
-- **Never SVD the outcome `Y`.** The low-rank structure lives in each coefficient
-  surface, recovered only after removing the Hadamard design weighting — not in `Y`.
-- **Matrix-free Riesz.** The feasible debiasing weights solve the tangent-space normal
-  equations by conjugate gradients through `A`, `A*`, and the block projector; no dense
-  representer basis is materialized, which keeps the large panels tractable.
-- **Ridge annealing.** The lag block is weakly identified; a graduated ridge schedule
-  lands the ALS in the correct global basin (validated by exact noiseless recovery).
-- **Forward-purged cross-fitting.** Folds are scattered across cells and a
-  forward-exclusion window removes the cells a fold's training set could leak into,
-  which is what makes the cross-fitted residuals valid for a dynamic panel.
+Use `--true-ranks` to record the true rank for diagnostics. Use `--fixed-ranks` only when `--select false`.
 
-## 12. Citation and license
+Correct usage:
 
-If you use this code, please cite the paper (citation to be added on publication). The
-data sources are public: cite **Zillow** (ZHVI), the **U.S. Bureau of Labor Statistics**
-(LAUS), the **U.S. Census Bureau** (Building Permits Survey; population estimates), and
-the **U.S. Bureau of Economic Analysis** (metropolitan GDP) per their terms.
+```bash
+./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+  --dgp-type dgp1 --T 100 --N 100 --R-total 1000 --batch-size 25 \
+  --out-path outputs/sim/grid_rank_dgp1_100.jsonl \
+  --config configs/full.json --select true --true-ranks 1,1,1 --rank-caps 1,1,1
+```
 
-The code is released under the **MIT License** (see `LICENSE`) — permissive reuse with
-attribution. The license covers the code only; the empirical data remain subject to their
-providers' terms (Zillow, BLS, Census, BEA), as noted above.
+Incorrect usage:
+
+```bash
+# This is rejected because fixed-ranks would fix the estimator and therefore cannot test rank selection.
+./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+  --dgp-type dgp1 --T 100 --N 100 --R-total 1000 --batch-size 25 \
+  --out-path outputs/sim/grid_rank_dgp1_100.jsonl \
+  --config configs/full.json --select true --fixed-ranks 1,1,1
+```
+
+---
+
+## 10. Fold-retention diagnostics
+
+For each fold \(j\), the code computes:
+
+\[
+\tau_{\mathrm{tot},j}
+=
+\frac{|\mathcal I_{-j}^{buf}|}{TN},
+\]
+
+and
+
+\[
+\tau_{\mathrm{nv},j}
+=
+\frac{|\mathcal I_{-j}^{buf}|}{TN-|\mathcal I_j|}.
+\]
+
+The reported retained share is
+
+\[
+\tau_{\mathrm{nv}}
+=
+\frac{1}{J}\sum_{j=1}^J\tau_{\mathrm{nv},j}.
+\]
+
+The code also reports
+
+```text
+retained_total
+retained_nonvalidation
+retained_nonvalidation_min
+retained_nonvalidation_max
+validation_fold_size_mean
+validation_fold_share_mean
+J_realized
+J_rule_term
+J_manual_override
+```
+
+The retained nonvalidation share is the main diagnostic used to support the fold floor.
+
+---
+
+## 11. Resume-safe production runs
+
+`scripts/run_mc_batches.py` writes one JSON record per replication and can safely resume interrupted runs.
+
+If a run stops, rerun the exact same command. Completed `rep_id`s are skipped.
+
+Each run writes:
+
+```text
+outputs/sim/<name>.jsonl
+outputs/sim/<name>.meta.json
+```
+
+The metadata sidecar records:
+
+```text
+dgp_type
+T
+N
+R_total
+completed_R
+J_min
+kappa_c
+c_xi_calibration_draws
+fixed_ranks or true_ranks
+select mode
+```
+
+Before launching the full grid, run one production file first:
+
+```bash
+./.venv/Scripts/python.exe scripts/run_mc_batches.py \
+  --dgp-type dgp1 --T 100 --N 100 --R-total 1000 --batch-size 25 \
+  --out-path outputs/sim/grid_dgp1_100.jsonl \
+  --config configs/full.json --select false --fixed-ranks 1,1,1
+```
+
+Then regenerate tables and inspect the output:
+
+```bash
+./.venv/Scripts/python.exe scripts/sim_report.py
+```
+
+---
+
+## 12. Empirical code status
+
+The empirical pipeline remains in the repository, but it is under revision and is not documented as final in this README.
+
+Known empirical tasks still to be finalized include:
+
+- removing or disabling interpolation unless explicitly used as a sensitivity option;
+- verifying seasonal adjustment for unemployment and housing series;
+- documenting raw data download and construction steps;
+- defining housing top/bottom tiers clearly;
+- resolving and documenting CBSA centroid matching;
+- adding outlier diagnostics;
+- adding companion-radius stability diagnostics;
+- adding known cross-sectional cluster-score standard errors;
+- revising empirical tables and text after the data pipeline is finalized.
+
+Until those tasks are complete, do not treat empirical outputs as submission-final.
+
+---
+
+## 13. Reproducibility notes
+
+### Randomness
+
+Simulation replications use deterministic seeds. The \(c_\xi\) calibration is deterministic for a given DGP, panel size, and calibration configuration.
+
+### Resume behavior
+
+Batch outputs are JSONL files. Each line is one replication. If a run is interrupted, rerun the same command; existing replications are skipped.
+
+### Manual fold override
+
+Manual fold override is preserved for debugging, but production defaults use the finite-fold-floor rule.
+
+### Rank-selection versus fixed-rank runs
+
+Fixed-rank runs and rank-selection runs are conceptually different and should be kept in separate files.
+
+- Use `--select false --fixed-ranks 1,1,1` for performance tables.
+- Use `--select true --true-ranks 1,1,1 --rank-caps 1,1,1` for rank-selection frequency tables.
+
+---
+
+## 14. Troubleshooting
+
+### No progress appears in the terminal
+
+The batch runner may print only after a batch or replication depending on the current script version. Check whether output is being written:
+
+```bash
+wc -l outputs/sim/grid_dgp1_100.jsonl
+```
+
+or inspect the metadata:
+
+```bash
+cat outputs/sim/grid_dgp1_100.meta.json
+```
+
+If you stop the job, rerun the same command to resume.
+
+### A table has missing fields
+
+This usually means the JSONL file was generated before the schema update. Regenerate the simulation file under the current code.
+
+### Rank-frequency table is empty
+
+Rank-frequency rows are produced only for `--select true` runs. Fixed-rank runs are correctly excluded.
+
+### DGP 1 shows spatial-kernel columns
+
+This should not happen in the current schema. DGP 1 should report diagonal/white inference only. Regenerate the output file if it was created before the SE-routing update.
+
+### Period-cluster columns appear in simulation tables
+
+This indicates an old output or old reporting script. Current simulation tables should not report period-cluster standard errors.
+
+---
+
+## 15. Citation and license
+
+If you use this code, please cite the paper once available. The code is released under the MIT License unless otherwise specified in `LICENSE`.
+
+The empirical data sources remain subject to their providers' terms. The empirical section of this README will be updated after the empirical pipeline is finalized.

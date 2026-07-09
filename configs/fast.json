@@ -1,7 +1,18 @@
 {
   "name": "fast",
-  "description": "Fast full-scale pass: R halved, n_restarts=1, riesz_tol=1e-6, empirical ranks fixed (skip selection), purge q thinned. For iteration; use full.json for the final submission run.",
+  "description": "Fast full-scale pass: R halved, n_restarts=1, riesz_tol=1e-6, empirical ranks fixed (skip selection), purge q thinned. Baseline fold/rank tuning is J_min=10 and kappa_c=0.015; kappa_c=0.03 is retained for robustness. For iteration; use full.json for the final submission run.",
   "master_seed": 2024,
+  "J_min_robustness": [
+    5,
+    6,
+    8,
+    10,
+    12
+  ],
+  "kappa_c_robustness": [
+    0.015,
+    0.03
+  ],
   "dgp": {
     "rho_y": 0.85,
     "sigma_u": 0.3,
@@ -17,12 +28,13 @@
       1
     ],
     "q": 2,
-    "J": 6,
+    "J_min": 10,
+    "c_J": 1.0,
     "ridge": 0.02,
     "n_sweeps": 40,
     "n_restarts": 1,
     "riesz_tol": 1e-06,
-    "kappa_c": 0.03
+    "kappa_c": 0.015
   },
   "oracle": {
     "Tp": 100,
@@ -71,7 +83,8 @@
       1
     ],
     "q": 1,
-    "J": 6,
+    "J_min": 10,
+    "c_J": 1.0,
     "ridge": 0.1,
     "n_restarts": 1,
     "n_sweeps": 40,
@@ -135,7 +148,8 @@
       6
     ],
     "q": 1,
-    "J": 6,
+    "J_min": 10,
+    "c_J": 1.0,
     "n_restarts": 1,
     "n_sweeps": 40,
     "riesz_tol": 1e-05,

@@ -15,6 +15,7 @@ spec C the covariate forced-rank robustness.  Writes per-spec and combined JSON.
 Run from the repo root:  python scripts/zillow_abc.py
 """
 import dataclasses
+import argparse
 import json
 import os
 import sys
@@ -36,9 +37,11 @@ XW = os.path.join(DATA, "zillow", "cbsa_county_crosswalk_2023.csv")
 SEED = 7
 RBAR = (2, 2, 3)          # candidate-box caps (lag1, lag2, H) for rank selection
 RH_SWEEP = [0, 1, 2]      # interactive-block ranks for the r_H robustness sweep
+DEFAULT_J_MIN = 10
+DEFAULT_C_J = 1.0
 
 
-def run_spec(label, start, end, mode, n_jobs=1, extras=()):
+def run_spec(label, start, end, mode, n_jobs=1, extras=(), J_override=None):
     z = load_zillow(ZT, ZB, start=start, end=end)
     Y, tier = z["Y"], z["tier"]
     regions = list(z["col_region"])
@@ -51,7 +54,9 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
             covars = [m[:, matched] for m in mats]
             covar_names = names
             ranks = (1, 1, 1, 1, 1, 1)         # lag1, lag2, 3 covariates, H
-    tun = Tuning(ranks=ranks, q=1, J=6, ridge=0.1, n_restarts=2, n_sweeps=60,
+    tun = Tuning(ranks=ranks, q=1, J_override=J_override,
+                 J_min=DEFAULT_J_MIN, c_J=DEFAULT_C_J,
+                 ridge=0.1, n_restarts=2, n_sweeps=60,
                  riesz_tol=1e-5, riesz_ridge=1e-6, riesz_maxiter=600,
                  kappa_c=0.03, xs_kernel="cluster", n_jobs=n_jobs)
     r = run_ar2(Y, tun, groups=tier, group_labels=("top", "bottom"),
@@ -82,6 +87,10 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--J-override", type=int, default=None,
+                    help="manual fixed-J override for reproducing old runs")
+    args = ap.parse_args()
     nj = int(os.environ.get("N_JOBS", "-1") or -1)   # all cores by default
     plan = [("A", "A_main", None, None, "full", ("rank_select", "rank_robust")),
             ("B", "B_restricted", "2005-01", "2024-12", "matched_nocov", ()),
@@ -92,7 +101,7 @@ def main():
     os.makedirs(outdir, exist_ok=True)
     specs = {}
     for k, lab, a, b, mode, extras in plan:
-        r = run_spec(lab, a, b, mode, nj, extras)
+        r = run_spec(lab, a, b, mode, nj, extras, J_override=args.J_override)
         specs[k] = r
         json.dump(r, open(os.path.join(outdir, f"zillow_{k}.json"), "w"), indent=2, default=str)
         d = r["derived"]; t = r["targets"]

@@ -110,8 +110,10 @@ def stage_empirical(cfg):
     e = cfg["empirical"]
     sel = bool(e.get("select", False))   # data-driven rank selection (roadmap box)
     tun = Tuning(ranks=None if sel else tuple(e["ranks"]),
-                 select=sel, use_roadmap=sel,   # keep configured q,J; select ranks
-                 q=e["q"], J=e["J"], ridge=e.get("ridge", 0.1),
+                 select=sel, use_roadmap=sel,   # keep configured q; J only if supplied
+                 q=e["q"], J=e.get("J"), ridge=e.get("ridge", 0.1),
+                 J_min=e.get("J_min", cfg["tuning"].get("J_min", 10)),
+                 c_J=e.get("c_J", cfg["tuning"].get("c_J", 1.0)),
                  n_restarts=e["n_restarts"], n_sweeps=e["n_sweeps"],
                  riesz_tol=e["riesz_tol"], riesz_ridge=e.get("riesz_ridge", 1e-6),
                  riesz_maxiter=e.get("riesz_maxiter", 600), kappa_c=e.get("kappa_c", 1.0),
@@ -145,7 +147,9 @@ def stage_empirical(cfg):
         # block absorb the strong common business-cycle factor (~76% of variance).
         mtun = Tuning(ranks=None if msel else tuple(me.get("ranks", [1, 1, 4])),
                       select=msel, use_roadmap=msel,
-                      q=me.get("q", 1), J=me.get("J", 6), ridge=me.get("ridge", 0.5),
+                      q=me.get("q", 1), J=me.get("J"), ridge=me.get("ridge", 0.5),
+                      J_min=me.get("J_min", cfg["tuning"].get("J_min", 10)),
+                      c_J=me.get("c_J", cfg["tuning"].get("c_J", 1.0)),
                       n_restarts=me.get("n_restarts", 2), n_sweeps=me.get("n_sweeps", 60),
                       riesz_tol=me.get("riesz_tol", 1e-5),
                       riesz_ridge=me.get("riesz_ridge", 1e-6),

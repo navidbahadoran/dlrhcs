@@ -11,6 +11,7 @@ Prerequisite: ``python scripts/build_metro_coords.py`` (writes
 ``data/coords/cbsa_centroids.csv``).  Run from the repo root:
     python scripts/spatial_kernel_se.py
 """
+import argparse
 import json
 import os
 import sys
@@ -35,6 +36,8 @@ ZB = os.path.join(DATA, "zillow", "zillow_metro_bottom.csv")
 XW = os.path.join(DATA, "zillow", "cbsa_county_crosswalk_2023.csv")
 COORDS = os.path.join(DATA, "coords", "cbsa_centroids.csv")
 BANDWIDTHS = [300.0, 600.0]          # km -- two admissible spatial-kernel radii
+DEFAULT_J_MIN = 10
+DEFAULT_C_J = 1.0
 
 
 def _report(label, r, res, lat, lon, targets, n_geo, n_full):
@@ -52,7 +55,7 @@ def _report(label, r, res, lat, lon, targets, n_geo, n_full):
     return dict(N_coord_matched=n_geo, N_panel=n_full, bandwidths_km=BANDWIDTHS, targets=rows)
 
 
-def run_unemp(nj):
+def run_unemp(nj, J_override=None):
     d = load_unemp_panel(UPANEL, start="2005-01", end="2024-12", require_cov=False)
     Y, ml, ces = d["Y"], d["mean_level"], list(d["ces"])
     _, _, matched = load_cbsa_covariates(d["ces"], d["months"], UCOV)
@@ -62,7 +65,9 @@ def run_unemp(nj):
     n_full = int(len(cm))
     Y, ml, lat, lon = Y[:, cm], ml[cm], lat[cm], lon[cm]
     g = (ml > np.median(ml)).astype(int)
-    tun = Tuning(ranks=(1, 0, 1), q=1, J=6, ridge=0.5, n_restarts=2, n_sweeps=60,
+    tun = Tuning(ranks=(1, 0, 1), q=1, J_override=J_override,
+                 J_min=DEFAULT_J_MIN, c_J=DEFAULT_C_J,
+                 ridge=0.5, n_restarts=2, n_sweeps=60,
                  riesz_tol=1e-5, riesz_ridge=1e-4, riesz_maxiter=600,
                  kappa_c=0.03, xs_kernel="cluster", n_jobs=nj)
     r = run_ar2(Y, tun, groups=g, group_labels=("hi_unemp", "lo_unemp"),
@@ -72,14 +77,16 @@ def run_unemp(nj):
                    targets, int(cm.sum()), n_full)
 
 
-def run_housing(nj):
+def run_housing(nj, J_override=None):
     z = load_zillow(ZT, ZB, start=None, end=None)
     Y, tier, regions = z["Y"], z["tier"], list(z["col_region"])
     codes = cbsa_codes_for_zillow(regions, XW)
     lat, lon, cm = load_centroids(COORDS, codes)
     n_full = int(len(cm))
     Y, tier, lat, lon = Y[:, cm], tier[cm], lat[cm], lon[cm]
-    tun = Tuning(ranks=(1, 1, 1), q=1, J=6, ridge=0.1, n_restarts=2, n_sweeps=60,
+    tun = Tuning(ranks=(1, 1, 1), q=1, J_override=J_override,
+                 J_min=DEFAULT_J_MIN, c_J=DEFAULT_C_J,
+                 ridge=0.1, n_restarts=2, n_sweeps=60,
                  riesz_tol=1e-5, riesz_ridge=1e-6, riesz_maxiter=600,
                  kappa_c=0.03, xs_kernel="cluster", n_jobs=nj)
     r = run_ar2(Y, tun, groups=tier, group_labels=("top", "bottom"),
@@ -90,12 +97,16 @@ def run_housing(nj):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--J-override", type=int, default=None,
+                    help="manual fixed-J override for reproducing old runs")
+    args = ap.parse_args()
     if not os.path.exists(COORDS):
         sys.exit(f"missing {COORDS}; run `python scripts/build_metro_coords.py` first")
     nj = int(os.environ.get("N_JOBS", "-1") or -1)
     out = {"bandwidths_km": BANDWIDTHS,
-           "unemployment": run_unemp(nj),
-           "housing": run_housing(nj)}
+           "unemployment": run_unemp(nj, J_override=args.J_override),
+           "housing": run_housing(nj, J_override=args.J_override)}
     p = os.path.join(ROOT, "outputs", "empirical", "spatial_kernel_se.json")
     os.makedirs(os.path.dirname(p), exist_ok=True)
     json.dump(out, open(p, "w"), indent=2)

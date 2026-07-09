@@ -1,7 +1,18 @@
 {
   "name": "full",
-  "description": "Submission-scale run. Clean geometric grid T+=N in {50,100,200,400}; each step doubles the panel so the sqrt(T+N) SE contraction is read straight off tab:sim_precision. R=1000 at 50/100/200; R=500 at the expensive 400 cell (raise to 1000 if compute allows). Tuning balanced for speed (validated: oracle coverage 0.952 at these settings).",
+  "description": "Submission-scale run. Clean geometric grid T+=N in {50,100,200,400}; each step doubles the panel so the sqrt(T+N) SE contraction is read straight off tab:sim_precision. R=1000 at 50/100/200; R=500 at the expensive 400 cell (raise to 1000 if compute allows). Baseline fold/rank tuning is J_min=10 and kappa_c=0.015; kappa_c=0.03 is retained for robustness.",
   "master_seed": 2024,
+  "J_min_robustness": [
+    5,
+    6,
+    8,
+    10,
+    12
+  ],
+  "kappa_c_robustness": [
+    0.015,
+    0.03
+  ],
   "dgp": {
     "rho_y": 0.85,
     "sigma_u": 0.3,
@@ -17,12 +28,13 @@
       1
     ],
     "q": 2,
-    "J": 6,
+    "J_min": 10,
+    "c_J": 1.0,
     "ridge": 0.02,
     "n_sweeps": 50,
     "n_restarts": 2,
     "riesz_tol": 1e-07,
-    "kappa_c": 0.03
+    "kappa_c": 0.015
   },
   "oracle": {
     "Tp": 100,
@@ -73,7 +85,8 @@
       2
     ],
     "q": 1,
-    "J": 6,
+    "J_min": 10,
+    "c_J": 1.0,
     "ridge": 0.1,
     "n_restarts": 3,
     "n_sweeps": 60,
@@ -137,7 +150,8 @@
       6
     ],
     "q": 1,
-    "J": 6,
+    "J_min": 10,
+    "c_J": 1.0,
     "n_restarts": 2,
     "n_sweeps": 60,
     "riesz_tol": 1e-05,

@@ -1,228 +1,309 @@
 #!/usr/bin/env python3
-"""Build the simulation LaTeX tables and figure data from the Monte Carlo outputs in
-``outputs/sim/``.  EVERY table and figure separates the two theory objects -- the lag
-coefficient a_{ti} and the covariate coefficient b_{ti} -- and labels them as such,
-never as a generic "target".  Reads the resume-safe JSONL checkpoints, re-aggregates
-with the current battery, and writes ``.tex`` fragments + pgfplots coordinates to
-``outputs/sim/tables/``.  Run after the grid/oracle/purge stages:
-    python scripts/sim_report.py
+"""Build journal-ready Monte Carlo tables from ``outputs/sim/*.jsonl``.
+
+The revised MC schema stores truth, estimates, White/diagonal inference,
+spatial-kernel inference, rank-selection metadata, and fold-retention diagnostics.
+This script re-aggregates JSONL checkpoints with :func:`dlrhcs.mc.aggregate` and
+writes CSV plus LaTeX fragments to ``outputs/sim/tables/``.
 """
+from __future__ import annotations
+
+import csv
 import json
 import os
+import re
 import sys
+from glob import glob
 
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from dlrhcs.mc import aggregate, studentized_sample          # noqa: E402
+from dlrhcs.mc import aggregate  # noqa: E402
 
 SIM = os.path.join(ROOT, "outputs", "sim")
 OUT = os.path.join(SIM, "tables")
-OBJ = {"lag": r"Lag coefficient $a_{ti}$", "slope": r"Covariate coefficient $b_{ti}$"}
-TYPE = {"entry": "entry", "gmean": "group mean", "fmean": "full mean", "contrast": "contrast"}
+
+TARGET_OBJECT = {"lag": "lag", "slope": "covariate"}
+TARGET_TYPE = {
+    "entry": "entry",
+    "gmean": "group mean",
+    "fmean": "full mean",
+    "contrast": "contrast",
+}
 
 
-def f(x, d=3):
-    if x is None or (isinstance(x, float) and np.isnan(x)):
+def fmt(x, d=3):
+    """Format numbers without leading plus signs; return -- for missing values."""
+    if x is None:
         return "--"
-    return f"{x:.{d}f}"
+    try:
+        xx = float(x)
+    except (TypeError, ValueError):
+        return str(x)
+    if not np.isfinite(xx):
+        return "--"
+    return f"{xx:.{d}f}"
 
 
-def _aggs(prefix, sizes):
-    out = {}
-    for T in sizes:
-        p = os.path.join(SIM, f"{prefix}_{T}.jsonl")
-        if os.path.exists(p):
-            out[T] = aggregate(p)
-    return out
+def _latex_escape(x):
+    return str(x).replace("_", r"\_")
 
 
-def _grid_sizes():
-    cfg = None
-    for c in ("configs/full.json", "configs/fast.json"):
-        p = os.path.join(ROOT, c)
-        if os.path.exists(p):
-            cfg = json.load(open(p)); break
-    if cfg and "grid" in cfg:
-        return sorted({row[0] for row in cfg["grid"]})
-    return sorted(int(fn.split("_")[1].split(".")[0])
-                  for fn in os.listdir(SIM) if fn.startswith("grid_") and fn.endswith(".jsonl"))
+def _rank_str(rank):
+    if rank is None:
+        return "--"
+    return "(" + ",".join(str(int(x)) for x in rank) + ")"
 
 
-# --------------------------------------------------------------------------- #
-#  Table 2: main finite-sample performance (lag & covariate, full mean + contrast)
-# --------------------------------------------------------------------------- #
-def main_performance(aggs):
-    sizes = sorted(aggs)
-    L = [r"\begin{tabular}{l r r r r r r}", r"\toprule",
-         r"$T{=}N$ & bias & RMSE & mean s.e. & cov. & xs cov. & xs len. \\"]
-    for obj in ("lag", "slope"):
-        L.append(r"\midrule")
-        L.append(r"\multicolumn{7}{l}{\emph{" + OBJ[obj] + r"}} \\")
-        for tt in ("fmean", "contrast"):
-            nm = f"{obj}_{tt}"
-            L.append(r"\multicolumn{7}{l}{\quad " + TYPE[tt] + r"} \\")
-            for T in sizes:
-                a = aggs[T][nm]
-                L.append(f"\\quad\\quad {T} & {f(a['bias'])} & {f(a['rmse'])} & {f(a['mean_se'])} "
-                         f"& {f(a['cov'])} & {f(a['cov_xs'])} & {f(a['ci_len_xs'])} \\\\")
-    L += [r"\bottomrule", r"\end{tabular}"]
-    return "\n".join(L)
+def _dgp_label(dgp):
+    key = str(dgp or "unknown").lower()
+    labels = {"dgp1": "DGP 1", "dgp2": "DGP 2", "dgp3": "DGP 3", "legacy": "legacy"}
+    return labels.get(key, str(dgp or "unknown"))
 
 
-# --------------------------------------------------------------------------- #
-#  Table 3: target-type comparison at the largest grid cell (panels per object)
-# --------------------------------------------------------------------------- #
-def target_type(aggs):
-    T = max(aggs)
-    a = aggs[T]
-    L = [r"\begin{tabular}{l r r r r}", r"\toprule",
-         r"Target type & bias & RMSE & cov. & xs cov. \\"]
-    for obj in ("lag", "slope"):
-        L.append(r"\midrule")
-        L.append(r"\multicolumn{5}{l}{\emph{" + OBJ[obj] + f"}}}} (\\,$T{{=}}N{{=}}{T}$) \\\\")
-        for tt in ("entry", "gmean", "fmean", "contrast"):
-            d = a[f"{obj}_{tt}"]
-            L.append(f"\\quad {TYPE[tt]} & {f(d['bias'])} & {f(d['rmse'])} "
-                     f"& {f(d['cov'])} & {f(d['cov_xs'])} \\\\")
-    L += [r"\bottomrule", r"\end{tabular}"]
-    return "\n".join(L)
+def _target_label(name):
+    if "_" not in name:
+        return name
+    obj, kind = name.split("_", 1)
+    return f"{TARGET_OBJECT.get(obj, obj)} {TARGET_TYPE.get(kind, kind)}"
 
 
-# --------------------------------------------------------------------------- #
-#  Table 5: debiased vs plug-in (lag & covariate)
-# --------------------------------------------------------------------------- #
-def debiased_vs_plugin(aggs):
-    T = max(aggs)
-    a = aggs[T]
-    L = [r"\begin{tabular}{l r r r r r}", r"\toprule",
-         r"Target & plug-in bias & plug-in RMSE & debiased bias & debiased RMSE & cov. \\"]
-    for obj in ("lag", "slope"):
-        L.append(r"\midrule")
-        L.append(r"\multicolumn{6}{l}{\emph{" + OBJ[obj] + f"}}}} (\\,$T{{=}}N{{=}}{T}$) \\\\")
-        for tt in ("fmean", "contrast"):
-            d = a[f"{obj}_{tt}"]
-            L.append(f"\\quad {TYPE[tt]} & {f(d['plugin_bias'])} & {f(d['plugin_rmse'])} "
-                     f"& {f(d['bias'])} & {f(d['rmse'])} & {f(d['cov'])} \\\\")
-    L += [r"\bottomrule", r"\end{tabular}"]
-    return "\n".join(L)
+def _grid_jsonl_paths():
+    """Simulation grid files only; excludes purge/oracle/stress/fold-comparison files."""
+    paths = []
+    for path in glob(os.path.join(SIM, "grid*.jsonl")):
+        base = os.path.basename(path)
+        if base.startswith(("grid_", "grid-")):
+            paths.append(path)
+    return sorted(paths)
 
 
-# --------------------------------------------------------------------------- #
-#  Table 4: oracle vs feasible (lag & covariate, at the oracle cell)
-# --------------------------------------------------------------------------- #
-def oracle_vs_feasible(grid_aggs):
-    orc = _aggs("oracle", _grid_sizes())
-    if not orc:
-        return None
-    T = max(orc)
-    if T not in grid_aggs:
-        return None
-    L = [r"\begin{tabular}{l l r r r r}", r"\toprule",
-         r"Object & estimator & bias & RMSE & cov. & mean s.e. \\"]
-    for obj in ("lag", "slope"):
-        for tt in ("fmean", "contrast"):
-            nm = f"{obj}_{tt}"
-            lab = OBJ[obj] + f" ({TYPE[tt]})"
-            o, gg = orc[T][nm], grid_aggs[T][nm]
-            L.append(r"\midrule")
-            L.append(f"{lab} & oracle & {f(o['bias'])} & {f(o['rmse'])} & {f(o['cov'])} & {f(o['mean_se'])} \\\\")
-            L.append(f" & feasible & {f(gg['bias'])} & {f(gg['rmse'])} & {f(gg['cov'])} & {f(gg['mean_se'])} \\\\")
-    L += [r"\bottomrule", r"\end{tabular}"]
-    return "\n".join(L)
-
-
-# --------------------------------------------------------------------------- #
-#  Table 6: purge / forward-exclusion sensitivity (headline lag & covariate)
-# --------------------------------------------------------------------------- #
-def purge_sensitivity():
-    qs = sorted(int(fn.split("_")[1][1:]) for fn in os.listdir(SIM)
-                if fn.startswith("purge_q") and fn.endswith(".jsonl"))
-    if not qs:
-        return None
-    by_q = {}
-    for q in qs:
-        match = [fn for fn in os.listdir(SIM) if fn.startswith(f"purge_q{q}_")]
-        if match:
-            by_q[q] = aggregate(os.path.join(SIM, match[0]))
-    L = [r"\begin{tabular}{l r r r r r}", r"\toprule",
-         r"$q$ & lag cov. & lag RMSE & cov.\ cov. & cov.\ RMSE & retained \\"]
-    L.append(r"\midrule")
-    for q in sorted(by_q):
-        a = by_q[q]
-        L.append(f"{q} & {f(a['lag_fmean']['cov'])} & {f(a['lag_fmean']['rmse'])} "
-                 f"& {f(a['slope_fmean']['cov'])} & {f(a['slope_fmean']['rmse'])} "
-                 f"& {f(a['_meta']['retained'])} \\\\")
-    L += [r"\bottomrule", r"\end{tabular}"]
-    return "\n".join(L)
-
-
-# --------------------------------------------------------------------------- #
-#  Figure data: RMSE convergence and coverage (separate lines per object)
-# --------------------------------------------------------------------------- #
-def figure_coords(aggs):
-    sizes = sorted(aggs)
-    series = [("lag_fmean", "lag full mean"), ("lag_contrast", "lag contrast"),
-              ("slope_fmean", "covariate full mean"), ("slope_contrast", "covariate contrast")]
-    out = ["% RMSE convergence (x = T=N)"]
-    for nm, lab in series:
-        coords = " ".join(f"({T},{aggs[T][nm]['rmse']:.5f})" for T in sizes)
-        out.append(f"% {lab}\n\\addplot coordinates {{{coords}}};")
-    out.append("\n% coverage (White) (x = T=N)")
-    for nm, lab in series:
-        coords = " ".join(f"({T},{aggs[T][nm]['cov']:.4f})" for T in sizes)
-        out.append(f"% {lab} White\n\\addplot coordinates {{{coords}}};")
-    out.append("\n% coverage (cross-sectional)")
-    for nm, lab in series:
-        coords = " ".join(f"({T},{aggs[T][nm]['cov_xs']:.4f})" for T in sizes)
-        out.append(f"% {lab} xs\n\\addplot coordinates {{{coords}}};")
-    return "\n".join(out)
-
-
-def qq_coords(aggs):
-    """Studentized-statistic sample quantiles vs normal quantiles, at the largest cell,
-    for one lag and one covariate target."""
-    from scipy.stats import norm
-    T = max(aggs)
-    out = ["% QQ: sample studentized quantile vs normal quantile (x=normal, y=sample)"]
-    for nm, lab in (("lag_fmean", "lag full mean"), ("slope_contrast", "covariate contrast")):
-        p = os.path.join(SIM, f"grid_{T}.jsonl")
-        z = np.sort(studentized_sample(p, nm, "white"))
-        if len(z) == 0:
+def _load_grid_aggs(paths=None):
+    out = []
+    missing = []
+    for path in paths or _grid_jsonl_paths():
+        try:
+            agg = aggregate(path)
+        except Exception as exc:  # keep one stale file from blocking all tables
+            missing.append({"file": path, "reason": str(exc)})
             continue
-        pp = (np.arange(1, len(z) + 1) - 0.5) / len(z)
-        nq = norm.ppf(pp)
-        step = max(1, len(z) // 60)
-        coords = " ".join(f"({nq[i]:.3f},{z[i]:.3f})" for i in range(0, len(z), step))
-        out.append(f"% {lab} (T=N={T})\n\\addplot+[only marks] coordinates {{{coords}}};")
-    return "\n".join(out)
+        meta = dict(agg.get("_meta", {}))
+        if not meta.get("Tp") or not meta.get("N"):
+            m = re.search(r"grid[_-](\d+)", os.path.basename(path))
+            if m:
+                meta["Tp"] = int(m.group(1))
+                meta["N"] = int(m.group(1))
+        if meta.get("dgp_type") in (None, "", "unknown"):
+            meta["dgp_type"] = "legacy"
+        out.append({"path": path, "agg": agg, "meta": meta})
+    out.sort(key=lambda x: (
+        str(x["meta"].get("dgp_type", "")),
+        int(x["meta"].get("Tp", 0)),
+        int(x["meta"].get("N", 0)),
+        os.path.basename(x["path"]),
+    ))
+    return out, missing
+
+
+def _metric(row, keys):
+    for key in keys:
+        if key in row and row[key] is not None:
+            return row[key]
+    return float("nan")
+
+
+def _main_inference(row, dgp):
+    """Return table-ready inference metrics using theorem-aligned SEs."""
+    if str(dgp).lower() in ("dgp2", "dgp3"):
+        return {
+            "se_type": "spatial-kernel",
+            "mean_se": _metric(row, ["mean_se_spatial_kernel", "mean_se_spatial", "mean_se_xs"]),
+            "size": _metric(row, ["size_5pct_spatial_kernel", "size_5pct_spatial", "size_5pct_xs"]),
+            "coverage": _metric(row, ["coverage_95_spatial_kernel", "coverage_95_spatial", "coverage_95_xs", "cov_xs"]),
+            "size_mcse": _metric(row, ["size_mcse_spatial_kernel", "size_mcse_spatial", "size_mcse_xs"]),
+            "coverage_mcse": _metric(row, ["coverage_mcse_spatial_kernel", "coverage_mcse_spatial", "coverage_mcse_xs"]),
+        }
+    return {
+        "se_type": "diagonal/white",
+        "mean_se": _metric(row, ["mean_se_white", "mean_se"]),
+        "size": _metric(row, ["size_5pct_white", "size_5pct"]),
+        "coverage": _metric(row, ["coverage_95_white", "coverage_95", "cov"]),
+        "size_mcse": _metric(row, ["size_mcse_white", "size_mcse"]),
+        "coverage_mcse": _metric(row, ["coverage_mcse_white", "coverage_mcse"]),
+    }
+
+
+def main_performance_rows(items):
+    rows = []
+    missing = []
+    for item in items:
+        agg, meta = item["agg"], item["meta"]
+        dgp = meta.get("dgp_type", "unknown")
+        for target, vals in agg.items():
+            if target.startswith("_"):
+                continue
+            inf = _main_inference(vals, dgp)
+            row = {
+                "DGP": _dgp_label(dgp),
+                "target": _target_label(target),
+                "T": meta.get("Tp", ""),
+                "N": meta.get("N", ""),
+                "true_value": _metric(vals, ["true_value", "mean_true_value"]),
+                "mean_estimate": _metric(vals, ["mean_estimate"]),
+                "bias": _metric(vals, ["bias"]),
+                "rmse": _metric(vals, ["rmse"]),
+                "se_type": inf["se_type"],
+                "mean_se": inf["mean_se"],
+                "empirical_size": inf["size"],
+                "size_mcse": inf["size_mcse"],
+                "coverage": inf["coverage"],
+                "coverage_mcse": inf["coverage_mcse"],
+                "replications": vals.get("R", ""),
+            }
+            for key in ("true_value", "mean_estimate", "bias", "rmse", "mean_se", "empirical_size", "coverage"):
+                if not np.isfinite(float(row[key])) if row[key] != "" else True:
+                    missing.append({"file": item["path"], "target": target, "field": key})
+            rows.append(row)
+    return rows, missing
+
+
+def rank_frequency_rows(items):
+    rows = []
+    for item in items:
+        meta = item["meta"]
+        rf = item["agg"].get("_rank_frequency", {})
+        if not rf.get("available", False):
+            continue
+        if not rf.get("rank_selection_enabled", False):
+            continue
+        rows.append({
+            "DGP": _dgp_label(rf.get("dgp_type", meta.get("dgp_type", "unknown"))),
+            "T": rf.get("Tp", meta.get("Tp", "")),
+            "N": rf.get("N", meta.get("N", "")),
+            "J_min": rf.get("J_min", meta.get("J_min", "")),
+            "kappa_c": rf.get("kappa_c", meta.get("kappa_c", "")),
+            "retained_nonvalidation": meta.get("retained_nonvalidation", ""),
+            "p_correct_rank": rf.get("p_correct_rank", ""),
+            "p_underfit": rf.get("p_underfit", ""),
+            "p_overfit": rf.get("p_overfit", ""),
+            "modal_selected_rank": _rank_str(rf.get("modal_selected_rank")),
+            "replications": rf.get("R", ""),
+        })
+    return rows
+
+
+def fold_retention_rows(items):
+    rows = []
+    for item in items:
+        meta = item["meta"]
+        rows.append({
+            "DGP": _dgp_label(meta.get("dgp_type", "unknown")),
+            "T": meta.get("Tp", ""),
+            "N": meta.get("N", ""),
+            "J_min": meta.get("J_min", ""),
+            "realized_J": meta.get("J_realized", meta.get("J", "")),
+            "retained_nonvalidation": meta.get("retained_nonvalidation", meta.get("retained", "")),
+            "retained_total": meta.get("retained_total", ""),
+        })
+    return rows
+
+
+def _write_csv(path, rows, fields):
+    def clean(val):
+        if isinstance(val, (float, np.floating)) and not np.isfinite(float(val)):
+            return ""
+        return val
+
+    with open(path, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields)
+        w.writeheader()
+        for row in rows:
+            w.writerow({key: clean(row.get(key, "")) for key in fields})
+
+
+def _latex_table(rows, fields, align, caption_note=None):
+    lines = [r"\begin{tabular}{" + align + "}", r"\toprule"]
+    lines.append(" & ".join(_latex_escape(f) for f in fields) + r" \\")
+    lines.append(r"\midrule")
+    for row in rows:
+        vals = []
+        for fkey in fields:
+            val = row.get(fkey, "")
+            if isinstance(val, (float, np.floating)):
+                vals.append(fmt(val))
+            else:
+                vals.append(_latex_escape(val))
+        lines.append(" & ".join(vals) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    if caption_note:
+        lines.append("% " + caption_note)
+    return "\n".join(lines)
+
+
+def _write_tex(path, rows, fields, align, note=None):
+    with open(path, "w") as fh:
+        fh.write(_latex_table(rows, fields, align, note) + "\n")
+
+
+def write_journal_tables(items):
+    os.makedirs(OUT, exist_ok=True)
+    perf, missing = main_performance_rows(items)
+    rank = rank_frequency_rows(items)
+    folds = fold_retention_rows(items)
+
+    perf_fields = [
+        "DGP", "target", "T", "N", "true_value", "mean_estimate", "bias", "rmse",
+        "se_type", "mean_se", "empirical_size", "size_mcse", "coverage",
+        "coverage_mcse", "replications",
+    ]
+    rank_fields = [
+        "DGP", "T", "N", "J_min", "kappa_c", "retained_nonvalidation",
+        "p_correct_rank", "p_underfit", "p_overfit", "modal_selected_rank",
+        "replications",
+    ]
+    fold_fields = [
+        "DGP", "T", "N", "J_min", "realized_J", "retained_nonvalidation",
+        "retained_total",
+    ]
+
+    _write_csv(os.path.join(OUT, "tab_mc_performance.csv"), perf, perf_fields)
+    _write_csv(os.path.join(OUT, "tab_rank_frequency.csv"), rank, rank_fields)
+    _write_csv(os.path.join(OUT, "tab_fold_retention.csv"), folds, fold_fields)
+
+    _write_tex(
+        os.path.join(OUT, "tab_mc_performance.tex"),
+        perf,
+        perf_fields,
+        "llrrrrrlrrrrrrr",
+        "Size and coverage Monte Carlo standard errors are reported in separate columns. "
+        "DGP 1 uses diagonal/White inference; DGP 2--3 use spatial-kernel inference.",
+    )
+    _write_tex(os.path.join(OUT, "tab_rank_frequency.tex"), rank, rank_fields, "lrrrrrrrrlr")
+    _write_tex(os.path.join(OUT, "tab_fold_retention.tex"), folds, fold_fields, "lrrrrrr")
+    return {"performance": perf, "rank": rank, "folds": folds, "missing": missing}
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
-    sizes = _grid_sizes()
-    aggs = _aggs("grid", sizes)
-    if not aggs:
-        print("no grid_*.jsonl found in outputs/sim/; run the grid stage first")
+    items, load_missing = _load_grid_aggs()
+    if not items:
+        print("no grid*.jsonl files found in outputs/sim/")
         return
-    writers = {
-        "tab_sim_main_performance.tex": main_performance(aggs),
-        "tab_sim_target_type.tex": target_type(aggs),
-        "tab_sim_debiased_vs_plugin.tex": debiased_vs_plugin(aggs),
-        "fig_sim_convergence_coords.tex": figure_coords(aggs),
-        "fig_sim_qq_coords.tex": qq_coords(aggs),
-    }
-    ovf = oracle_vs_feasible(aggs)
-    if ovf:
-        writers["tab_sim_oracle_vs_feasible.tex"] = ovf
-    ps = purge_sensitivity()
-    if ps:
-        writers["tab_sim_purge.tex"] = ps
-    for fn, txt in writers.items():
-        open(os.path.join(OUT, fn), "w").write(txt + "\n")
-        print(f"wrote {fn} ({len(txt)} chars)")
-    print(f"\ngrid cells: {sizes}; objects reported separately: lag a_ti, covariate b_ti")
+    result = write_journal_tables(items)
+    for name in (
+        "tab_mc_performance.csv",
+        "tab_mc_performance.tex",
+        "tab_rank_frequency.csv",
+        "tab_rank_frequency.tex",
+        "tab_fold_retention.csv",
+        "tab_fold_retention.tex",
+    ):
+        print(f"wrote {os.path.join(OUT, name)}")
+    if load_missing:
+        print(f"skipped {len(load_missing)} unreadable grid file(s)")
+    if result["missing"]:
+        print(f"missing numeric fields in {len(result['missing'])} table cell(s); see old-schema inputs")
+    print(f"grid aggregates reported: {len(items)}")
 
 
 if __name__ == "__main__":

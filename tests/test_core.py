@@ -105,6 +105,81 @@ def test_noiseless_recovery():
     assert np.sqrt(np.mean(R ** 2)) < 1e-2
 
 
+# 7. revised Monte Carlo DGP smoke checks ------------------------------------ #
+def _mean_lag_cov(U, sigma, lag):
+    Z = U / sigma[None, :]
+    Z = Z - Z.mean(axis=0, keepdims=True)
+    C = (Z.T @ Z) / Z.shape[0]
+    return float(np.mean(np.diag(C, k=lag)))
+
+
+def test_revised_dgp_shapes_and_finite():
+    for k, dgp_type in enumerate(("dgp1", "dgp2", "dgp3")):
+        p = simulate(36, 18, np.random.default_rng(100 + k), dgp_type=dgp_type)
+        assert p.Y.shape == (36, 18)
+        assert p.Z[0].shape == (36, 18)
+        assert p.Z[1].shape == (36, 18)
+        assert p.U_innov.shape == (36, 18)
+        assert all(S.shape == (36, 18) for S in p.surfaces)
+        assert np.all(np.isfinite(p.Y))
+        assert np.all(np.isfinite(p.Z[0]))
+        assert np.all(np.isfinite(p.Z[1]))
+        assert np.all(np.isfinite(p.U_innov))
+        assert p.meta["dgp_type"] == dgp_type
+        assert p.meta["sigma_i"].shape == (18,)
+        assert p.meta["sigma_e_i"].shape == (18,)
+        assert np.all((0.5 <= p.meta["sigma_i2"]) & (p.meta["sigma_i2"] <= 1.5))
+        assert np.all((0.5 <= p.meta["sigma_e_i2"]) & (p.meta["sigma_e_i2"] <= 1.5))
+        assert abs(p.meta["c_h"] - np.sqrt(0.3 / 0.7)) < 1e-12
+        assert p.meta["max_abs_a_it"] <= 0.85 + 1e-12
+        assert abs(p.meta["PR2_realized"] - p.meta["PR2_target"]) < 0.15
+        assert "a_it_summary" in p.meta
+        assert "beta_it_summary" in p.meta
+
+
+def test_revised_dgp1_heteroskedastic_independent_errors():
+    p = simulate(900, 32, np.random.default_rng(201), dgp_type="dgp1")
+    Uraw = p.meta["u_it"]
+    emp_var = Uraw.var(axis=0)
+    target_var = p.meta["sigma_i2"]
+    assert np.corrcoef(emp_var, target_var)[0, 1] > 0.75
+    c1 = abs(_mean_lag_cov(Uraw, p.meta["sigma_i"], 1))
+    c4 = abs(_mean_lag_cov(Uraw, p.meta["sigma_i"], 4))
+    assert c1 < 0.08
+    assert c4 < 0.08
+
+
+def test_revised_dgp2_dgp3_spatial_covariance_decay():
+    for k, dgp_type in enumerate(("dgp2", "dgp3")):
+        p = simulate(1200, 36, np.random.default_rng(300 + k), dgp_type=dgp_type)
+        Uraw = p.meta["u_it"]
+        c0 = _mean_lag_cov(Uraw, p.meta["sigma_i"], 0)
+        c1 = _mean_lag_cov(Uraw, p.meta["sigma_i"], 1)
+        c2 = _mean_lag_cov(Uraw, p.meta["sigma_i"], 2)
+        c4 = _mean_lag_cov(Uraw, p.meta["sigma_i"], 4)
+        assert 0.85 < c0 < 1.15
+        assert c1 > c2 > c4
+        assert c1 > 0.35
+        assert c2 > 0.12
+        assert c4 < 0.15
+
+
+def test_revised_dgp3_uses_lagged_shocks_in_x():
+    p = simulate(500, 30, np.random.default_rng(401), dgp_type="dgp3")
+    burn = 50
+    X = p.meta["Xfull"]
+    U = p.meta["Ufull"]
+    fx = p.meta["f_x"]
+    lx = p.meta["lambda_x"]
+    resid = X[burn:] - 0.5 * X[burn - 1:-1] - 0.5 * fx[burn:, None] * lx[None, :]
+    lag_u = U[burn - 1:-1]
+    cur_u = U[burn:]
+    corr_lag = np.corrcoef(resid.ravel(), lag_u.ravel())[0, 1]
+    corr_cur = np.corrcoef(resid.ravel(), cur_u.ravel())[0, 1]
+    assert corr_lag > 0.20
+    assert corr_lag > corr_cur + 0.05
+
+
 # 8. Gram per-cell-average scale convention ---------------------------------- #
 def test_gram_scale():
     p = _panel(Tp=18, N=14)

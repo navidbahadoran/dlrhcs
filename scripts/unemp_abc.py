@@ -19,6 +19,7 @@ selection candidate table and r_H sweep on the headline (B) and covariate forced
 robustness on C.  Run from the repo root:  python scripts/unemp_abc.py
 """
 import dataclasses
+import argparse
 import json
 import os
 import sys
@@ -41,9 +42,11 @@ SEED = 13
 RBAR = (2, 2, 4)          # candidate-box caps (lag1, lag2, H) for rank selection
 RH_SWEEP = [1, 2, 3, 4]   # interactive-block ranks for the r_H robustness sweep
                           # (headline r_H=1; 2/3/4 show stability when absorbing more cycle)
+DEFAULT_J_MIN = 10
+DEFAULT_C_J = 1.0
 
 
-def run_spec(label, start, end, mode, n_jobs=1, extras=()):
+def run_spec(label, start, end, mode, n_jobs=1, extras=(), J_override=None):
     d = load_unemp_panel(PANEL, start=start, end=end, require_cov=False)
     Y, ml = d["Y"], d["mean_level"]
     metros, ces = list(d["metros"]), list(d["ces"])
@@ -59,7 +62,9 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
             covar_names = names
             ranks = (1, 0, 1, 1, 1)                        # lag1, lag2(drop), pop, gdp, H (rank 1 headline)
     g = (ml > np.median(ml)).astype(int)
-    tun = Tuning(ranks=ranks, q=1, J=6, ridge=0.5, n_restarts=2, n_sweeps=60,
+    tun = Tuning(ranks=ranks, q=1, J_override=J_override,
+                 J_min=DEFAULT_J_MIN, c_J=DEFAULT_C_J,
+                 ridge=0.5, n_restarts=2, n_sweeps=60,
                  riesz_tol=1e-5, riesz_ridge=1e-4, riesz_maxiter=600,
                  kappa_c=0.03, xs_kernel="cluster", n_jobs=n_jobs)
     r = run_ar2(Y, tun, groups=g, group_labels=("hi_unemp", "lo_unemp"),
@@ -90,6 +95,10 @@ def run_spec(label, start, end, mode, n_jobs=1, extras=()):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--J-override", type=int, default=None,
+                    help="manual fixed-J override for reproducing old runs")
+    args = ap.parse_args()
     nj = int(os.environ.get("N_JOBS", "-1") or -1)   # all cores by default
     plan = [("A", "A_main", "2000-01", "2026-05", "full", ()),
             ("B", "B_restricted", "2005-01", "2024-12", "matched_nocov", ("rank_select", "rank_robust")),
@@ -101,7 +110,7 @@ def main():
     os.makedirs(outdir, exist_ok=True)
     specs = {}
     for k, lab, a, b, mode, extras in plan:
-        r = run_spec(lab, a, b, mode, nj, extras)
+        r = run_spec(lab, a, b, mode, nj, extras, J_override=args.J_override)
         specs[k] = r
         json.dump(r, open(os.path.join(outdir, f"unemp_{k}.json"), "w"), indent=2, default=str)
         d = r["derived"]; t = r["targets"]
