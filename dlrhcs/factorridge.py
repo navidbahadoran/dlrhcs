@@ -58,6 +58,17 @@ class FitResult:
     n_sweeps: int
     monotone: bool = field(default=True)
     restart_objs: List[float] = field(default_factory=list)
+    warm_start_objective: float = field(default=float("nan"))
+    random_restart_objs: List[float] = field(default_factory=list)
+    best_objective: float = field(default=float("nan"))
+    stopped_before_sweep_cap: bool = field(default=True)
+    converged: bool = field(default=True)
+    max_iteration_hit: bool = field(default=False)
+    relative_restart_improvement: float = field(default=0.0)
+    restart_improvement_gt_1e_6: bool = field(default=False)
+    restart_improvement_gt_1e_4: bool = field(default=False)
+    final_relative_objective_decrease: float = field(default=0.0)
+    stationarity_residual: float = field(default=0.0)
     obj_rel_improve: float = field(default=0.0)
 
 
@@ -114,6 +125,10 @@ def _objective(Y, blocks, surfaces, mask, ridge, F, Lam):
     for Fb, Lb in zip(F, Lam):
         val += 0.5 * ridge * (float(np.sum(Fb * Fb)) + float(np.sum(Lb * Lb)))
     return val
+
+
+def _surfaces_from_factors(F, Lam):
+    return [Fb @ Lb.T for Fb, Lb in zip(F, Lam)]
 
 
 def _als_loop(Y, blocks, ranks, mask, ridge, n_sweeps, tol, F0, Lam0):
@@ -198,6 +213,8 @@ def fit_factor_ridge(Y, blocks, ranks, mask=None, ridge=0.02, n_sweeps=80,
     else:
         F0 = [rng.standard_normal((Tp, r)) * 0.1 for r in ranks]
         Lam0 = [rng.standard_normal((N, r)) * 0.1 for r in ranks]
+    warm_obj = _objective(Y, blocks, _surfaces_from_factors(F0, Lam0), mask,
+                          ridge, F0, Lam0)
     best = None
     restart_objs = []
     for restart in range(max(1, n_restarts)):
@@ -214,13 +231,31 @@ def fit_factor_ridge(Y, blocks, ranks, mask=None, ridge=0.02, n_sweeps=80,
         if best is None or obj < best[0]:
             best = (obj, surfaces, Fb, Lb, path, ns, monotone)
     obj, surfaces, Fb, Lb, path, ns, monotone = best
-    # final-sweep relative objective improvement (how close the iterate is to a fixed point)
+    # Final-sweep relative objective decrease: a numerical-stability proxy.
+    # Hitting the sweep cap is recorded separately and is not, by itself, a
+    # convergence failure.
     rel_improve = (float(abs(path[-2] - path[-1]) / (1.0 + abs(path[-1])))
                    if len(path) > 1 else 0.0)
+    baseline = restart_objs[0] if restart_objs else obj
+    restart_improve = float(max(0.0, (baseline - obj) / (1.0 + abs(baseline))))
+    max_hit = bool(ns >= n_sweeps)
+    stopped_before_cap = bool(not max_hit)
     U, V, svals = [], [], []
     for surf, r in zip(surfaces, ranks):
         Ub, sb, Vb = block_svd(surf, r)
         U.append(Ub); V.append(Vb); svals.append(sb)
     return FitResult(surfaces=surfaces, F=Fb, Lam=Lb, U=U, V=V, svals=svals,
                      obj_path=path, objective=obj, n_sweeps=ns, monotone=monotone,
-                     restart_objs=restart_objs, obj_rel_improve=rel_improve)
+                     restart_objs=restart_objs,
+                     warm_start_objective=float(warm_obj),
+                     random_restart_objs=restart_objs[1:],
+                     best_objective=float(obj),
+                     stopped_before_sweep_cap=stopped_before_cap,
+                     converged=stopped_before_cap,
+                     max_iteration_hit=max_hit,
+                     relative_restart_improvement=restart_improve,
+                     restart_improvement_gt_1e_6=bool(restart_improve > 1e-6),
+                     restart_improvement_gt_1e_4=bool(restart_improve > 1e-4),
+                     final_relative_objective_decrease=rel_improve,
+                     stationarity_residual=rel_improve,
+                     obj_rel_improve=rel_improve)

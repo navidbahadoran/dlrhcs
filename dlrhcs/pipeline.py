@@ -93,6 +93,73 @@ def _resolve_fold_count(Tp: int, N: int, q: int, r: int, tuning: Tuning):
     return J, diag
 
 
+def _fit_diagnostics(fit):
+    return dict(
+        warm_start_objective=float(fit.warm_start_objective),
+        restart_objectives=[float(x) for x in fit.restart_objs],
+        random_restart_objectives=[float(x) for x in fit.random_restart_objs],
+        best_objective=float(fit.best_objective),
+        n_sweeps=int(fit.n_sweeps),
+        stopped_before_sweep_cap=bool(fit.stopped_before_sweep_cap),
+        converged=bool(fit.converged),
+        max_iteration_hit=bool(fit.max_iteration_hit),
+        monotone=bool(fit.monotone),
+        final_relative_objective_decrease=float(fit.final_relative_objective_decrease),
+        stationarity_residual=float(fit.stationarity_residual),
+        relative_restart_improvement=float(fit.relative_restart_improvement),
+        restart_improvement_gt_1e_6=bool(fit.restart_improvement_gt_1e_6),
+        restart_improvement_gt_1e_4=bool(fit.restart_improvement_gt_1e_4),
+    )
+
+
+def _summarize_fit_diagnostics(fits):
+    if not fits:
+        return dict(
+            first_stage_fit_diagnostics=[],
+            first_stage_warm_start_objective_mean=float("nan"),
+            first_stage_best_objective_mean=float("nan"),
+            first_stage_n_sweeps_mean=float("nan"),
+            first_stage_final_relative_objective_decrease_mean=float("nan"),
+            first_stage_final_decrease_lt_1e_6_rate=float("nan"),
+            first_stage_final_decrease_lt_1e_5_rate=float("nan"),
+            first_stage_stationarity_residual_mean=float("nan"),
+            first_stage_relative_restart_improvement_mean=float("nan"),
+            first_stage_restart_improvement_gt_1e_6_rate=float("nan"),
+            first_stage_restart_improvement_gt_1e_4_rate=float("nan"),
+            first_stage_monotone_rate=float("nan"),
+            first_stage_stopped_before_sweep_cap_rate=float("nan"),
+            first_stage_sweep_cap_hit_rate=float("nan"),
+            first_stage_convergence_failure_rate=float("nan"),
+            first_stage_max_iteration_hit_rate=float("nan"),
+        )
+    rows = [_fit_diagnostics(fit) for fit in fits]
+
+    def mean(key):
+        vals = np.array([row[key] for row in rows], dtype=float)
+        return float(np.mean(vals))
+
+    return dict(
+        first_stage_fit_diagnostics=rows,
+        first_stage_warm_start_objective_mean=mean("warm_start_objective"),
+        first_stage_best_objective_mean=mean("best_objective"),
+        first_stage_n_sweeps_mean=mean("n_sweeps"),
+        first_stage_final_relative_objective_decrease_mean=mean("final_relative_objective_decrease"),
+        first_stage_final_decrease_lt_1e_6_rate=float(np.mean([
+            row["final_relative_objective_decrease"] < 1e-6 for row in rows])),
+        first_stage_final_decrease_lt_1e_5_rate=float(np.mean([
+            row["final_relative_objective_decrease"] < 1e-5 for row in rows])),
+        first_stage_stationarity_residual_mean=mean("stationarity_residual"),
+        first_stage_relative_restart_improvement_mean=mean("relative_restart_improvement"),
+        first_stage_restart_improvement_gt_1e_6_rate=mean("restart_improvement_gt_1e_6"),
+        first_stage_restart_improvement_gt_1e_4_rate=mean("restart_improvement_gt_1e_4"),
+        first_stage_monotone_rate=mean("monotone"),
+        first_stage_stopped_before_sweep_cap_rate=mean("stopped_before_sweep_cap"),
+        first_stage_sweep_cap_hit_rate=mean("max_iteration_hit"),
+        first_stage_convergence_failure_rate=float(1.0 - mean("converged")),
+        first_stage_max_iteration_hit_rate=mean("max_iteration_hit"),
+    )
+
+
 def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
              P=1, rng=None, foldid=None,
              oracle=False, true_U=None, true_V=None) -> EstimateResult:
@@ -158,9 +225,10 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
         foldfits = [_make_foldfit(folds[fi], fits[fi]) for fi in range(len(folds))]
         mono_ok = all(f.monotone for f in fits)
     else:
-        foldfits, mono_ok = [], True
+        foldfits, fits, mono_ok = [], [], True
         for fd in folds:
             fit = fit_factor_ridge(Y, blocks, ranks, mask=fd.train, **fit_kwargs)
+            fits.append(fit)
             mono_ok = mono_ok and fit.monotone
             foldfits.append(_make_foldfit(fd, fit))
 
@@ -195,10 +263,16 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
                 retained_nonvalidation_max=float(np.max(retained_nonvalidation_by_fold)),
                 validation_fold_size_mean=float(np.mean(val_counts)),
                 validation_fold_share_mean=float(np.mean(val_counts / TpN)))
+    diag.update(_summarize_fit_diagnostics(fits))
     diag.update(J_diag)
     if rank_table is not None:
         diag["rank_table"] = [(list(r), float(L), float(d), float(crit))
                               for (r, L, d, crit) in rank_table]
+        diag["rank_selection_fit_diagnostics_available"] = False
+        diag["rank_selection_fit_diagnostics_todo"] = (
+            "Rank-selection candidate fits are not instrumented in the MC JSONL; "
+            "final selected per-fold fits are summarized in first_stage_* diagnostics."
+        )
     return EstimateResult(estimates=res.estimates, se=se, se_xs=se_xs,
                           ci=ci, ci_xs=ci_xs, ranks=tuple(ranks), q=q, J=J,
                           onestep=res, diagnostics=diag)
