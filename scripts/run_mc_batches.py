@@ -7,13 +7,13 @@ Fixed-rank performance run:
 
     python scripts/run_mc_batches.py --dgp-type dgp1 --T 100 --N 100 \
       --R-total 1000 --batch-size 25 --out-path outputs/sim/grid_dgp1_100.jsonl \
-      --select false --fixed-ranks 1,1,1
+      --select false --fixed-ranks 1,1,1 --n-jobs 4
 
 Rank-selection run:
 
     python scripts/run_mc_batches.py --dgp-type dgp3 --T 100 --N 100 \
       --R-total 100 --batch-size 10 --out-path outputs/sim/grid_rank_dgp3_100.jsonl \
-      --select true --true-ranks 1,1,1
+      --select true --true-ranks 1,1,1 --n-jobs 4
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ from typing import Dict, Iterable, Optional, Sequence, Set, Tuple
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -129,6 +130,11 @@ def _chunks(items: Sequence[int], batch_size: int) -> Iterable[Sequence[int]]:
         yield items[start:start + batch_size]
 
 
+def _run_one_replication(T: int, N: int, rep: int, tuning: Tuning,
+                         dgp_kwargs: Dict, master: int) -> Dict:
+    return run_replication(T, N, rep, tuning, dgp_kwargs=dgp_kwargs, master=master)
+
+
 def _format_eta(seconds: float) -> str:
     if not seconds or seconds < 0 or seconds == float("inf"):
         return "unknown"
@@ -191,6 +197,7 @@ def _write_sidecar(path: Path, *, args, tuning: Tuning, completed: int,
         "config": args.config,
         "out_path": str(args.out_path),
         "batch_size": int(args.batch_size),
+        "n_jobs": int(args.n_jobs),
         "progress_every": int(args.progress_every),
         "quiet": bool(args.quiet),
         "start_rep": int(args.start_rep),
@@ -222,6 +229,8 @@ def main() -> None:
     ap.add_argument("--rank-caps", type=_parse_ranks, default=None,
                     help="candidate rank caps for --select true; defaults to config r_bar or 1,1,1")
     ap.add_argument("--c-xi-calibration-draws", type=int, default=100)
+    ap.add_argument("--n-jobs", type=int, default=1,
+                    help="parallel worker processes for replications within each batch")
     ap.add_argument("--progress-every", type=int, default=1,
                     help="print progress after this many completed replications")
     ap.add_argument("--quiet", action="store_true",
@@ -236,6 +245,8 @@ def main() -> None:
         raise SystemExit("--start-rep must satisfy 0 <= start_rep < R_total")
     if args.c_xi_calibration_draws < 1:
         raise SystemExit("--c-xi-calibration-draws must be positive")
+    if args.n_jobs == 0:
+        raise SystemExit("--n-jobs must be nonzero; use 1 for serial or -1 for all available cores")
     if args.progress_every < 1:
         raise SystemExit("--progress-every must be positive")
 
@@ -275,16 +286,31 @@ def main() -> None:
     t0 = time.time()
     with args.out_path.open("a", buffering=1) as fh:
         for batch_no, batch in enumerate(_chunks(todo, int(args.batch_size)), start=1):
-            _emit(f"[mc-batch] batch {batch_no}: reps {batch[0]}..{batch[-1]}",
+            completed_at_batch_start = len(done.intersection(desired))
+            workers = int(args.n_jobs)
+            _emit(f"[mc-batch] batch {batch_no}: reps {batch[0]}..{batch[-1]} "
+                  f"workers={workers} completed={completed_at_batch_start}/{args.R_total}",
                   quiet=args.quiet)
+            batch_start = time.time()
             last_rec = None
-            for rep in batch:
-                rep_start = time.time()
-                _emit(f"[mc-batch] starting dgp={args.dgp_type} T={args.T} N={args.N} "
-                      f"mode={_mode_label(args)} rep={rep}",
-                      quiet=args.quiet)
-                rec = run_replication(args.T, args.N, rep, tuning,
-                                      dgp_kwargs=dgp_kwargs, master=master)
+            if int(args.n_jobs) == 1:
+                recs = []
+                for rep in batch:
+                    _emit(f"[mc-batch] starting dgp={args.dgp_type} T={args.T} N={args.N} "
+                          f"mode={_mode_label(args)} rep={rep}",
+                          quiet=args.quiet)
+                    recs.append(_run_one_replication(args.T, args.N, rep, tuning,
+                                                     dgp_kwargs, master))
+            else:
+                from joblib import Parallel, delayed
+                recs = Parallel(n_jobs=int(args.n_jobs), backend="loky")(
+                    delayed(_run_one_replication)(args.T, args.N, rep, tuning,
+                                                  dgp_kwargs, master)
+                    for rep in batch
+                )
+
+            for rec in sorted(recs, key=lambda row: int(row["rep"])):
+                rep = int(rec["rep"])
                 fh.write(json.dumps(rec) + "\n")
                 fh.flush()
                 os.fsync(fh.fileno())
@@ -310,6 +336,12 @@ def main() -> None:
             elapsed = time.time() - t0
             avg = elapsed / max(completed_now, 1)
             remaining_total = max(int(args.R_total) - completed_total, 0)
+            batch_elapsed = time.time() - batch_start
+            batch_avg = batch_elapsed / max(len(batch), 1)
+            batch_eta = _format_eta(avg * remaining_total) if completed_now else "unknown"
+            _emit(f"[mc-batch] batch {batch_no} summary elapsed={_format_eta(batch_elapsed)} "
+                  f"avg_sec_per_rep={batch_avg:.1f} eta={batch_eta}",
+                  quiet=args.quiet)
             _emit(_progress_message(args, completed_total=completed_total,
                                     current_rep=batch[-1], elapsed=elapsed,
                                     avg_seconds=avg,
