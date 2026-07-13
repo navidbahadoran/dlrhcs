@@ -13,6 +13,7 @@ benchmark (true tangent spaces in the Riesz solve) -- the spec sec 12 checkpoint
 """
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence
 
@@ -47,6 +48,8 @@ class Tuning:
     riesz_ridge: float = 1e-8
     riesz_tol: float = 1e-10
     riesz_maxiter: int = 2000
+    use_riesz_cache: bool = True          # reuse fold-level Riesz setup across targets
+    riesz_use_cached_scale: bool = False  # opt-in: common fold scale instead of RHS scale
     xs_bandwidth: Optional[int] = None   # spatial-kernel xs s.e. bandwidth (None=auto)
     xs_kernel: str = "bartlett"          # "bartlett" (spatial, sim) | "cluster" (empirical)
     n_jobs: int = 1                      # cores for rank selection (single-panel use)
@@ -162,7 +165,9 @@ def _summarize_fit_diagnostics(fits):
 
 def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
              P=1, rng=None, foldid=None,
-             oracle=False, true_U=None, true_V=None) -> EstimateResult:
+             oracle=False, true_U=None, true_V=None,
+             profile_timing: bool = False) -> EstimateResult:
+    timing = {} if profile_timing else None
     if rng is None:
         rng = np.random.default_rng(0)
     Y = np.asarray(Y, dtype=float)
@@ -177,6 +182,7 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
     ranks, q, kappa, candidates = tuning.ranks, tuning.q, None, None
     rank_table = None
     rm = None
+    rank_t0 = time.perf_counter() if profile_timing else None
     if tuning.use_roadmap or tuning.select:
         rm = roadmap(Y, Z_list, P=P, r_bar=tuning.r_bar,
                      kappa_c=tuning.kappa_c, fit_kwargs=fit_kwargs,
@@ -198,6 +204,11 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
                                              fit_kwargs, n_jobs=tuning.n_jobs)
         else:
             ranks = tuple([1] * B)
+    if profile_timing:
+        timing["rank_selection_sec"] = (
+            float(time.perf_counter() - rank_t0)
+            if (tuning.use_roadmap or tuning.select) else 0.0
+        )
 
     # ---- per-fold purged fits ------------------------------------------------
     # The J fold first-stage fits are independent.  Two paths, by design:
@@ -212,6 +223,7 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
         U, V = (true_U, true_V) if oracle else (fit.U, fit.V)
         return FoldFit(surfaces=fit.surfaces, U=U, V=V, residual=resid,
                        train=fd.train, val=fd.val, p=fd.p, alpha=fd.alpha)
+    first_stage_t0 = time.perf_counter() if profile_timing else None
     if tuning.n_jobs and tuning.n_jobs != 1:
         base = fit_kwargs.get("rng", None)
         seed0 = int(base.integers(2 ** 31)) if base is not None else 0
@@ -231,12 +243,24 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
             fits.append(fit)
             mono_ok = mono_ok and fit.monotone
             foldfits.append(_make_foldfit(fd, fit))
+    if profile_timing:
+        timing["first_stage_sec"] = float(time.perf_counter() - first_stage_t0)
 
     # ---- one-step + variances ------------------------------------------------
+    onestep_t0 = time.perf_counter() if profile_timing else None
     res = one_step(blocks, foldfits, targets,
-                   riesz_kwargs=dict(ridge=tuning.riesz_ridge, tol=tuning.riesz_tol, maxiter=tuning.riesz_maxiter))
+                   riesz_kwargs=dict(ridge=tuning.riesz_ridge,
+                                     tol=tuning.riesz_tol,
+                                     maxiter=tuning.riesz_maxiter,
+                                     use_cached_scale=tuning.riesz_use_cached_scale),
+                   profile_timing=profile_timing,
+                   use_riesz_cache=tuning.use_riesz_cache)
+    if profile_timing:
+        timing["onestep_sec"] = float(time.perf_counter() - onestep_t0)
+        timing["riesz_sec"] = float(res.timing.get("riesz_sec", float("nan")))
     z = norm.ppf(1 - tuning.alpha_level / 2)
     se, se_xs, ci, ci_xs = {}, {}, {}, {}
+    se_t0 = time.perf_counter() if profile_timing else None
     for tg in targets:
         s = white_se(res, tg.name)
         sx = xs_se(res, tg.name, bandwidth=tuning.xs_bandwidth, kernel=tuning.xs_kernel)
@@ -244,6 +268,8 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
         se[tg.name], se_xs[tg.name] = s, sx
         ci[tg.name] = (e - z * s, e + z * s)
         ci_xs[tg.name] = (e - z * sx, e + z * sx)
+    if profile_timing:
+        timing["se_sec"] = float(time.perf_counter() - se_t0)
 
     TpN = float(Tp * N)
     train_counts = np.array([fd.n_pur for fd in folds], dtype=float)
@@ -265,6 +291,8 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
                 validation_fold_share_mean=float(np.mean(val_counts / TpN)))
     diag.update(_summarize_fit_diagnostics(fits))
     diag.update(J_diag)
+    if profile_timing:
+        diag["timing"] = timing
     if rank_table is not None:
         diag["rank_table"] = [(list(r), float(L), float(d), float(crit))
                               for (r, L, d, crit) in rank_table]

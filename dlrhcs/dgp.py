@@ -31,6 +31,7 @@ generation.
 """
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -72,7 +73,8 @@ def coherence(V):
     return float(np.max(row_norms) * N / max(r, 1))
 
 
-def make_surface(Tp, N, r, rng, rms, positive=False, V=None, phase=0.0):
+def make_surface(Tp, N, r, rng, rms, positive=False, V=None, phase=0.0,
+                 compute_space=True):
     """Exact rank-r surface with entrywise rms ``rms`` (=> sigma_1 ~ rms*sqrt(TpN))."""
     F = smooth_time_factor(Tp, r, rng, positive=positive, phase=phase)
     if V is None:
@@ -80,6 +82,8 @@ def make_surface(Tp, N, r, rng, rms, positive=False, V=None, phase=0.0):
     sv = 1.0 - 0.2 * np.arange(r) / max(r, 1)
     M = (F * sv) @ V.T
     M *= rms / np.sqrt(np.mean(M ** 2))
+    if not compute_space:
+        return M, np.empty((Tp, 0)), np.empty(0), np.empty((N, 0))
     U, s, Vt = np.linalg.svd(M, full_matrices=False)
     return M, U[:, :r], s[:r], Vt[:r].T
 
@@ -239,7 +243,8 @@ def _svd_space(M, r=1):
 def _canonical_revised_components(total, N, rng, kind, rho_x, delta_x,
                                   rho_fx, rho_s, eta_x):
     rho_g = 0.5
-    c_h = float(np.sqrt(0.3 / 0.7))
+    pi_h = 0.3
+    c_h = float(np.sqrt(pi_h / (1.0 - pi_h)))
 
     g_a = _ar1_factor(total, rho_g, rng)
     g_b = _ar1_factor(total, rho_g, rng)
@@ -400,6 +405,36 @@ def _calibrated_c_xi_info(Tp, N, kind, burn, rho_x, delta_x, rho_fx, rho_s,
     return _CXI_CACHE[key]
 
 
+def calibrated_c_xi_info(Tp, N, *, dgp_type=None, dgp_id=None, burn=50,
+                         rho_x=0.5, delta_x=0.5, rho_fx=0.5,
+                         rho_s=0.5, eta_x=0.3,
+                         c_xi_calibration_draws=100):
+    """Return the canonical revised-DGP c_xi calibration info.
+
+    This is a thin public wrapper around the existing deterministic calibration
+    routine, intended for parent-side precomputation before process-parallel MC
+    workers are launched.  Supplying the returned dict back to ``simulate`` via
+    ``c_xi_info`` preserves the calibrated value while avoiding duplicate
+    worker-local calibration.
+    """
+    kind = _normalize_dgp_type(dgp_type, dgp_id)
+    if kind is None:
+        return None
+    info = _calibrated_c_xi_info(Tp, N, kind, burn, rho_x, delta_x, rho_fx,
+                                 rho_s, eta_x, c_xi_calibration_draws)
+    out = dict(info)
+    out["dgp_type"] = kind
+    out["T"] = int(Tp)
+    out["N"] = int(N)
+    out["burn"] = int(burn)
+    out["rho_x"] = float(rho_x)
+    out["delta_x"] = float(delta_x)
+    out["rho_fx"] = float(rho_fx)
+    out["rho_s"] = float(rho_s)
+    out["eta_x"] = float(eta_x)
+    return out
+
+
 def _calibrated_c_xi(Tp, N, kind, burn, rho_x, delta_x, rho_fx, rho_s, eta_x,
                      c_xi_calibration_draws=100):
     return _calibrated_c_xi_info(Tp, N, kind, burn, rho_x, delta_x, rho_fx,
@@ -414,15 +449,23 @@ def _summary_stats(M):
 
 def _simulate_revised(Tp, N, rng, *, r, burn, dgp_kind, rho_y, sigma_u, noise,
                       rho_x, delta_x, rho_fx, rho_s, eta_x,
-                      c_xi_calibration_draws):
+                      c_xi_calibration_draws, compute_true_spaces=True,
+                      profile_timing=False, c_xi_info=None):
     if r != 1:
         raise ValueError("canonical revised DGP currently has true rank r=1 for A, beta, and H")
     total = Tp + burn
     comp = _canonical_revised_components(total, N, rng, dgp_kind, rho_x,
                                          delta_x, rho_fx, rho_s, eta_x)
-    c_xi_info = _calibrated_c_xi_info(Tp, N, dgp_kind, burn, rho_x, delta_x,
-                                      rho_fx, rho_s, eta_x,
-                                      c_xi_calibration_draws)
+    cxi_t0 = time.perf_counter() if profile_timing else None
+    if c_xi_info is None:
+        c_xi_info = _calibrated_c_xi_info(Tp, N, dgp_kind, burn, rho_x, delta_x,
+                                          rho_fx, rho_s, eta_x,
+                                          c_xi_calibration_draws)
+        c_xi_precomputed = False
+    else:
+        c_xi_info = dict(c_xi_info)
+        c_xi_precomputed = True
+    cxi_sec = float(time.perf_counter() - cxi_t0) if profile_timing else None
     c_xi = c_xi_info["c_xi"]
     xi = comp["H"] + comp["U"]
     y_prev = np.zeros(N)
@@ -448,20 +491,28 @@ def _simulate_revised(Tp, N, rng, *, r, burn, dgp_kind, rho_y, sigma_u, noise,
     pr2 = _pr2_for_c(*_outcome_parts(comp["A"], comp["Beta"], comp["X"], xi, burn),
                      xi_eff, c_xi)
 
-    UA, sA, VA = _svd_space(A0, 1)
-    UB, sB, VB = _svd_space(B0, 1)
-    UH, sH, VH = _svd_space(H0, 1)
+    if compute_true_spaces:
+        UA, sA, VA = _svd_space(A0, 1)
+        UB, sB, VB = _svd_space(B0, 1)
+        UH, sH, VH = _svd_space(H0, 1)
+        U_spaces, V_spaces = [UA, UB, UH], [VA, VB, VH]
+        coh_meta = dict(coh_A=coherence(VA), coh_B=coherence(VB), coh_H=coherence(VH))
+    else:
+        U_spaces, V_spaces = [], []
+        coh_meta = {}
 
     meta = dict(rho_y=rho_y, sigma_u=sigma_u, noise=noise,
                 dgp_type=dgp_kind, rho_x=rho_x, delta_x=delta_x, rho_fx=rho_fx,
                 rho_s=rho_s if dgp_kind in ("dgp2", "dgp3") else 0.0,
                 eta_x=eta_x if dgp_kind == "dgp3" else 0.0,
                 rho_g=comp["rho_g"], c_a=comp["c_a"], c_h=comp["c_h"],
+                pi_h=0.3,
                 c_xi=float(c_xi), PR2_target=c_xi_info["PR2_target"],
                 PR2_realized=pr2,
                 PR2_calibration_mean=c_xi_info["PR2_calibration_mean"],
                 PR2_calibration_std=c_xi_info["PR2_calibration_std"],
                 c_xi_calibration_draws=c_xi_info["c_xi_calibration_draws"],
+                c_xi_precomputed=bool(c_xi_precomputed),
                 max_abs_a_it=float(np.max(np.abs(A0))),
                 a_it_summary=_summary_stats(A0),
                 beta_it_summary=_summary_stats(B0),
@@ -475,14 +526,17 @@ def _simulate_revised(Tp, N, rng, *, r, burn, dgp_kind, rho_y, sigma_u, noise,
                 h_it=Hraw, xi_it=xi_eff, U_lag_for_Xeff=comp["U"][burn - 1: burn - 1 + Tp],
                 surface_names=("A0", "B0", "c_xi_H0"),
                 surface_rms=tuple(float(np.sqrt(np.mean(S ** 2))) for S in (A0, B0, H0)),
-                coh_A=coherence(VA), coh_B=coherence(VB), coh_H=coherence(VH))
+                true_spaces_computed=bool(compute_true_spaces))
+    if profile_timing:
+        meta["time_cxi_calibration_sec"] = cxi_sec
+    meta.update(coh_meta)
 
     for name, arr in (("Y", Y), ("Ylag", Ylag), ("Xeff", Xeff), ("Uinnov", Uinnov),
                       ("A0", A0), ("B0", B0), ("H0", H0)):
         _assert_draw(name, arr, (Tp, N))
 
     return Panel(Y=Y, Z=[Ylag, Xeff], surfaces=[A0, B0, H0],
-                 U=[UA, UB, UH], V=[VA, VB, VH], U_innov=Uinnov,
+                 U=U_spaces, V=V_spaces, U_innov=Uinnov,
                  Tp=Tp, N=N, P=1, meta=meta)
 
 
@@ -500,7 +554,8 @@ def simulate(Tp, N, rng, *, r=1, rho_y=0.85, sigma_u=0.30, c_x=0.30,
              sigma_x=1.0, burn=50, a_rms=0.55, bh_rms=0.50, noise="iid",
              dgp_type=None, dgp_id=None, rho_x=0.5, delta_x=0.5,
              rho_fx=0.5, rho_s=0.5, eta_x=0.3,
-             c_xi_calibration_draws=100):
+             c_xi_calibration_draws=100, compute_true_spaces=True,
+             profile_timing=False, c_xi_info=None):
     """Simulate one P=1 panel on the effective sample (rows t = P+1..T).
 
     Parameters ``dgp_type`` and ``dgp_id`` select the revised Monte Carlo designs
@@ -510,7 +565,9 @@ def simulate(Tp, N, rng, *, r=1, rho_y=0.85, sigma_u=0.30, c_x=0.30,
     ``sigma_x`` are not used by the error/x generators.  The revised DGPs use
     one fixed ``c_xi`` per DGP/panel-size/tuning key, calibrated from
     ``c_xi_calibration_draws`` deterministic draws so their average PR2 equals
-    the target.
+    the target.  ``compute_true_spaces=False`` skips true coefficient SVD spaces
+    in revised non-oracle runs; coefficient matrices and true target values are
+    still returned unchanged.
     """
     P = 1
     dgp_kind = _normalize_dgp_type(dgp_type, dgp_id)
@@ -519,25 +576,34 @@ def simulate(Tp, N, rng, *, r=1, rho_y=0.85, sigma_u=0.30, c_x=0.30,
                                  rho_y=rho_y, sigma_u=sigma_u, noise=noise,
                                  rho_x=rho_x, delta_x=delta_x, rho_fx=rho_fx,
                                  rho_s=rho_s, eta_x=eta_x,
-                                 c_xi_calibration_draws=c_xi_calibration_draws)
+                                 c_xi_calibration_draws=c_xi_calibration_draws,
+                                 compute_true_spaces=compute_true_spaces,
+                                 profile_timing=profile_timing,
+                                 c_xi_info=c_xi_info)
     total = Tp + burn + 1
     # ---- mutually structured loading spaces: V_B orthogonal to V_H ---------
     G = _orthonormal(rng.standard_normal((N, 3 * r)))
     V_H, V_B = G[:, :r], G[:, r:2 * r]
 
-    A0, UA, sA, VA = make_surface(Tp, N, r, rng, a_rms, positive=True, phase=0.0)
+    A0, UA, sA, VA = make_surface(Tp, N, r, rng, a_rms, positive=True, phase=0.0,
+                                  compute_space=compute_true_spaces)
     cap = 0.92 * rho_y
     if np.max(np.abs(A0)) > cap:
         A0 *= cap / np.max(np.abs(A0))
-        UA, sA, VAt = np.linalg.svd(A0, full_matrices=False)
-        UA, VA = UA[:, :r], VAt[:r].T
-    B0, UB, sB, VB = make_surface(Tp, N, r, rng, bh_rms, V=V_B, phase=0.7)
-    H0, UH, sH, VH = make_surface(Tp, N, r, rng, bh_rms, V=V_H, phase=1.4)
+        if compute_true_spaces:
+            UA, sA, VAt = np.linalg.svd(A0, full_matrices=False)
+            UA, VA = UA[:, :r], VAt[:r].T
+    B0, UB, sB, VB = make_surface(Tp, N, r, rng, bh_rms, V=V_B, phase=0.7,
+                                  compute_space=compute_true_spaces)
+    H0, UH, sH, VH = make_surface(Tp, N, r, rng, bh_rms, V=V_H, phase=1.4,
+                                  compute_space=compute_true_spaces)
 
     G0 = {"A0": A0, "B0": B0, "H0": H0}
     meta = dict(rho_y=rho_y, sigma_u=sigma_u, noise=noise,
-                coh_A=coherence(VA), coh_B=coherence(VB), coh_H=coherence(VH),
-                dgp_type=dgp_kind or "legacy")
+                dgp_type=dgp_kind or "legacy",
+                true_spaces_computed=bool(compute_true_spaces))
+    if compute_true_spaces:
+        meta.update(coh_A=coherence(VA), coh_B=coherence(VB), coh_H=coherence(VH))
 
     if dgp_kind is None:
         # ---- legacy regressor: common factor + residual identifying variation
@@ -588,7 +654,9 @@ def simulate(Tp, N, rng, *, r=1, rho_y=0.85, sigma_u=0.30, c_x=0.30,
                       ("A0", A0), ("B0", B0), ("H0", H0)):
         _assert_draw(name, arr, (Tp, N))
 
+    U_spaces = [UA, UB, UH] if compute_true_spaces else []
+    V_spaces = [VA, VB, VH] if compute_true_spaces else []
     return Panel(Y=Y, Z=[Ylag, Xeff], surfaces=[A0, B0, H0],
-                 U=[UA, UB, UH], V=[VA, VB, VH], U_innov=Uinnov,
+                 U=U_spaces, V=V_spaces, U_innov=Uinnov,
                  Tp=Tp, N=N, P=1,
                  meta=meta)

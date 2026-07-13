@@ -19,13 +19,14 @@ of the base lag-loading targets and apply the delta method.
 """
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
 from .design import A, theta_dot
-from .targets import Target, riesz_weights
+from .targets import RieszFoldSolver, Target, riesz_weights
 
 
 @dataclass
@@ -47,10 +48,14 @@ class OneStepResult:
     u_cf: np.ndarray                 # cellwise cross-fitted residuals (Tp x N)
     plugins: Dict[str, float] = field(default_factory=dict)  # plug-in (no debias)
     riesz_diag: Dict[str, dict] = field(default_factory=dict)
+    timing: Dict[str, float] = field(default_factory=dict)
 
 
 def one_step(blocks, foldfits: Sequence[FoldFit], targets: Sequence[Target],
-             riesz_kwargs: Optional[dict] = None) -> OneStepResult:
+             riesz_kwargs: Optional[dict] = None,
+             profile_timing: bool = False,
+             use_riesz_cache: bool = True) -> OneStepResult:
+    t0 = time.perf_counter() if profile_timing else None
     riesz_kwargs = riesz_kwargs or {}
     Tp, N = blocks[0].shape
     estimates = {tg.name: 0.0 for tg in targets}
@@ -59,13 +64,22 @@ def one_step(blocks, foldfits: Sequence[FoldFit], targets: Sequence[Target],
     u_cf = np.zeros((Tp, N))
     diag = {tg.name: {"cg_iters": [], "converged": [], "min_eig": []}
             for tg in targets}
+    riesz_time = 0.0
 
     for ff in foldfits:
         u_cf[ff.val] = ff.residual[ff.val]
+        solver = (RieszFoldSolver(blocks, ff.U, ff.V, ff.train, ff.alpha)
+                  if use_riesz_cache else None)
         for tg in targets:
             plug = theta_dot(tg.direction, ff.surfaces)
-            rr = riesz_weights(tg.direction, blocks, ff.U, ff.V,
-                               ff.train, ff.alpha, **riesz_kwargs)
+            tr = time.perf_counter() if profile_timing else None
+            if solver is None:
+                rr = riesz_weights(tg.direction, blocks, ff.U, ff.V,
+                                   ff.train, ff.alpha, **riesz_kwargs)
+            else:
+                rr = solver.solve(tg.direction, **riesz_kwargs)
+            if profile_timing:
+                riesz_time += time.perf_counter() - tr
             corr = float(np.sum(ff.val * rr.Psi * ff.residual))
             estimates[tg.name] += ff.p * plug + corr
             plugins[tg.name] += ff.p * plug
@@ -74,8 +88,14 @@ def one_step(blocks, foldfits: Sequence[FoldFit], targets: Sequence[Target],
             diag[tg.name]["converged"].append(rr.converged)
             diag[tg.name]["min_eig"].append(rr.min_eig_proxy)
 
+    timing = {}
+    if profile_timing:
+        timing = dict(
+            onestep_sec=float(time.perf_counter() - t0),
+            riesz_sec=float(riesz_time),
+        )
     return OneStepResult(estimates=estimates, Psi_cf=Psi_cf, u_cf=u_cf,
-                         plugins=plugins, riesz_diag=diag)
+                         plugins=plugins, riesz_diag=diag, timing=timing)
 
 
 # --------------------------------------------------------------------------- #

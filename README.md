@@ -172,9 +172,12 @@ The table files are written to:
 
 ```text
 outputs/sim/tables/tab_mc_performance.csv
-outputs/sim/tables/tab_mc_performance.tex
+outputs/sim/tables/tab_mc_performance_current.tex
+outputs/sim/tables/tab_mc_performance_full.tex
 outputs/sim/tables/tab_rank_frequency.csv
 outputs/sim/tables/tab_rank_frequency.tex
+outputs/sim/tables/tab_mc_coeff_summary.csv
+outputs/sim/tables/tab_mc_coeff_summary.tex
 outputs/sim/tables/tab_fold_retention.csv
 outputs/sim/tables/tab_fold_retention.tex
 ```
@@ -571,10 +574,14 @@ The table files are:
 
 ```text
 outputs/sim/tables/tab_mc_performance.csv
-outputs/sim/tables/tab_mc_performance.tex
+outputs/sim/tables/tab_mc_performance_current.tex
+outputs/sim/tables/tab_mc_performance_full.tex
 
 outputs/sim/tables/tab_rank_frequency.csv
 outputs/sim/tables/tab_rank_frequency.tex
+
+outputs/sim/tables/tab_mc_coeff_summary.csv
+outputs/sim/tables/tab_mc_coeff_summary.tex
 
 outputs/sim/tables/tab_fold_retention.csv
 outputs/sim/tables/tab_fold_retention.tex

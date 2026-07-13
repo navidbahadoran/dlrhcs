@@ -20,15 +20,19 @@ from __future__ import annotations
 import json
 import os
 import dataclasses
+import time
 from dataclasses import asdict
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
 from .design import build_blocks
-from .dgp import simulate
+from .dgp import calibrated_c_xi_info, simulate
 from .pipeline import Tuning, estimate
 from .targets import make_target, group_weights
+
+
+MC_SCHEMA_VERSION = "coeff_signal_v1"
 
 
 def _merge_dgp_selector(dgp_kwargs=None, dgp_type=None, dgp_id=None):
@@ -61,11 +65,45 @@ def _normalize_record_dgp(dgp_kwargs):
     return str(raw)
 
 
-def _simulate_kwargs(dgp_kwargs):
+def _simulate_kwargs(dgp_kwargs, *, compute_true_spaces=None, profile_timing=None):
     """Drop MC-only metadata before calling the DGP simulator."""
     out = dict(dgp_kwargs or {})
     out.pop("true_rank", None)
     out.pop("true_ranks", None)
+    if compute_true_spaces is not None:
+        out["compute_true_spaces"] = bool(compute_true_spaces)
+    if profile_timing is not None:
+        out["profile_timing"] = bool(profile_timing)
+    return out
+
+
+def precompute_dgp_calibration(Tp, N, dgp_kwargs=None):
+    """Return DGP kwargs with parent-side c_xi calibration info attached.
+
+    The calibrated value is still computed by the DGP module's canonical
+    deterministic calibration routine.  This helper only makes the result
+    available to child workers so process-parallel MC does not repeat the same
+    K-draw calibration in each worker.
+    """
+    out = dict(dgp_kwargs or {})
+    if out.get("c_xi_info") is not None:
+        return out
+    dgp_kind = _normalize_record_dgp(out)
+    if dgp_kind == "legacy":
+        return out
+    info = calibrated_c_xi_info(
+        Tp, N,
+        dgp_type=dgp_kind,
+        burn=out.get("burn", 50),
+        rho_x=out.get("rho_x", 0.5),
+        delta_x=out.get("delta_x", 0.5),
+        rho_fx=out.get("rho_fx", 0.5),
+        rho_s=out.get("rho_s", 0.5),
+        eta_x=out.get("eta_x", 0.3),
+        c_xi_calibration_draws=out.get("c_xi_calibration_draws", 100),
+    )
+    if info is not None:
+        out["c_xi_info"] = info
     return out
 
 
@@ -158,41 +196,102 @@ def true_value(panel, tg, ctx):
     return float(S[t0] @ (ctx["w1"] - ctx["w2"]))
 
 
+def _meta_float(meta, key):
+    val = meta.get(key)
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
+def _copy_summary_meta(rec, prefix, summary):
+    if not isinstance(summary, dict):
+        return
+    for key in ("mean", "std", "min", "max"):
+        if key in summary:
+            rec[f"_{prefix}_{key}"] = float(summary[key])
+
+
+def _surface_abs_summary(rec, prefix, surface):
+    vals = np.abs(np.asarray(surface, dtype=float))
+    rec[f"_{prefix}_mean"] = float(np.mean(vals))
+    rec[f"_{prefix}_std"] = float(np.std(vals))
+    rec[f"_{prefix}_min"] = float(np.min(vals))
+    rec[f"_{prefix}_max"] = float(np.max(vals))
+
+
 # --------------------------------------------------------------------------- #
 #  one replication
 # --------------------------------------------------------------------------- #
 def run_replication(Tp, N, rep, tuning: Tuning, *, oracle=False,
                     dgp_kwargs=None, dgp_type=None, dgp_id=None,
-                    master=2024) -> Dict:
+                    master=2024, profile_timing: bool = False) -> Dict:
+    total_t0 = time.perf_counter() if profile_timing else None
     dgp_kwargs = _merge_dgp_selector(dgp_kwargs, dgp_type=dgp_type, dgp_id=dgp_id)
     dgp_kind = _normalize_record_dgp(dgp_kwargs)
     tuning = _mc_tuning_for_dgp(tuning, dgp_kind, N)
     sim_rng = np.random.default_rng(np.random.SeedSequence([master, rep]))
     est_rng = np.random.default_rng(np.random.SeedSequence([master + 1, rep]))
-    panel = simulate(Tp, N, sim_rng, **_simulate_kwargs(dgp_kwargs))
+    compute_true_spaces = bool(oracle or dgp_kwargs.get("compute_true_spaces", False))
+    dgp_t0 = time.perf_counter() if profile_timing else None
+    panel = simulate(Tp, N, sim_rng,
+                     **_simulate_kwargs(dgp_kwargs,
+                                        compute_true_spaces=compute_true_spaces,
+                                        profile_timing=profile_timing))
+    dgp_sec = float(time.perf_counter() - dgp_t0) if profile_timing else None
     blocks = build_blocks(panel.Z)
     true_ranks = _true_rank_vector(panel, dgp_kwargs, len(blocks))
     targets, ctx = standard_targets(blocks, Tp, N)
+    estimate_t0 = time.perf_counter() if profile_timing else None
     res = estimate(panel.Y, panel.Z, targets, tuning, rng=est_rng,
-                   oracle=oracle, true_U=panel.U, true_V=panel.V)
-    rec = {"rep": int(rep)}
+                   oracle=oracle,
+                   true_U=panel.U if oracle else None,
+                   true_V=panel.V if oracle else None,
+                   profile_timing=profile_timing)
+    estimate_sec = float(time.perf_counter() - estimate_t0) if profile_timing else None
+    rec = {"rep": int(rep), "_mc_schema_version": MC_SCHEMA_VERSION,
+           "_master_seed": int(master),
+           "_sim_seed_sequence": [int(master), int(rep)],
+           "_est_seed_sequence": [int(master + 1), int(rep)]}
+    targets_t0 = time.perf_counter() if profile_timing else None
     for tg in targets:
         v = true_value(panel, tg, ctx)
         lo, hi = res.ci[tg.name]
         lox, hix = res.ci_xs[tg.name]
         plug = res.onestep.plugins.get(tg.name, float("nan"))
         est = float(res.estimates[tg.name])
+        se_white = float(res.se[tg.name])
+        z_white = float((est - v) / se_white) if se_white > 0 else float("nan")
         row = dict(true_value=float(v), estimate=est,
                    err=est - v,
                    plugin_err=float(plug - v),
-                   se=res.se[tg.name],
-                   se_white=res.se[tg.name],
+                   se=se_white,
+                   se_white=se_white,
+                   ci_low=float(lo),
+                   ci_high=float(hi),
+                   ci_white_low=float(lo),
+                   ci_white_high=float(hi),
+                   z=float(z_white),
+                   z_white=float(z_white),
+                   reject_5pct=bool(abs(z_white) > 1.96) if np.isfinite(z_white) else False,
+                   reject_5pct_white=bool(abs(z_white) > 1.96) if np.isfinite(z_white) else False,
                    cov=int(lo <= v <= hi))
         if dgp_kind != "dgp1":
+            se_xs = float(res.se_xs[tg.name])
+            z_xs = float((est - v) / se_xs) if se_xs > 0 else float("nan")
             row.update(se_xs=res.se_xs[tg.name],
                        se_spatial=res.se_xs[tg.name],
+                       ci_xs_low=float(lox),
+                       ci_xs_high=float(hix),
+                       ci_spatial_low=float(lox),
+                       ci_spatial_high=float(hix),
+                       z_xs=float(z_xs),
+                       z_spatial=float(z_xs),
+                       reject_5pct_xs=bool(abs(z_xs) > 1.96) if np.isfinite(z_xs) else False,
+                       reject_5pct_spatial=bool(abs(z_xs) > 1.96) if np.isfinite(z_xs) else False,
                        cov_xs=int(lox <= v <= hix))
         rec[tg.name] = row
+    targets_sec = float(time.perf_counter() - targets_t0) if profile_timing else None
     selected_ranks = [int(x) for x in res.ranks]
     rank_flags = _rank_selection_flags(selected_ranks, true_ranks)
     rec["_q"], rec["_J"], rec["_ranks"] = res.q, res.J, selected_ranks
@@ -249,6 +348,47 @@ def run_replication(Tp, N, rep, tuning: Tuning, *, oracle=False,
     rec["_Tp"], rec["_N"] = int(Tp), int(N)
     rec["_se_xs_type"] = "spatial_kernel"
     rec["_spatial_bandwidth"] = int(tuning.xs_bandwidth)
+    rec["_h_N"] = int(tuning.xs_bandwidth)
+    rec["_rho_g"] = _meta_float(panel.meta, "rho_g")
+    rec["_rho_x"] = _meta_float(panel.meta, "rho_x")
+    rec["_rho_fx"] = _meta_float(panel.meta, "rho_fx")
+    rec["_rho_s"] = _meta_float(panel.meta, "rho_s")
+    rec["_delta_x"] = _meta_float(panel.meta, "delta_x")
+    rec["_eta_x"] = _meta_float(panel.meta, "eta_x")
+    rec["_pi_h"] = _meta_float(panel.meta, "pi_h")
+    rec["_c_h"] = _meta_float(panel.meta, "c_h")
+    rec["_c_xi"] = _meta_float(panel.meta, "c_xi")
+    rec["_c_xi_calibration_draws"] = int(panel.meta.get("c_xi_calibration_draws", 0) or 0)
+    rec["_PR2_target"] = _meta_float(panel.meta, "PR2_target")
+    rec["_PR2_realized"] = _meta_float(panel.meta, "PR2_realized")
+    rec["_max_abs_a_it"] = _meta_float(panel.meta, "max_abs_a_it")
+    A0 = np.asarray(panel.surfaces[0], dtype=float)
+    rec["_share_abs_a_ge_1"] = float(np.mean(np.abs(A0) >= 1.0))
+    _surface_abs_summary(rec, "companion_radius", A0)
+    _copy_summary_meta(rec, "a_it", panel.meta.get("a_it_summary"))
+    _copy_summary_meta(rec, "beta_it", panel.meta.get("beta_it_summary"))
+    if profile_timing:
+        timing = res.diagnostics.get("timing", {})
+        cg_iters = []
+        for diag in res.onestep.riesz_diag.values():
+            cg_iters.extend(int(x) for x in diag.get("cg_iters", []))
+        rec["_time_dgp_sec"] = float(dgp_sec)
+        rec["_time_estimate_sec"] = float(estimate_sec)
+        rec["_time_first_stage_sec"] = float(timing.get("first_stage_sec", float("nan")))
+        rec["_time_riesz_sec"] = float(timing.get("riesz_sec", float("nan")))
+        rec["_time_onestep_sec"] = float(timing.get("onestep_sec", float("nan")))
+        rec["_time_se_sec"] = float(timing.get("se_sec", float("nan")))
+        rec["_time_targets_sec"] = float(targets_sec)
+        rec["_time_rank_selection_sec"] = float(timing.get("rank_selection_sec", 0.0))
+        rec["_time_cxi_calibration_sec"] = float(
+            panel.meta.get("time_cxi_calibration_sec", float("nan")))
+        rec["_time_total_sec"] = float(time.perf_counter() - total_t0)
+        rec["_riesz_num_targets"] = int(len(targets))
+        rec["_riesz_num_folds"] = int(res.J)
+        rec["_riesz_total_solves"] = int(len(cg_iters))
+        rec["_riesz_cg_iters_avg"] = (
+            float(np.mean(cg_iters)) if cg_iters else float("nan"))
+        rec["_riesz_cg_iters_max"] = int(max(cg_iters)) if cg_iters else 0
     return rec
 
 
@@ -278,6 +418,7 @@ def run_grid(Tp, N, R, tuning: Tuning, out_path, *, oracle=False,
     ``dgp_kwargs={'dgp_type': ...}`` to select revised DGP 1--3.
     """
     dgp_kwargs = _merge_dgp_selector(dgp_kwargs, dgp_type=dgp_type, dgp_id=dgp_id)
+    dgp_kwargs = precompute_dgp_calibration(Tp, N, dgp_kwargs)
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     done = _done_reps(out_path) if resume else set()
     todo = [r for r in range(R) if r not in done]
@@ -413,9 +554,23 @@ def aggregate(path) -> Dict[str, dict]:
         vals = np.array([r.get(key, np.nan) for r in recs], float)
         return float(np.nanmean(vals)) if np.isfinite(vals).any() else float("nan")
 
+    def _meta_sd(key):
+        vals = np.array([r.get(key, np.nan) for r in recs], float)
+        vals = vals[np.isfinite(vals)]
+        return float(np.std(vals, ddof=1)) if vals.size > 1 else float("nan")
+
+    def _meta_min(key):
+        vals = np.array([r.get(key, np.nan) for r in recs], float)
+        return float(np.nanmin(vals)) if np.isfinite(vals).any() else float("nan")
+
+    def _meta_max(key):
+        vals = np.array([r.get(key, np.nan) for r in recs], float)
+        return float(np.nanmax(vals)) if np.isfinite(vals).any() else float("nan")
+
     ret = np.array([r.get("_retained", np.nan) for r in recs], float)
     mono = np.array([float(r.get("_monotone", True)) for r in recs], float)
     se_types = ["white"] if dgp_kind == "dgp1" else ["white", "spatial_kernel"]
+    hN = int(recs[0].get("_spatial_bandwidth", 0))
     out["_meta"] = dict(retained=float(np.nanmean(ret)),
                         retained_total=_meta_mean("_retained_total"),
                         retained_nonvalidation=_meta_mean("_retained_nonvalidation"),
@@ -443,7 +598,8 @@ def aggregate(path) -> Dict[str, dict]:
                         optimization_mean_sweeps=_meta_mean("_opt_mean_sweeps"),
                         optimization_warm_start_objective_mean=_meta_mean("_opt_warm_start_objective_mean"),
                         optimization_best_objective_mean=_meta_mean("_opt_best_objective_mean"),
-                        q=int(recs[0].get("_q", 0)), r=int(recs[0].get("_r", 0)),
+                        q=int(recs[0].get("_q", 0)), q_T=int(recs[0].get("_q", 0)),
+                        r=int(recs[0].get("_r", 0)), r_N=int(recs[0].get("_r", 0)),
                         J=int(recs[0].get("_J", 0)),
                         J_realized=int(recs[0].get("_J_realized", recs[0].get("_J", 0))),
                         J_min=int(recs[0].get("_J_min", 0)),
@@ -455,8 +611,41 @@ def aggregate(path) -> Dict[str, dict]:
                         dgp_type=dgp_kind,
                         Tp=int(recs[0].get("_Tp", 0)), N=int(recs[0].get("_N", 0)),
                         se_types=se_types,
+                        se_type="diagonal" if dgp_kind == "dgp1" else "spatial-kernel",
+                        kernel=None if dgp_kind == "dgp1" else "Bartlett",
+                        distance_metric=None if dgp_kind == "dgp1" else "lattice |i-j|",
+                        h_N_formula=None if dgp_kind == "dgp1" else "floor(N^(1/3))",
+                        h_N_realized=None if dgp_kind == "dgp1" else hN,
                         spatial_kernel="bartlett_lattice",
-                        spatial_bandwidth=int(recs[0].get("_spatial_bandwidth", 0)))
+                        spatial_bandwidth=hN,
+                        rho_g=_meta_mean("_rho_g"),
+                        rho_x=_meta_mean("_rho_x"),
+                        rho_fx=_meta_mean("_rho_fx"),
+                        rho_s=_meta_mean("_rho_s"),
+                        delta_x=_meta_mean("_delta_x"),
+                        eta_x=_meta_mean("_eta_x"),
+                        pi_h=_meta_mean("_pi_h"),
+                        c_h=_meta_mean("_c_h"),
+                        c_xi=_meta_mean("_c_xi"),
+                        c_xi_calibration_draws=int(recs[0].get("_c_xi_calibration_draws", 0)),
+                        PR2_target=_meta_mean("_PR2_target"),
+                        PR2_realized_mean=_meta_mean("_PR2_realized"),
+                        PR2_realized_sd=_meta_sd("_PR2_realized"),
+                        max_abs_a_it_mean=_meta_mean("_max_abs_a_it"),
+                        max_abs_a_it_max=_meta_max("_max_abs_a_it"),
+                        share_abs_a_ge_1_mean=_meta_mean("_share_abs_a_ge_1"),
+                        companion_radius_mean_mean=_meta_mean("_companion_radius_mean"),
+                        companion_radius_sd_mean=_meta_mean("_companion_radius_std"),
+                        companion_radius_min_min=_meta_min("_companion_radius_min"),
+                        companion_radius_max_max=_meta_max("_companion_radius_max"),
+                        a_it_mean_mean=_meta_mean("_a_it_mean"),
+                        a_it_sd_mean=_meta_mean("_a_it_std"),
+                        a_it_min_min=_meta_min("_a_it_min"),
+                        a_it_max_max=_meta_max("_a_it_max"),
+                        beta_it_mean_mean=_meta_mean("_beta_it_mean"),
+                        beta_it_sd_mean=_meta_mean("_beta_it_std"),
+                        beta_it_min_min=_meta_min("_beta_it_min"),
+                        beta_it_max_max=_meta_max("_beta_it_max"))
     try:
         out["_rank_frequency"] = aggregate_rank_frequency(path, recs=recs)
     except ValueError as exc:

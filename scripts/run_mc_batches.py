@@ -18,8 +18,12 @@ Rank-selection run:
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
+import math
 import os
+import platform
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -34,7 +38,7 @@ os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from dlrhcs.mc import run_replication  # noqa: E402
+from dlrhcs.mc import MC_SCHEMA_VERSION, precompute_dgp_calibration, run_replication  # noqa: E402
 from dlrhcs.pipeline import Tuning  # noqa: E402
 
 
@@ -64,6 +68,74 @@ def _parse_ranks(value: Optional[str]) -> Optional[Tuple[int, ...]]:
 def _load_config(path: str) -> Dict:
     with open(path) as fh:
         return json.load(fh)
+
+
+def _jsonable(value):
+    if dataclasses.is_dataclass(value):
+        return _jsonable(dataclasses.asdict(value))
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, tuple):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, list):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _runtime_metadata() -> Dict:
+    return {
+        "python_version": sys.version,
+        "python_executable": sys.executable,
+        "platform": platform.platform(),
+        "platform_system": platform.system(),
+        "platform_release": platform.release(),
+        "platform_machine": platform.machine(),
+    }
+
+
+def _git_metadata() -> Dict:
+    git = ["git", "-c", "safe.directory=*"]
+    try:
+        commit = subprocess.run(
+            git + ["rev-parse", "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if commit.returncode != 0:
+            return {
+                "git_commit": None,
+                "git_dirty": None,
+                "git_status_available": False,
+                "git_error": (commit.stderr or commit.stdout).strip() or None,
+            }
+        status = subprocess.run(
+            git + ["status", "--porcelain"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        return {
+            "git_commit": commit.stdout.strip(),
+            "git_dirty": bool(status.stdout.strip()) if status.returncode == 0 else None,
+            "git_status_available": status.returncode == 0,
+            "git_error": None if status.returncode == 0 else (status.stderr or status.stdout).strip() or None,
+        }
+    except Exception as exc:
+        return {
+            "git_commit": None,
+            "git_dirty": None,
+            "git_status_available": False,
+            "git_error": str(exc),
+        }
 
 
 def _tuning_from_config(cfg: Dict, *, select: bool,
@@ -131,8 +203,10 @@ def _chunks(items: Sequence[int], batch_size: int) -> Iterable[Sequence[int]]:
 
 
 def _run_one_replication(T: int, N: int, rep: int, tuning: Tuning,
-                         dgp_kwargs: Dict, master: int) -> Dict:
-    return run_replication(T, N, rep, tuning, dgp_kwargs=dgp_kwargs, master=master)
+                         dgp_kwargs: Dict, master: int,
+                         profile_timing: bool = False) -> Dict:
+    return run_replication(T, N, rep, tuning, dgp_kwargs=dgp_kwargs,
+                           master=master, profile_timing=profile_timing)
 
 
 def _format_eta(seconds: float) -> str:
@@ -181,25 +255,272 @@ def _sidecar_path(out_path: Path) -> Path:
     return Path(str(out_path) + ".meta.json")
 
 
+def _timing_summary(path: Path, desired: Sequence[int]) -> Dict:
+    desired_set = set(int(x) for x in desired)
+    rows = []
+    if not path.exists():
+        return {}
+    with path.open() as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            if int(rec.get("rep", -1)) in desired_set and "_time_total_sec" in rec:
+                rows.append(rec)
+    if not rows:
+        return {}
+    totals = sorted(float(r["_time_total_sec"]) for r in rows)
+    n = len(totals)
+
+    def percentile(sorted_vals, p):
+        if not sorted_vals:
+            return None
+        if len(sorted_vals) == 1:
+            return float(sorted_vals[0])
+        pos = (len(sorted_vals) - 1) * p
+        lo = int(pos)
+        hi = min(lo + 1, len(sorted_vals) - 1)
+        frac = pos - lo
+        return float(sorted_vals[lo] * (1.0 - frac) + sorted_vals[hi] * frac)
+
+    stage_keys = sorted({
+        key for row in rows for key in row
+        if key.startswith("_time_") and key.endswith("_sec")
+    })
+    stage_means = {}
+    for key in stage_keys:
+        vals = [float(row[key]) for row in rows
+                if key in row and isinstance(row[key], (int, float))]
+        vals = [v for v in vals if v == v]
+        if vals:
+            stage_means[key] = float(sum(vals) / len(vals))
+    slowest = max(rows, key=lambda row: float(row.get("_time_total_sec", 0.0)))
+    return {
+        "timing_completed_R": int(n),
+        "timing_mean_sec_per_rep": float(sum(totals) / n),
+        "timing_median_sec_per_rep": percentile(totals, 0.5),
+        "timing_p90_sec_per_rep": percentile(totals, 0.9),
+        "timing_max_sec_per_rep": float(max(totals)),
+        "timing_mean_by_stage": stage_means,
+        "timing_slowest_rep_id": int(slowest["rep"]),
+    }
+
+
+def _jsonl_metadata_summary(path: Path, desired: Sequence[int]) -> Dict:
+    """Recover fold-rule and tuning metadata from completed replication records."""
+    desired_set = set(int(x) for x in desired)
+    rows = []
+    if not path.exists():
+        return {}
+    with path.open() as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            if int(rec.get("rep", -1)) in desired_set:
+                rows.append(rec)
+    if not rows:
+        return {}
+
+    def first_present(*keys):
+        for row in rows:
+            for key in keys:
+                if key in row and row[key] is not None:
+                    return row[key]
+        return None
+
+    def mean_present(*keys):
+        vals = []
+        for row in rows:
+            for key in keys:
+                if key in row and row[key] is not None:
+                    try:
+                        vals.append(float(row[key]))
+                    except (TypeError, ValueError):
+                        pass
+                    break
+        return float(sum(vals) / len(vals)) if vals else None
+
+    def values_present(*keys):
+        vals = []
+        for row in rows:
+            for key in keys:
+                if key in row and row[key] is not None:
+                    try:
+                        val = float(row[key])
+                    except (TypeError, ValueError):
+                        break
+                    if math.isfinite(val):
+                        vals.append(val)
+                    break
+        return vals
+
+    def sd_present(*keys):
+        vals = values_present(*keys)
+        if len(vals) < 2:
+            return None
+        mu = sum(vals) / len(vals)
+        return math.sqrt(sum((v - mu) ** 2 for v in vals) / (len(vals) - 1))
+
+    def min_present(*keys):
+        vals = values_present(*keys)
+        return min(vals) if vals else None
+
+    def max_present(*keys):
+        vals = values_present(*keys)
+        return max(vals) if vals else None
+
+    q = first_present("_q")
+    r = first_present("_r")
+    B = first_present("_B_TN_fold_rule", "_B_NT_fold_rule")
+    L = first_present("_L_TN_J", "_L_NT_J")
+    J_rule = first_present("_J_rule_term")
+    J_realized = first_present("_J_realized", "_J")
+    out = {
+        "mc_schema_version_from_records": first_present("_mc_schema_version"),
+        "q_T": int(q) if q is not None else None,
+        "q": int(q) if q is not None else None,
+        "r_N": int(r) if r is not None else None,
+        "buffer_r": int(r) if r is not None else None,
+        "B_NT_fold_rule": float(B) if B is not None else None,
+        "B_TN_fold_rule": float(B) if B is not None else None,
+        "L_NT_J": float(L) if L is not None else None,
+        "L_TN_J": float(L) if L is not None else None,
+        "J_rule_term": int(J_rule) if J_rule is not None else None,
+        "J_rule": int(J_rule) if J_rule is not None else None,
+        "J_realized": int(J_realized) if J_realized is not None else None,
+        "realized_J": int(J_realized) if J_realized is not None else None,
+        "retained_nonvalidation": mean_present("_retained_nonvalidation"),
+        "retained_total": mean_present("_retained_total"),
+        "retained_nonvalidation_min": mean_present("_retained_nonvalidation_min"),
+        "retained_nonvalidation_max": mean_present("_retained_nonvalidation_max"),
+        "validation_fold_size_mean": mean_present("_validation_fold_size_mean"),
+        "validation_fold_share_mean": mean_present("_validation_fold_share_mean"),
+        "spatial_bandwidth": first_present("_spatial_bandwidth"),
+        "se_xs_type": first_present("_se_xs_type"),
+        "tuning_kappa_c_from_records": first_present("_kappa_c"),
+        "true_ranks": first_present("_true_ranks"),
+        "true_ranks_from_records": first_present("_true_ranks"),
+        "selected_ranks_first_record": first_present("_selected_ranks", "_ranks"),
+        "rho_g": mean_present("_rho_g"),
+        "rho_x": mean_present("_rho_x"),
+        "rho_fx": mean_present("_rho_fx"),
+        "rho_s": mean_present("_rho_s"),
+        "delta_x": mean_present("_delta_x"),
+        "eta_x": mean_present("_eta_x"),
+        "pi_h": mean_present("_pi_h"),
+        "c_h": mean_present("_c_h"),
+        "c_xi_from_records": mean_present("_c_xi"),
+        "PR2_target": mean_present("_PR2_target"),
+        "PR2_realized_mean": mean_present("_PR2_realized"),
+        "PR2_realized_sd": sd_present("_PR2_realized"),
+        "PR2_realized_available": bool(values_present("_PR2_realized")),
+        "max_abs_a_it_mean": mean_present("_max_abs_a_it"),
+        "max_abs_a_it_max": max_present("_max_abs_a_it"),
+        "share_abs_a_ge_1_mean": mean_present("_share_abs_a_ge_1"),
+        "companion_radius_mean_mean": mean_present("_companion_radius_mean"),
+        "companion_radius_sd_mean": mean_present("_companion_radius_std"),
+        "companion_radius_min_min": min_present("_companion_radius_min"),
+        "companion_radius_max_max": max_present("_companion_radius_max"),
+        "coefficient_summaries_available": bool(values_present("_a_it_mean", "_beta_it_mean")),
+        "a_it_mean_mean": mean_present("_a_it_mean"),
+        "a_it_sd_mean": mean_present("_a_it_std"),
+        "a_it_min_min": min_present("_a_it_min"),
+        "a_it_max_max": max_present("_a_it_max"),
+        "beta_it_mean_mean": mean_present("_beta_it_mean"),
+        "beta_it_sd_mean": mean_present("_beta_it_std"),
+        "beta_it_min_min": min_present("_beta_it_min"),
+        "beta_it_max_max": max_present("_beta_it_max"),
+    }
+    return {key: value for key, value in out.items() if value is not None}
+
+
+def _standard_error_metadata(dgp_type: str, N: int) -> Dict:
+    if str(dgp_type).lower() == "dgp1":
+        return {
+            "se_type": "diagonal",
+            "kernel": None,
+            "distance_metric": None,
+            "h_N_formula": None,
+            "h_N_realized": None,
+        }
+    return {
+        "se_type": "spatial-kernel",
+        "kernel": "Bartlett",
+        "distance_metric": "lattice |i-j|",
+        "h_N_formula": "floor(N^(1/3))",
+        "h_N_realized": int(math.floor(int(N) ** (1.0 / 3.0))),
+    }
+
+
+def _target_metadata(T: int, N: int) -> Dict:
+    return {
+        "target_cell_i": int(N) // 2 + 1,
+        "target_cell_t": int(T) // 2 + 1,
+        "group_1_definition": "first half of units: {1,...,floor(N/2)}",
+        "group_0_definition": "second half of units: {floor(N/2)+1,...,N}",
+        "contrast_definition": "group_1 mean minus group_0 mean",
+    }
+
+
+def _canonical_dgp_metadata(dgp_type: str, c_xi_calibration_draws: int) -> Dict:
+    is_dgp3 = str(dgp_type).lower() == "dgp3"
+    is_spatial = str(dgp_type).lower() in {"dgp2", "dgp3"}
+    return {
+        "rho_g": 0.5,
+        "rho_x": 0.5,
+        "rho_fx": 0.5,
+        "rho_s": 0.5 if is_spatial else None,
+        "delta_x": 0.5,
+        "eta_x": 0.3 if is_dgp3 else None,
+        "pi_h": 0.3,
+        "c_h": math.sqrt(0.3 / 0.7),
+        "PR2_target": 0.5,
+        "c_xi_calibration_draws": int(c_xi_calibration_draws),
+    }
+
+
 def _write_sidecar(path: Path, *, args, tuning: Tuning, completed: int,
-                   duplicate_reps: int, started_at: str) -> None:
+                   duplicate_reps: int, started_at: str,
+                   timing_summary: Optional[Dict] = None) -> None:
+    desired = list(range(int(args.start_rep), int(args.R_total)))
+    record_summary = _jsonl_metadata_summary(args.out_path, desired)
     meta = {
+        "mc_schema_version": MC_SCHEMA_VERSION,
         "dgp_type": args.dgp_type,
         "T": int(args.T),
         "N": int(args.N),
         "R_total": int(args.R_total),
         "completed_R": int(completed),
         "J_min": int(tuning.J_min),
+        "c_J": float(tuning.c_J),
         "kappa_c": float(tuning.kappa_c),
         "c_xi_calibration_draws": int(args.c_xi_calibration_draws),
+        "c_xi_parent_precompute_sec": float(getattr(args, "c_xi_parent_precompute_sec", 0.0)),
+        "c_xi_precomputed_in_parent": bool(getattr(args, "c_xi_precomputed_in_parent", False)),
+        "c_xi": getattr(args, "c_xi", None),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "started_at": started_at,
+        "command_line_args": _jsonable(getattr(args, "command_line_args", None)),
+        "command_line": getattr(args, "command_line", None),
+        "parsed_args": _jsonable(getattr(args, "parsed_args_snapshot", None)),
         "config": args.config,
+        "config_path": args.config,
+        "config_snapshot": _jsonable(getattr(args, "config_snapshot", None)),
+        "resolved_tuning": _jsonable(getattr(args, "resolved_tuning", None)),
+        "resolved_dgp_kwargs": _jsonable(getattr(args, "resolved_dgp_kwargs", None)),
         "out_path": str(args.out_path),
         "batch_size": int(args.batch_size),
         "n_jobs": int(args.n_jobs),
         "progress_every": int(args.progress_every),
         "quiet": bool(args.quiet),
+        "profile_timing": bool(args.profile_timing),
         "start_rep": int(args.start_rep),
         "select": bool(args.select),
         "fixed_ranks": list(args.fixed_ranks) if args.fixed_ranks is not None else None,
@@ -207,6 +528,16 @@ def _write_sidecar(path: Path, *, args, tuning: Tuning, completed: int,
         "rank_caps": list(args.rank_caps) if args.rank_caps is not None else None,
         "duplicate_reps": int(duplicate_reps),
     }
+    meta.update(_jsonable(getattr(args, "runtime_metadata", None)) or _runtime_metadata())
+    meta.update(_jsonable(getattr(args, "git_metadata", None)) or _git_metadata())
+    meta.update(_standard_error_metadata(args.dgp_type, args.N))
+    meta.update(_target_metadata(args.T, args.N))
+    meta.update(_canonical_dgp_metadata(args.dgp_type, args.c_xi_calibration_draws))
+    meta.update(record_summary)
+    if meta.get("c_xi") is None and meta.get("c_xi_from_records") is not None:
+        meta["c_xi"] = meta["c_xi_from_records"]
+    if timing_summary:
+        meta.update(timing_summary)
     with path.open("w") as fh:
         json.dump(meta, fh, indent=2, sort_keys=True)
         fh.write("\n")
@@ -235,7 +566,13 @@ def main() -> None:
                     help="print progress after this many completed replications")
     ap.add_argument("--quiet", action="store_true",
                     help="suppress progress output; JSONL and metadata are still written")
+    ap.add_argument("--profile-timing", action="store_true",
+                    help="record lightweight per-replication timing diagnostics")
     args = ap.parse_args()
+    args.command_line_args = list(sys.argv)
+    args.command_line = " ".join(sys.argv)
+    args.runtime_metadata = _runtime_metadata()
+    args.git_metadata = _git_metadata()
 
     if args.R_total < 1:
         raise SystemExit("--R-total must be positive")
@@ -264,6 +601,18 @@ def main() -> None:
     })
     if args.true_ranks is not None:
         dgp_kwargs["true_ranks"] = tuple(args.true_ranks)
+    args.config_snapshot = _jsonable(cfg)
+    args.resolved_tuning = _jsonable(tuning)
+    args.resolved_dgp_kwargs = _jsonable(dgp_kwargs)
+    args.parsed_args_snapshot = _jsonable({
+        key: value for key, value in vars(args).items()
+        if key not in {
+            "config_snapshot",
+            "resolved_tuning",
+            "resolved_dgp_kwargs",
+            "parsed_args_snapshot",
+        }
+    })
 
     args.out_path.parent.mkdir(parents=True, exist_ok=True)
     sidecar = _sidecar_path(args.out_path)
@@ -281,6 +630,23 @@ def main() -> None:
     _emit(f"[mc-batch] out={args.out_path}", quiet=args.quiet)
     _emit(f"[mc-batch] already_completed={already_completed} remaining={len(todo)} "
           f"duplicates={duplicate_reps} complete={run_complete}", quiet=args.quiet)
+
+    args.c_xi_parent_precompute_sec = 0.0
+    args.c_xi_precomputed_in_parent = False
+    args.c_xi = None
+    if todo:
+        cxi_t0 = time.perf_counter()
+        dgp_kwargs = precompute_dgp_calibration(args.T, args.N, dgp_kwargs)
+        args.resolved_dgp_kwargs = _jsonable(dgp_kwargs)
+        args.c_xi_parent_precompute_sec = float(time.perf_counter() - cxi_t0)
+        info = dgp_kwargs.get("c_xi_info")
+        if info is not None:
+            args.c_xi_precomputed_in_parent = True
+            args.c_xi = float(info["c_xi"])
+            _emit(f"[mc-batch] parent c_xi calibration dgp={args.dgp_type} "
+                  f"T={args.T} N={args.N} c_xi={args.c_xi:.12g} "
+                  f"elapsed={_format_eta(args.c_xi_parent_precompute_sec)}",
+                  quiet=args.quiet)
 
     completed_now = 0
     t0 = time.time()
@@ -300,20 +666,32 @@ def main() -> None:
                           f"mode={_mode_label(args)} rep={rep}",
                           quiet=args.quiet)
                     recs.append(_run_one_replication(args.T, args.N, rep, tuning,
-                                                     dgp_kwargs, master))
+                                                     dgp_kwargs, master,
+                                                     args.profile_timing))
             else:
                 from joblib import Parallel, delayed
                 recs = Parallel(n_jobs=int(args.n_jobs), backend="loky")(
                     delayed(_run_one_replication)(args.T, args.N, rep, tuning,
-                                                  dgp_kwargs, master)
+                                                  dgp_kwargs, master,
+                                                  args.profile_timing)
                     for rep in batch
                 )
 
             for rec in sorted(recs, key=lambda row: int(row["rep"])):
                 rep = int(rec["rep"])
-                fh.write(json.dumps(rec) + "\n")
-                fh.flush()
-                os.fsync(fh.fileno())
+                if args.profile_timing:
+                    tw = time.perf_counter()
+                    rec["_time_json_write_sec"] = 0.0
+                    json.dumps(rec)
+                    rec["_time_json_write_sec"] = float(time.perf_counter() - tw)
+                    payload = json.dumps(rec) + "\n"
+                    fh.write(payload)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                else:
+                    fh.write(json.dumps(rec) + "\n")
+                    fh.flush()
+                    os.fsync(fh.fileno())
                 done.add(rep)
                 completed_now += 1
                 last_rec = rec
@@ -329,10 +707,13 @@ def main() -> None:
                           quiet=args.quiet)
             duplicate_reps = _count_duplicate_reps(args.out_path)
             completed_total = len(_done_reps(args.out_path).intersection(desired))
+            timing_summary = (_timing_summary(args.out_path, desired)
+                              if args.profile_timing else None)
             _write_sidecar(sidecar, args=args, tuning=tuning,
                            completed=completed_total,
                            duplicate_reps=duplicate_reps,
-                           started_at=started_at)
+                           started_at=started_at,
+                           timing_summary=timing_summary)
             elapsed = time.time() - t0
             avg = elapsed / max(completed_now, 1)
             remaining_total = max(int(args.R_total) - completed_total, 0)
@@ -355,7 +736,9 @@ def main() -> None:
     _write_sidecar(sidecar, args=args, tuning=tuning,
                    completed=completed_total,
                    duplicate_reps=duplicate_reps,
-                   started_at=started_at)
+                   started_at=started_at,
+                   timing_summary=(_timing_summary(args.out_path, desired)
+                                   if args.profile_timing else None))
     elapsed = time.time() - t0
     avg = elapsed / max(completed_now, 1) if completed_now else 0.0
     _emit(f"[mc-batch] done completed_R={completed_total}/{args.R_total} "

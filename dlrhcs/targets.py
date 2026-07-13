@@ -117,62 +117,115 @@ class RieszResult:
     min_eig_proxy: float     # Rayleigh quotient of the solution (diagnostic)
 
 
+class RieszFoldSolver:
+    """Fold-level matrix-free Riesz solver.
+
+    The purged training mask, tangent spaces, ridge-free normal operator, and
+    LinearOperator objects are target-independent within a fold.  This solver
+    keeps those objects together so multiple target right-hand sides can reuse
+    the fold setup while each target still runs its own CG solve.
+
+    By default ``solve`` preserves the historical RHS-initialized ridge scaling
+    exactly.  ``use_cached_scale=True`` enables a fold-level scale cache for
+    experiments where a common fold scale is desired.
+    """
+
+    def __init__(self, blocks, U_list, V_list, train_mask, alpha):
+        self.blocks = blocks
+        self.U_list = U_list
+        self.V_list = V_list
+        self.amask = alpha * train_mask.astype(float)
+        self.n = int(sum(np.asarray(zb).size for zb in blocks))
+        self._operator_cache = {}
+        self._fold_scale = None
+        self._active_scale = 1.0
+
+    def project(self, theta):
+        return project_tangent(theta, self.U_list, self.V_list)
+
+    def _G0_apply(self, vec):
+        Px0 = self.project(theta_unflatten(vec, self.blocks))
+        adj0 = A_adjoint(self.amask * A(Px0, self.blocks), self.blocks)
+        return theta_flatten(self.project(adj0))
+
+    def _power_scale_from_seed(self, seed):
+        v = seed / max(float(np.linalg.norm(seed)), 1e-12)
+        for _ in range(4):
+            g = self._G0_apply(v)
+            nrm = float(np.linalg.norm(g))
+            if nrm < 1e-30:
+                break
+            v = g / nrm
+        return max(float(v @ self._G0_apply(v)), 1e-12)
+
+    def fold_scale(self):
+        """Return an optional fold-level operator scale.
+
+        This is not used by the default pipeline because the legacy numerical
+        ridge scale is initialized from each target RHS.  It is available as a
+        controlled switch without changing the old ``riesz_weights`` behavior.
+        """
+        if self._fold_scale is None:
+            self._fold_scale = self._power_scale_from_seed(np.ones(self.n))
+        return self._fold_scale
+
+    def linear_operator(self, ridge):
+        key = float(ridge)
+        if key in self._operator_cache:
+            return self._operator_cache[key]
+
+        def matvec(vec):
+            x = theta_unflatten(vec, self.blocks)
+            Px = self.project(x)
+            AX = A(Px, self.blocks)
+            R = self.amask * AX
+            adj = A_adjoint(R, self.blocks)
+            out = self.project(adj)
+            if ridge:
+                scale = self._active_scale
+                out = [o + ridge * scale * p for o, p in zip(out, Px)]
+            return theta_flatten(out)
+
+        G = LinearOperator((self.n, self.n), matvec=matvec, dtype=float)
+        self._operator_cache[key] = G
+        return G
+
+    def solve(self, direction, ridge=1e-8, tol=1e-10, maxiter=2000,
+              use_cached_scale=False):
+        rhs_theta = self.project(direction)
+        rhs = theta_flatten(rhs_theta)
+        scale = self.fold_scale() if use_cached_scale else self._power_scale_from_seed(rhs)
+        self._active_scale = scale
+        G = self.linear_operator(ridge)
+        counter = {"k": 0}
+
+        def cb(_):
+            counter["k"] += 1
+
+        q_vec, info = cg(G, rhs, rtol=tol, atol=0.0, maxiter=maxiter, callback=cb)
+        q = theta_unflatten(q_vec, self.blocks)
+        q = self.project(q)
+        Psi = A(q, self.blocks)
+        Gq = theta_unflatten(G.matvec(q_vec), self.blocks)
+        num = theta_dot(q, Gq)
+        den = max(theta_dot(q, q), 1e-30)
+        return RieszResult(Psi=Psi, q=q, cg_iters=counter["k"],
+                           converged=(info == 0), min_eig_proxy=num / den)
+
+
 def riesz_weights(direction, blocks, U_list, V_list, train_mask, alpha,
-                  ridge=1e-8, tol=1e-10, maxiter=2000):
+                  ridge=1e-8, tol=1e-10, maxiter=2000,
+                  use_cached_scale=False):
     """Solve the feasible Riesz equation on the tangent space, matrix-free.
 
     ``U_list/V_list`` are the (estimated or, in the oracle, true) singular
     spaces defining the tangent space ``T``.  ``train_mask`` is ``Pi^pur_{-j}``
     and ``alpha`` is ``alpha_j``.
     """
-    Tp, N = blocks[0].shape
-    amask = alpha * train_mask.astype(float)
-    rhs_theta = project_tangent(direction, U_list, V_list)
-    rhs = theta_flatten(rhs_theta)
-    # Operator-RELATIVE Tikhonov floor: scale ``ridge`` by an estimate of the
-    # largest eigenvalue of the ridge-free normal operator G0 (a few power
-    # iterations), not by |rhs|.  ``ridge`` is then a dimensionless fraction of
-    # the operator's own scale, so a near-singular map -- the weakly identified
-    # lag block once a SPATIAL buffer (a:folds, r_TN>0) removes neighbours -- is
-    # regularized commensurately and ||Psi|| stays bounded instead of exploding
-    # (eq:riesz_equation; the floor is numerical only).
-    def _G0_apply(vec):
-        Px0 = project_tangent(theta_unflatten(vec, blocks), U_list, V_list)
-        adj0 = A_adjoint(amask * A(Px0, blocks), blocks)
-        return theta_flatten(project_tangent(adj0, U_list, V_list))
-    _v = rhs / max(float(np.linalg.norm(rhs)), 1e-12)
-    for _ in range(4):
-        _g = _G0_apply(_v); _nrm = float(np.linalg.norm(_g))
-        if _nrm < 1e-30:
-            break
-        _v = _g / _nrm
-    scale = max(float(_v @ _G0_apply(_v)), 1e-12)        # ~ lambda_max(G0)
+    solver = RieszFoldSolver(blocks, U_list, V_list, train_mask, alpha)
+    return solver.solve(direction, ridge=ridge, tol=tol, maxiter=maxiter,
+                        use_cached_scale=use_cached_scale)
 
-    def matvec(vec):
-        x = theta_unflatten(vec, blocks)
-        Px = project_tangent(x, U_list, V_list)
-        AX = A(Px, blocks)                       # Tp x N
-        R = amask * AX                            # alpha * Pi^pur A P_T x
-        adj = A_adjoint(R, blocks)
-        out = project_tangent(adj, U_list, V_list)
-        if ridge:
-            out = [o + ridge * scale * p for o, p in zip(out, Px)]
-        return theta_flatten(out)
 
-    n = rhs.size
-    G = LinearOperator((n, n), matvec=matvec, dtype=float)
-    counter = {"k": 0}
-
-    def cb(_):
-        counter["k"] += 1
-
-    q_vec, info = cg(G, rhs, rtol=tol, atol=0.0, maxiter=maxiter, callback=cb)
-    q = theta_unflatten(q_vec, blocks)
-    q = project_tangent(q, U_list, V_list)       # clean numerical drift
-    Psi = A(q, blocks)
-    # diagnostic: Rayleigh quotient q' G q / q'q (should be > 0, ~ smallest eig)
-    Gq = theta_unflatten(matvec(q_vec), blocks)
-    num = theta_dot(q, Gq)
-    den = max(theta_dot(q, q), 1e-30)
-    return RieszResult(Psi=Psi, q=q, cg_iters=counter["k"],
-                       converged=(info == 0), min_eig_proxy=num / den)
+# Backward-compatible class alias for code that imported the first cache name.
+RieszSolver = RieszFoldSolver
