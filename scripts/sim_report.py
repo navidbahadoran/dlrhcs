@@ -24,6 +24,7 @@ from dlrhcs.mc import aggregate  # noqa: E402
 
 SIM = os.path.join(ROOT, "outputs", "sim")
 OUT = os.path.join(SIM, "tables")
+PAPER_TABLES = os.path.join(ROOT, "tables")
 
 TARGET_OBJECT = {"lag": "lag", "slope": "covariate"}
 TARGET_TYPE = {
@@ -90,7 +91,7 @@ FOLD_RETENTION_TABLE_NOTE = (
 
 def fmt(x, d=3):
     """Format numbers without leading plus signs; return -- for missing values."""
-    if x is None:
+    if x is None or x == "":
         return "--"
     try:
         xx = float(x)
@@ -130,7 +131,28 @@ def _paper_target_label(label):
 
 EXCLUDED_JSONL_PREFIXES = ("tmp_", "smoke_", "test_")
 REPORT_JSONL_PREFIXES = ("grid_", "grid_v2_", "rank_")
+ALLOW_PARTIAL_PRODUCTION = False
 _LAST_DROPPED_DUPLICATE_JSONL = []
+_LAST_EXCLUDED_INCOMPLETE_JSONL = []
+
+ACTIVE_MANUSCRIPT_TEX = {
+    "tab_mc_main_summary.tex",
+    "tab_mc_perf_dgp1.tex",
+    "tab_mc_perf_dgp2.tex",
+    "tab_mc_perf_dgp3.tex",
+    "tab_mc_rank.tex",
+    "tab_mc_coeff_summary.tex",
+    "tab_mc_folds.tex",
+    "tab_mc_opt.tex",
+}
+
+OBSOLETE_OUTPUT_TEX = {
+    "tab_mc_performance.tex",
+    "tab_mc_performance_current.tex",
+    "tab_mc_performance_full.tex",
+    "tab_fold_retention.tex",
+    "tab_rank_frequency.tex",
+}
 
 
 def _is_report_jsonl(path):
@@ -149,6 +171,17 @@ def _report_file_kind(path):
     if base.startswith("rank_"):
         return "rank"
     return "other"
+
+
+def _schema_source(item):
+    kind = _report_file_kind(item["path"])
+    if kind == "grid_v2":
+        return "grid_v2"
+    if kind == "grid":
+        return "old grid"
+    if kind == "rank":
+        return "rank"
+    return kind
 
 
 def _as_bool(value, default=False):
@@ -184,12 +217,31 @@ def _rank_tuple(value):
             return (str(value),)
 
 
+def _rank_cell(value):
+    rank = _rank_tuple(value)
+    if rank is None:
+        return ""
+    return _rank_str(rank)
+
+
 def _int_meta(meta, *keys):
     for key in keys:
         value = meta.get(key)
         if value not in (None, ""):
             return int(value)
     return None
+
+
+def _available(meta, *keys):
+    for key in keys:
+        value = meta.get(key)
+        if value in (None, ""):
+            continue
+        if isinstance(value, (float, np.floating)):
+            if not np.isfinite(float(value)):
+                continue
+        return True
+    return False
 
 
 def _duplicate_cell_key(item):
@@ -217,7 +269,7 @@ def _duplicate_cell_key(item):
 
 
 def _resolve_duplicate_cells(items):
-    """Prefer grid_v2 over grid for the same fixed-rank production cell."""
+    """Prefer complete grid_v2 over grid for the same fixed-rank production cell."""
     grouped = {}
     passthrough = []
     for item in items:
@@ -243,6 +295,38 @@ def _resolve_duplicate_cells(items):
     return kept, sorted(dropped)
 
 
+def _production_completion(item):
+    meta = item["meta"]
+    completed = meta.get("completed_R")
+    total = meta.get("R_total")
+    try:
+        completed_i = int(completed)
+        total_i = int(total)
+    except (TypeError, ValueError):
+        return True, completed, total
+    return completed_i >= total_i, completed_i, total_i
+
+
+def _filter_incomplete_production(items, *, allow_partial=ALLOW_PARTIAL_PRODUCTION):
+    kept = []
+    excluded = []
+    for item in items:
+        complete, completed, total = _production_completion(item)
+        if complete or allow_partial:
+            kept.append(item)
+        else:
+            excluded.append({
+                "path": item["path"],
+                "completed_R": completed,
+                "R_total": total,
+                "dgp_type": item["meta"].get("dgp_type"),
+                "N": item["meta"].get("N"),
+                "T": item["meta"].get("Tp", item["meta"].get("T")),
+                "select": item["meta"].get("select"),
+            })
+    return kept, excluded
+
+
 def _grid_jsonl_paths():
     """Production simulation files only; excludes temp/smoke/check files."""
     paths = []
@@ -253,7 +337,7 @@ def _grid_jsonl_paths():
 
 
 def _load_grid_aggs(paths=None):
-    global _LAST_DROPPED_DUPLICATE_JSONL
+    global _LAST_DROPPED_DUPLICATE_JSONL, _LAST_EXCLUDED_INCOMPLETE_JSONL
     out = []
     missing = []
     for path in paths or _grid_jsonl_paths():
@@ -285,8 +369,10 @@ def _load_grid_aggs(paths=None):
             except Exception:
                 pass
         out.append({"path": path, "agg": agg, "meta": meta})
+    out, excluded = _filter_incomplete_production(out)
     out, dropped = _resolve_duplicate_cells(out)
     _LAST_DROPPED_DUPLICATE_JSONL = dropped
+    _LAST_EXCLUDED_INCOMPLETE_JSONL = excluded
     out.sort(key=lambda x: (
         str(x["meta"].get("dgp_type", "")),
         int(x["meta"].get("Tp", 0)),
@@ -434,6 +520,44 @@ def coeff_summary_rows(items):
     return rows
 
 
+def table_source_audit_rows(items):
+    rows = []
+    for item in items:
+        meta = item["meta"]
+        rows.append({
+            "table_source_file": os.path.basename(item["path"]),
+            "dgp_type": meta.get("dgp_type", ""),
+            "N": meta.get("N", ""),
+            "T": meta.get("Tp", meta.get("T", "")),
+            "R_total": meta.get("R_total", ""),
+            "completed_R": meta.get("completed_R", meta.get("R", "")),
+            "select": _as_bool(meta.get("select"), default=(_report_file_kind(item["path"]) == "rank")),
+            "fixed_ranks": _rank_cell(meta.get("fixed_ranks", meta.get("selected_ranks_first_record"))),
+            "mc_schema_version": meta.get("mc_schema_version", meta.get("_mc_schema_version", "")),
+            "coefficient_summaries_available": _available(
+                meta,
+                "a_it_mean_mean",
+                "a_it_sd_mean",
+                "a_it_min_min",
+                "a_it_max_max",
+                "beta_it_mean_mean",
+                "beta_it_sd_mean",
+                "beta_it_min_min",
+                "beta_it_max_max",
+            ),
+            "PR2_realized_available": _available(meta, "PR2_realized_mean", "PR2_realized_sd"),
+            "profile_timing_available": _available(
+                meta,
+                "timing_mean_sec_per_rep",
+                "timing_median_sec_per_rep",
+                "timing_p90_sec_per_rep",
+                "timing_mean_by_stage",
+            ),
+            "source_schema": _schema_source(item),
+        })
+    return rows
+
+
 def _write_csv(path, rows, fields):
     def clean(val):
         if isinstance(val, (float, np.floating)) and not np.isfinite(float(val)):
@@ -445,6 +569,25 @@ def _write_csv(path, rows, fields):
         w.writeheader()
         for row in rows:
             w.writerow({key: clean(row.get(key, "")) for key in fields})
+
+
+def _remove_obsolete_tex():
+    removed = []
+    for folder in (OUT, PAPER_TABLES):
+        if not os.path.isdir(folder):
+            continue
+        for name in OBSOLETE_OUTPUT_TEX:
+            path = os.path.join(folder, name)
+            if os.path.exists(path):
+                os.remove(path)
+                removed.append(path)
+        if folder == PAPER_TABLES:
+            for path in glob(os.path.join(folder, "*.tex")):
+                name = os.path.basename(path)
+                if (name.startswith("tab_mc_") or name in OBSOLETE_OUTPUT_TEX) and name not in ACTIVE_MANUSCRIPT_TEX:
+                    os.remove(path)
+                    removed.append(path)
+    return removed
 
 
 def _latex_table(rows, fields, align, caption_note=None):
@@ -479,7 +622,7 @@ def _write_fold_retention_tex(path, rows):
         r"\centering",
         r"\begin{threeparttable}",
         r"\caption{Fold counts and retained training shares for completed production cells.}",
-        r"\label{tab:fold-counts}",
+        r"\label{tab:mc_folds}",
         r"\small",
         r"\setlength{\tabcolsep}{3.8pt}",
         r"\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l c c c c c c c S[table-format=1.3] S[table-format=1.3] @{}}",
@@ -487,7 +630,7 @@ def _write_fold_retention_tex(path, rows):
         (
             r"DGP & $N$ & $T$ & $q_T$ & $r_N$ & $h_N$ & $J_{\min}$ "
             r"& \makecell{Realized\\$J$} "
-            r"& \multicolumn{1}{c}{\makecell{Retained\\non-validation}} "
+            r"& \multicolumn{1}{c}{\makecell{Retained\\non-val.}} "
             r"& \multicolumn{1}{c}{\makecell{Retained\\total}} \\"
         ),
         r"\midrule",
@@ -519,6 +662,344 @@ def _write_fold_retention_tex(path, rows):
     ]
     with open(path, "w") as fh:
         fh.write("\n".join(lines) + "\n")
+
+
+def _panel_rows_for_dgp(perf_rows, dgp_label, target_label):
+    rows = [
+        row for row in perf_rows
+        if row.get("DGP") == dgp_label and row.get("target") == target_label
+    ]
+    return sorted(rows, key=lambda row: (int(row.get("N", 0)), int(row.get("T", 0))))
+
+
+def _replication_note(rows):
+    reps = sorted({int(row["replications"]) for row in rows if row.get("replications") not in ("", None)})
+    if not reps:
+        return "The number of replications is reported in the underlying diagnostic CSV."
+    if reps == [1000]:
+        return "The number of replications is 1000."
+    parts = []
+    for rep in reps:
+        sizes = [
+            f"$N=T={int(row['N'])}$"
+            for row in rows
+            if row.get("replications") not in ("", None) and int(row["replications"]) == rep
+        ]
+        parts.append(f"{rep} replications for {', '.join(sorted(set(sizes)))}")
+    return "The number of replications is " + "; ".join(parts) + "."
+
+
+def _dgp_note(dgp_label, displayed_rows):
+    if dgp_label == "DGP 1":
+        inference = "For DGP 1, inference uses the diagonal heteroskedasticity-robust standard error."
+    else:
+        inference = (
+            "For DGPs 2--3, inference uses the Bartlett spatial-kernel standard error "
+            "with lattice distance $d_N(i,j)=|i-j|$ and bandwidth "
+            "$h_N=\\lfloor N^{1/3}\\rfloor$."
+        )
+    return (
+        "Panel A reports the full mean of the autoregressive coefficient $a_{it}$, "
+        "and Panel B reports the full mean of the slope coefficient $\\beta_{it}$. "
+        "The full mean target averages over all units at the midpoint time "
+        "$t^\\star=\\lfloor T/2\\rfloor+1$. "
+        "Coefficient matrices and shocks are redrawn independently across replications. "
+        "Bias and RMSE are computed from replication-level errors "
+        "$\\widehat\\theta^{(r)}-\\theta_0^{(r)}$. "
+        f"{inference} "
+        "Size is the empirical rejection probability of the nominal two-sided 5\\% test. "
+        "Coverage is empirical coverage of the nominal 95\\% confidence interval. "
+        + _replication_note(displayed_rows)
+    )
+
+
+def _write_dgp_performance_tex(path, dgp_label, perf_rows):
+    slug = dgp_label.lower().replace(" ", "")
+    label = f"tab:mc_perf_{slug}"
+    displayed = (
+        _panel_rows_for_dgp(perf_rows, dgp_label, "lag full mean")
+        + _panel_rows_for_dgp(perf_rows, dgp_label, "covariate full mean")
+    )
+    lines = [
+        r"\begingroup",
+        r"\small",
+        r"\setlength{\LTleft}{0pt plus 1fill}",
+        r"\setlength{\LTright}{0pt plus 1fill}",
+        r"\begin{longtable}{ccrrrrrr}",
+        (
+            rf"\caption{{Monte Carlo fixed-rank inference performance: {dgp_label}.}}"
+            rf"\label{{{label}}}"
+            + (r"\label{tab:mc_main_summary}" if dgp_label == "DGP 1" else "")
+            + r"\\"
+        ),
+        r"\toprule",
+        r"$N$ & $T$ & true & bias & RMSE & mean s.e. & size & coverage \\",
+        r"\midrule",
+        r"\endfirsthead",
+        r"\toprule",
+        r"$N$ & $T$ & true & bias & RMSE & mean s.e. & size & coverage \\",
+        r"\midrule",
+        r"\endhead",
+        r"\bottomrule",
+        r"\endfoot",
+        r"\multicolumn{8}{l}{\textit{Panel A. Autoregressive coefficient full mean}}\\",
+    ]
+    for row in _panel_rows_for_dgp(perf_rows, dgp_label, "lag full mean"):
+        lines.append(
+            " & ".join([
+                str(int(row["N"])),
+                str(int(row["T"])),
+                fmt(row["true_value"], 3),
+                fmt(row["bias"], 3),
+                fmt(row["rmse"], 3),
+                fmt(row["mean_se"], 3),
+                fmt(row["empirical_size"], 3),
+                fmt(row["coverage"], 3),
+            ]) + r" \\"
+        )
+    lines += [
+        r"\addlinespace",
+        r"\multicolumn{8}{l}{\textit{Panel B. Slope coefficient full mean}}\\",
+    ]
+    for row in _panel_rows_for_dgp(perf_rows, dgp_label, "covariate full mean"):
+        lines.append(
+            " & ".join([
+                str(int(row["N"])),
+                str(int(row["T"])),
+                fmt(row["true_value"], 3),
+                fmt(row["bias"], 3),
+                fmt(row["rmse"], 3),
+                fmt(row["mean_se"], 3),
+                fmt(row["empirical_size"], 3),
+                fmt(row["coverage"], 3),
+            ]) + r" \\"
+        )
+    lines += [
+        r"\end{longtable}",
+        r"\par\smallskip",
+        r"{\footnotesize\begin{minipage}{0.92\textwidth}\textit{Notes:} "
+        + _dgp_note(dgp_label, displayed)
+        + r"\end{minipage}}",
+        r"\endgroup",
+    ]
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def _write_main_summary_tex(path, *, prefix="tables"):
+    lines = [
+        rf"\input{{{prefix}/tab_mc_perf_dgp1.tex}}",
+        rf"\input{{{prefix}/tab_mc_perf_dgp2.tex}}",
+        rf"\input{{{prefix}/tab_mc_perf_dgp3.tex}}",
+    ]
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def _write_table_alias(path, source, *, caption, label, note=None):
+    lines = [
+        r"\begin{table}[!htbp]",
+        r"\centering\small",
+        rf"\caption{{{caption}}}",
+        rf"\label{{{label}}}",
+        r"\resizebox{\textwidth}{!}{%",
+        rf"\input{{{source}}}%",
+        r"}",
+    ]
+    if note:
+        lines += [
+            r"\par\smallskip",
+            r"{\footnotesize\begin{minipage}{0.92\textwidth}\textit{Notes:} "
+            + note
+            + r"\end{minipage}}",
+        ]
+    lines.append(r"\end{table}")
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def _write_rank_table(path, rows):
+    lines = [
+        r"\begin{table}[!htbp]",
+        r"\centering\small",
+        r"\caption{Monte Carlo rank-selection accuracy.}",
+        r"\label{tab:mc_rank}",
+        r"\begin{tabular}{lrrrrrrrrlr}",
+        r"\toprule",
+        r"DGP & $T$ & $N$ & $J_{\min}$ & $c_\kappa$ & retained non-val. & $P(\mathrm{correct})$ & $P(\mathrm{under})$ & $P(\mathrm{over})$ & modal rank & reps \\",
+        r"\midrule",
+    ]
+    if rows:
+        for row in rows:
+            lines.append(
+                " & ".join([
+                    str(row.get("DGP", "")),
+                    str(int(row["T"])) if row.get("T") not in ("", None) else "--",
+                    str(int(row["N"])) if row.get("N") not in ("", None) else "--",
+                    str(int(row["J_min"])) if row.get("J_min") not in ("", None) else "--",
+                    fmt(row.get("kappa_c"), 3),
+                    fmt(row.get("retained_nonvalidation"), 3),
+                    fmt(row.get("p_correct_rank"), 3),
+                    fmt(row.get("p_underfit"), 3),
+                    fmt(row.get("p_overfit"), 3),
+                    str(row.get("modal_selected_rank", "--")),
+                    str(int(row["replications"])) if row.get("replications") not in ("", None) else "--",
+                ]) + r" \\"
+            )
+    else:
+        lines.append(r"\multicolumn{11}{c}{No rank-selection production runs are currently available.}\\")
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"\par\smallskip",
+        r"{\footnotesize\begin{minipage}{0.92\textwidth}\textit{Notes:} "
+        r"The table is populated only by production rank-selection runs. Fixed-rank "
+        r"performance runs are omitted, so the placeholder row remains until "
+        r"\texttt{rank\_*.jsonl} "
+        r"production files are completed."
+        r"\end{minipage}}",
+        r"\end{table}",
+    ]
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def _write_coeff_summary_tex(path, rows):
+    fields = [
+        "DGP", "N", "T", "mean(a_it)", "sd(a_it)", "min(a_it)", "max(a_it)",
+        "max |a_it|", "mean(beta_it)", "sd(beta_it)", "min(beta_it)",
+        "max(beta_it)", "mean PR2", "sd PR2", "c_xi", "R",
+    ]
+    lines = [
+        r"\begin{table}[!htbp]",
+        r"\centering\small",
+        r"\caption{Monte Carlo coefficient and signal summaries.}",
+        r"\label{tab:mc_coeff_summary}",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{lrrrrrrrrrrrrrrr}",
+        r"\toprule",
+        r"DGP & $N$ & $T$ & mean $a_{it}$ & sd $a_{it}$ & min $a_{it}$ & max $a_{it}$ & max $|a_{it}|$ & mean $\beta_{it}$ & sd $\beta_{it}$ & min $\beta_{it}$ & max $\beta_{it}$ & mean PR$^2$ & sd PR$^2$ & $c_\xi$ & reps \\",
+        r"\midrule",
+    ]
+    for row in rows:
+        vals = []
+        for field in fields:
+            val = row.get(field, "")
+            if field in {"DGP"}:
+                vals.append(str(val))
+            elif field in {"N", "T", "R"} and val not in ("", None):
+                vals.append(str(int(val)))
+            else:
+                vals.append(fmt(val, 3))
+        lines.append(" & ".join(vals) + r" \\")
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}%",
+        r"}",
+        r"\par\smallskip",
+        r"{\footnotesize\begin{minipage}{0.92\textwidth}\textit{Notes:} "
+        r"Coefficient and signal summaries are computed over Monte Carlo replications "
+        r"when the JSONL records contain DGP diagnostics. Older completed runs that "
+        r"predate these per-replication diagnostics display ``--'' for unavailable "
+        r"quantities."
+        r"\end{minipage}}",
+        r"\end{table}",
+    ]
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def _write_opt_table(path, items):
+    rows = []
+    for item in items:
+        meta = item["meta"]
+        rows.append({
+            "DGP": _dgp_label(meta.get("dgp_type", "unknown")),
+            "N": meta.get("N", ""),
+            "T": meta.get("Tp", meta.get("T", "")),
+            "mean_sweeps": meta.get("optimization_mean_sweeps", ""),
+            "restart_improve": meta.get("optimization_frac_restart_improve_gt_1e_6", ""),
+            "monotone": meta.get("optimization_monotone_rate", meta.get("monotone_rate", "")),
+            "sweep_cap": meta.get("optimization_sweep_cap_hit_rate", ""),
+            "small_decrease": meta.get("optimization_frac_final_decrease_lt_1e_6", ""),
+            "total_sec": meta.get("timing_mean_sec_per_rep", ""),
+            "first_stage_sec": meta.get("timing_mean_by_stage", {}).get("_time_first_stage_sec", "")
+            if isinstance(meta.get("timing_mean_by_stage"), dict) else "",
+            "riesz_sec": meta.get("timing_mean_by_stage", {}).get("_time_riesz_sec", "")
+            if isinstance(meta.get("timing_mean_by_stage"), dict) else "",
+        })
+    rows = sorted(rows, key=lambda row: (row["DGP"], int(row["N"] or 0), int(row["T"] or 0)))
+    lines = [
+        r"\begin{table}[!htbp]",
+        r"\centering\small",
+        r"\caption{Monte Carlo optimization diagnostics.}",
+        r"\label{tab:mc_opt}",
+        r"\resizebox{\textwidth}{!}{%",
+        r"\begin{tabular}{lrrrrrrrrrr}",
+        r"\toprule",
+        r"DGP & $N$ & $T$ & mean sweeps & sweep-cap hit rate & monotone rate & final decrease $<10^{-6}$ & restart improvement $>10^{-6}$ & mean total sec. & mean first-stage sec. & mean Riesz sec. \\",
+        r"\midrule",
+    ]
+    for row in rows:
+        lines.append(
+            " & ".join([
+                str(row["DGP"]),
+                str(int(row["N"])) if row["N"] != "" else "--",
+                str(int(row["T"])) if row["T"] != "" else "--",
+                fmt(row["mean_sweeps"], 3),
+                fmt(row["sweep_cap"], 3),
+                fmt(row["monotone"], 3),
+                fmt(row["small_decrease"], 3),
+                fmt(row["restart_improve"], 3),
+                fmt(row["total_sec"], 3),
+                fmt(row["first_stage_sec"], 3),
+                fmt(row["riesz_sec"], 3),
+            ]) + r" \\"
+        )
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}%",
+        r"}",
+        r"\par\smallskip",
+        r"{\footnotesize\begin{minipage}{0.92\textwidth}\textit{Notes:} "
+        r"Optimization diagnostics are numerical implementation diagnostics for the "
+        r"nonconvex first-stage problem. A sweep-cap hit is treated as a resource-use "
+        r"diagnostic rather than an automatic estimator failure, especially when the "
+        r"final relative objective decrease is small."
+        r"\end{minipage}}",
+        r"\end{table}",
+    ]
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def _copy_text(src, dst):
+    with open(src) as fh:
+        text = fh.read()
+    with open(dst, "w") as fh:
+        fh.write(text)
+
+
+def _copy_text_replace(src, dst, replacements):
+    with open(src) as fh:
+        text = fh.read()
+    for old, new in replacements:
+        text = text.replace(old, new)
+    with open(dst, "w") as fh:
+        fh.write(text)
+
+
+def _write_manuscript_tables(items, perf):
+    os.makedirs(PAPER_TABLES, exist_ok=True)
+    for dgp in ("DGP 1", "DGP 2", "DGP 3"):
+        name = f"tab_mc_perf_dgp{dgp[-1]}.tex"
+        _write_dgp_performance_tex(os.path.join(OUT, name), dgp, perf)
+        _write_dgp_performance_tex(os.path.join(PAPER_TABLES, name), dgp, perf)
+    _write_main_summary_tex(os.path.join(OUT, "tab_mc_main_summary.tex"), prefix="outputs/sim/tables")
+    _write_main_summary_tex(os.path.join(PAPER_TABLES, "tab_mc_main_summary.tex"), prefix="tables")
+    # These are written by write_journal_tables into OUT first, then mirrored below.
+    for name in ("tab_mc_rank.tex", "tab_mc_coeff_summary.tex", "tab_mc_folds.tex", "tab_mc_opt.tex"):
+        _copy_text(os.path.join(OUT, name), os.path.join(PAPER_TABLES, name))
 
 
 def _render_performance_rows(rows, *, include_size: bool):
@@ -562,6 +1043,7 @@ def write_journal_tables(items):
     rank = rank_frequency_rows(items)
     folds = fold_retention_rows(items)
     coeff = coeff_summary_rows(items)
+    source_audit = table_source_audit_rows(items)
 
     perf_fields = [
         "DGP", "target", "T", "N", "true_value", "mean_estimate", "bias", "rmse",
@@ -582,47 +1064,27 @@ def write_journal_tables(items):
         "max |a_it|", "mean(beta_it)", "sd(beta_it)", "min(beta_it)",
         "max(beta_it)", "mean PR2", "sd PR2", "c_xi", "R",
     ]
+    audit_fields = [
+        "table_source_file", "dgp_type", "N", "T", "R_total", "completed_R",
+        "select", "fixed_ranks", "mc_schema_version",
+        "coefficient_summaries_available", "PR2_realized_available",
+        "profile_timing_available", "source_schema",
+    ]
 
     _write_csv(os.path.join(OUT, "tab_mc_performance.csv"), perf, perf_fields)
     _write_csv(os.path.join(OUT, "tab_rank_frequency.csv"), rank, rank_fields)
     _write_csv(os.path.join(OUT, "tab_fold_retention.csv"), folds, fold_fields)
     _write_csv(os.path.join(OUT, "tab_mc_coeff_summary.csv"), coeff, coeff_fields)
+    _write_csv(os.path.join(OUT, "table_source_audit.csv"), source_audit, audit_fields)
 
-    perf_main = _render_performance_rows(perf, include_size=False)
-    perf_main_fields = [
-        "DGP", "target", "N", "T", "true", "mean estimate", "bias",
-        "RMSE", "mean s.e.", "coverage", "R",
-    ]
-    perf_full = _render_performance_rows(perf, include_size=True)
-    perf_full_fields = [
-        "DGP", "target", "N", "T", "true", "mean estimate", "bias",
-        "RMSE", "mean s.e.", "size", "coverage", "R",
-    ]
-
-    _write_tex(
-        os.path.join(OUT, "tab_mc_performance_current.tex"),
-        perf_main,
-        perf_main_fields,
-        "llrrrrrrrrr",
-        MAIN_PERFORMANCE_TABLE_NOTE,
-    )
-    _write_tex(
-        os.path.join(OUT, "tab_mc_performance_full.tex"),
-        perf_full,
-        perf_full_fields,
-        "llrrrrrrrrrr",
-        FULL_PERFORMANCE_TABLE_NOTE,
-    )
-    _write_tex(os.path.join(OUT, "tab_rank_frequency.tex"), rank, rank_fields, "lrrrrrrrrlr")
-    _write_tex(
-        os.path.join(OUT, "tab_mc_coeff_summary.tex"),
-        coeff,
-        coeff_fields,
-        "lrrrrrrrrrrrrrrr",
-        "Coefficient and signal summaries are computed over Monte Carlo replications when the JSONL records contain DGP diagnostics. Older completed runs that predate these per-replication diagnostics leave the corresponding entries blank.",
-    )
-    _write_fold_retention_tex(os.path.join(OUT, "tab_fold_retention.tex"), folds)
-    return {"performance": perf, "rank": rank, "folds": folds, "coeff": coeff, "missing": missing}
+    _write_rank_table(os.path.join(OUT, "tab_mc_rank.tex"), rank)
+    _write_coeff_summary_tex(os.path.join(OUT, "tab_mc_coeff_summary.tex"), coeff)
+    _write_fold_retention_tex(os.path.join(OUT, "tab_mc_folds.tex"), folds)
+    _write_opt_table(os.path.join(OUT, "tab_mc_opt.tex"), items)
+    _write_manuscript_tables(items, perf)
+    removed = _remove_obsolete_tex()
+    return {"performance": perf, "rank": rank, "folds": folds, "coeff": coeff,
+            "source_audit": source_audit, "missing": missing, "removed_obsolete_tex": removed}
 
 
 def main():
@@ -633,18 +1095,67 @@ def main():
     result = write_journal_tables(items)
     for name in (
         "tab_mc_performance.csv",
-        "tab_mc_performance_current.tex",
-        "tab_mc_performance_full.tex",
+        "tab_mc_main_summary.tex",
+        "tab_mc_perf_dgp1.tex",
+        "tab_mc_perf_dgp2.tex",
+        "tab_mc_perf_dgp3.tex",
         "tab_rank_frequency.csv",
-        "tab_rank_frequency.tex",
         "tab_mc_coeff_summary.csv",
+        "table_source_audit.csv",
         "tab_mc_coeff_summary.tex",
         "tab_fold_retention.csv",
-        "tab_fold_retention.tex",
+        "tab_mc_folds.tex",
+        "tab_mc_rank.tex",
+        "tab_mc_opt.tex",
     ):
         print(f"wrote {os.path.join(OUT, name)}")
+    if result["removed_obsolete_tex"]:
+        print(f"removed {len(result['removed_obsolete_tex'])} obsolete table tex file(s):")
+        for path in result["removed_obsolete_tex"]:
+            print("  " + os.path.relpath(path, ROOT))
     if load_missing:
         print(f"skipped {len(load_missing)} unreadable grid file(s)")
+    if _LAST_EXCLUDED_INCOMPLETE_JSONL:
+        print(f"excluded {len(_LAST_EXCLUDED_INCOMPLETE_JSONL)} incomplete production file(s):")
+        for item in _LAST_EXCLUDED_INCOMPLETE_JSONL:
+            print(
+                "  "
+                + os.path.basename(item["path"])
+                + f" completed_R={item['completed_R']} R_total={item['R_total']}"
+            )
+    if _LAST_DROPPED_DUPLICATE_JSONL:
+        print(f"dropped {len(_LAST_DROPPED_DUPLICATE_JSONL)} older duplicate file(s):")
+        for path in _LAST_DROPPED_DUPLICATE_JSONL:
+            print("  " + os.path.basename(path))
+    print("included production files:")
+    for item in items:
+        meta = item["meta"]
+        print(
+            "  "
+            + os.path.basename(item["path"])
+            + f" [{_schema_source(item)}]"
+            + f" dgp_type={meta.get('dgp_type', '')}"
+            + f" N={meta.get('N', '')}"
+            + f" T={meta.get('Tp', meta.get('T', ''))}"
+            + f" completed_R={meta.get('completed_R', '')}"
+            + f" R_total={meta.get('R_total', '')}"
+        )
+    old_schema = [row for row in result["source_audit"] if row["source_schema"] == "old grid"]
+    v2_schema = [row for row in result["source_audit"] if row["source_schema"] == "grid_v2"]
+    print("old-schema rows still used:")
+    for row in old_schema:
+        print(
+            "  "
+            + row["table_source_file"]
+            + f" dgp_type={row['dgp_type']} N={row['N']} T={row['T']}"
+        )
+    print("grid_v2 rows used:")
+    for row in v2_schema:
+        print(
+            "  "
+            + row["table_source_file"]
+            + f" dgp_type={row['dgp_type']} N={row['N']} T={row['T']}"
+        )
     if result["missing"]:
         print(f"missing numeric fields in {len(result['missing'])} table cell(s); see old-schema inputs")
     print(f"grid aggregates reported: {len(items)}")
