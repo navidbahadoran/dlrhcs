@@ -65,6 +65,15 @@ def _parse_ranks(value: Optional[str]) -> Optional[Tuple[int, ...]]:
     return ranks
 
 
+def _parse_targets(value: Optional[str]) -> Optional[list[str]]:
+    if value is None or str(value).strip() == "":
+        return None
+    names = [x.strip() for x in str(value).split(",") if x.strip()]
+    if not names:
+        raise argparse.ArgumentTypeError("targets must be a comma-separated list of target names")
+    return names
+
+
 def _load_config(path: str) -> Dict:
     with open(path) as fh:
         return json.load(fh)
@@ -197,6 +206,170 @@ def _count_duplicate_reps(path: Path) -> int:
     return int(sum(v - 1 for v in counts.values() if v > 1))
 
 
+def _first_record(path: Path) -> Optional[Dict]:
+    if not path.exists():
+        return None
+    with path.open() as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            try:
+                return json.loads(line)
+            except Exception:
+                continue
+    return None
+
+
+def _norm_for_signature(value):
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, tuple):
+        return [_norm_for_signature(v) for v in value]
+    if isinstance(value, list):
+        return [_norm_for_signature(v) for v in value]
+    if isinstance(value, dict):
+        return {
+            str(k): _norm_for_signature(v)
+            for k, v in sorted(value.items())
+            if k not in {"c_xi_info"}
+        }
+    if isinstance(value, float):
+        if math.isnan(value):
+            return None
+        return round(value, 12)
+    return value
+
+
+def _spatial_bandwidth_for_signature(dgp_type: str, N: int):
+    if str(dgp_type).lower() == "dgp1":
+        return None
+    return int(math.floor(int(N) ** (1.0 / 3.0)))
+
+
+def _requested_signature(args, tuning: Tuning, dgp_kwargs: Dict, master: int) -> Dict:
+    cxi_info = dgp_kwargs.get("c_xi_info") or {}
+    dgp_params = {
+        key: value for key, value in dgp_kwargs.items()
+        if key not in {"c_xi_info"}
+    }
+    if cxi_info:
+        dgp_params["c_xi"] = cxi_info.get("c_xi")
+        dgp_params["PR2_target"] = cxi_info.get("PR2_target")
+    return _norm_for_signature({
+        "mc_schema_version": MC_SCHEMA_VERSION,
+        "dgp_type": args.dgp_type,
+        "T": int(args.T),
+        "N": int(args.N),
+        "master_seed": int(master),
+        "oracle": bool(args.oracle),
+        "target_filter": list(args.targets) if args.targets is not None else None,
+        "select": bool(args.select),
+        "fixed_ranks": list(args.fixed_ranks) if args.fixed_ranks is not None else None,
+        "rank_caps": list(args.rank_caps) if args.rank_caps is not None else None,
+        "q_T": int(tuning.q) if tuning.q is not None else None,
+        "r_N": int(tuning.buffer_r),
+        "J_min": int(tuning.J_min),
+        "c_J": float(tuning.c_J),
+        "kappa_c": float(tuning.kappa_c),
+        "c_xi_calibration_draws": int(args.c_xi_calibration_draws),
+        "dgp_parameters": dgp_params,
+        "se_type": "diagonal" if str(args.dgp_type).lower() == "dgp1" else "spatial-kernel",
+        "kernel": None if str(args.dgp_type).lower() == "dgp1" else "Bartlett",
+        "distance_metric": None if str(args.dgp_type).lower() == "dgp1" else "lattice |i-j|",
+        "h_N_formula": None if str(args.dgp_type).lower() == "dgp1" else "floor(N^(1/3))",
+        "h_N_realized": _spatial_bandwidth_for_signature(args.dgp_type, args.N),
+    })
+
+
+def _existing_signature(path: Path, sidecar: Path) -> Optional[Dict]:
+    meta = {}
+    if sidecar.exists():
+        try:
+            meta = json.loads(sidecar.read_text())
+        except Exception:
+            meta = {}
+    rec = _first_record(path) or {}
+    if not meta and not rec:
+        return None
+
+    def get_meta_record(meta_key, rec_key=None, default=None):
+        if meta_key in meta:
+            return meta.get(meta_key)
+        if rec_key is not None and rec_key in rec:
+            return rec.get(rec_key)
+        return default
+
+    dgp_params = get_meta_record("resolved_dgp_kwargs", default=None)
+    if isinstance(dgp_params, dict):
+        dgp_params = dict(dgp_params)
+        cxi_info = dgp_params.pop("c_xi_info", None)
+        if isinstance(cxi_info, dict):
+            dgp_params["c_xi"] = cxi_info.get("c_xi")
+            dgp_params["PR2_target"] = cxi_info.get("PR2_target")
+    if dgp_params is None:
+        dgp_params = {
+            "dgp_type": get_meta_record("dgp_type", "_dgp_type"),
+            "c_xi_calibration_draws": get_meta_record("c_xi_calibration_draws", "_c_xi_calibration_draws"),
+            "rho_g": get_meta_record("rho_g", "_rho_g"),
+            "rho_x": get_meta_record("rho_x", "_rho_x"),
+            "rho_fx": get_meta_record("rho_fx", "_rho_fx"),
+            "rho_s": get_meta_record("rho_s", "_rho_s"),
+            "delta_x": get_meta_record("delta_x", "_delta_x"),
+            "eta_x": get_meta_record("eta_x", "_eta_x"),
+            "pi_h": get_meta_record("pi_h", "_pi_h"),
+            "c_xi": get_meta_record("c_xi", "_c_xi"),
+            "PR2_target": get_meta_record("PR2_target", "_PR2_target"),
+        }
+
+    master_seed = get_meta_record("master_seed", "_master_seed")
+    if master_seed is None and isinstance(meta.get("config_snapshot"), dict):
+        master_seed = meta["config_snapshot"].get("master_seed")
+
+    return _norm_for_signature({
+        "mc_schema_version": get_meta_record("mc_schema_version", "_mc_schema_version"),
+        "dgp_type": get_meta_record("dgp_type", "_dgp_type"),
+        "T": get_meta_record("T", "_Tp"),
+        "N": get_meta_record("N", "_N"),
+        "master_seed": master_seed,
+        "oracle": get_meta_record("oracle", "_oracle", False),
+        "target_filter": get_meta_record("target_filter", "_target_filter"),
+        "select": get_meta_record("select", "_rank_selection_enabled"),
+        "fixed_ranks": get_meta_record("fixed_ranks", "_tuning_fixed_ranks"),
+        "rank_caps": get_meta_record("rank_caps", "_rank_candidate_caps"),
+        "q_T": get_meta_record("q_T", "_q"),
+        "r_N": get_meta_record("r_N", "_r"),
+        "J_min": get_meta_record("J_min", "_J_min"),
+        "c_J": get_meta_record("c_J", "_c_J"),
+        "kappa_c": get_meta_record("kappa_c", "_kappa_c"),
+        "c_xi_calibration_draws": get_meta_record("c_xi_calibration_draws", "_c_xi_calibration_draws"),
+        "dgp_parameters": dgp_params,
+        "se_type": get_meta_record("se_type"),
+        "kernel": get_meta_record("kernel"),
+        "distance_metric": get_meta_record("distance_metric"),
+        "h_N_formula": get_meta_record("h_N_formula"),
+        "h_N_realized": get_meta_record("h_N_realized", "_h_N"),
+    })
+
+
+def _assert_resume_compatible(path: Path, sidecar: Path, requested: Dict) -> None:
+    existing = _existing_signature(path, sidecar)
+    if existing is None:
+        return
+    mismatches = []
+    for key, requested_value in requested.items():
+        existing_value = existing.get(key)
+        if existing_value != requested_value:
+            mismatches.append((key, existing_value, requested_value))
+    if mismatches:
+        lines = [
+            f"Refusing to append to {path}: existing output has a different substantive run signature.",
+            "Allowed resume changes are operational only: R_total, batch_size, n_jobs, progress_every, and verbosity.",
+        ]
+        for key, old, new in mismatches:
+            lines.append(f"  {key}: existing={old!r} requested={new!r}")
+        raise SystemExit("\n".join(lines))
+
+
 def _chunks(items: Sequence[int], batch_size: int) -> Iterable[Sequence[int]]:
     for start in range(0, len(items), batch_size):
         yield items[start:start + batch_size]
@@ -204,9 +377,12 @@ def _chunks(items: Sequence[int], batch_size: int) -> Iterable[Sequence[int]]:
 
 def _run_one_replication(T: int, N: int, rep: int, tuning: Tuning,
                          dgp_kwargs: Dict, master: int,
-                         profile_timing: bool = False) -> Dict:
+                         profile_timing: bool = False,
+                         oracle: bool = False,
+                         target_names: Optional[Sequence[str]] = None) -> Dict:
     return run_replication(T, N, rep, tuning, dgp_kwargs=dgp_kwargs,
-                           master=master, profile_timing=profile_timing)
+                           master=master, profile_timing=profile_timing,
+                           oracle=oracle, target_names=target_names)
 
 
 def _format_eta(seconds: float) -> str:
@@ -228,7 +404,8 @@ def _emit(message: str, *, quiet: bool = False) -> None:
 
 
 def _mode_label(args) -> str:
-    return "rank-selection" if args.select else "fixed-rank"
+    base = "rank-selection" if args.select else "fixed-rank"
+    return f"oracle {base}" if getattr(args, "oracle", False) else base
 
 
 def _progress_message(args, *, completed_total: int, current_rep,
@@ -496,6 +673,7 @@ def _write_sidecar(path: Path, *, args, tuning: Tuning, completed: int,
         "dgp_type": args.dgp_type,
         "T": int(args.T),
         "N": int(args.N),
+        "master_seed": int(getattr(args, "master_seed", 2024)),
         "R_total": int(args.R_total),
         "completed_R": int(completed),
         "J_min": int(tuning.J_min),
@@ -521,6 +699,8 @@ def _write_sidecar(path: Path, *, args, tuning: Tuning, completed: int,
         "progress_every": int(args.progress_every),
         "quiet": bool(args.quiet),
         "profile_timing": bool(args.profile_timing),
+        "oracle": bool(args.oracle),
+        "target_filter": list(args.targets) if args.targets is not None else None,
         "start_rep": int(args.start_rep),
         "select": bool(args.select),
         "fixed_ranks": list(args.fixed_ranks) if args.fixed_ranks is not None else None,
@@ -568,6 +748,10 @@ def main() -> None:
                     help="suppress progress output; JSONL and metadata are still written")
     ap.add_argument("--profile-timing", action="store_true",
                     help="record lightweight per-replication timing diagnostics")
+    ap.add_argument("--oracle", type=_parse_bool, default=False,
+                    help="use oracle true tangent spaces in the Riesz solve")
+    ap.add_argument("--targets", type=_parse_targets, default=None,
+                    help="comma-separated subset of standard targets to compute, e.g. lag_fmean")
     args = ap.parse_args()
     args.command_line_args = list(sys.argv)
     args.command_line = " ".join(sys.argv)
@@ -617,6 +801,7 @@ def main() -> None:
     args.out_path.parent.mkdir(parents=True, exist_ok=True)
     sidecar = _sidecar_path(args.out_path)
     master = int(cfg.get("master_seed", 2024))
+    args.master_seed = int(master)
     desired = list(range(int(args.start_rep), int(args.R_total)))
     done = _done_reps(args.out_path)
     todo = [rep for rep in desired if rep not in done]
@@ -648,6 +833,13 @@ def main() -> None:
                   f"elapsed={_format_eta(args.c_xi_parent_precompute_sec)}",
                   quiet=args.quiet)
 
+    if todo:
+        _assert_resume_compatible(
+            args.out_path,
+            sidecar,
+            _requested_signature(args, tuning, dgp_kwargs, master),
+        )
+
     completed_now = 0
     t0 = time.time()
     with args.out_path.open("a", buffering=1) as fh:
@@ -667,13 +859,17 @@ def main() -> None:
                           quiet=args.quiet)
                     recs.append(_run_one_replication(args.T, args.N, rep, tuning,
                                                      dgp_kwargs, master,
-                                                     args.profile_timing))
+                                                     args.profile_timing,
+                                                     args.oracle,
+                                                     args.targets))
             else:
                 from joblib import Parallel, delayed
                 recs = Parallel(n_jobs=int(args.n_jobs), backend="loky")(
                     delayed(_run_one_replication)(args.T, args.N, rep, tuning,
                                                   dgp_kwargs, master,
-                                                  args.profile_timing)
+                                                  args.profile_timing,
+                                                  args.oracle,
+                                                  args.targets)
                     for rep in batch
                 )
 

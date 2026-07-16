@@ -184,6 +184,22 @@ def standard_targets(blocks, Tp, N, t0=None, i0=None):
     return targets, ctx
 
 
+def _filter_targets(targets, target_names=None):
+    """Filter the standard target list without redefining any target."""
+    if target_names is None:
+        return targets
+    wanted = [str(name).strip() for name in target_names if str(name).strip()]
+    if not wanted:
+        raise ValueError("target filter was provided but no target names were requested")
+    by_name = {tg.name: tg for tg in targets}
+    missing = [name for name in wanted if name not in by_name]
+    if missing:
+        available = ", ".join(tg.name for tg in targets)
+        raise ValueError(f"unknown target(s) {missing}; available targets: {available}")
+    wanted_set = set(wanted)
+    return [tg for tg in targets if tg.name in wanted_set]
+
+
 def true_value(panel, tg, ctx):
     S = {0: panel.surfaces[0], 1: panel.surfaces[1]}[tg.block]
     name, t0 = tg.name, ctx["t0"]
@@ -225,7 +241,8 @@ def _surface_abs_summary(rec, prefix, surface):
 # --------------------------------------------------------------------------- #
 def run_replication(Tp, N, rep, tuning: Tuning, *, oracle=False,
                     dgp_kwargs=None, dgp_type=None, dgp_id=None,
-                    master=2024, profile_timing: bool = False) -> Dict:
+                    master=2024, profile_timing: bool = False,
+                    target_names=None) -> Dict:
     total_t0 = time.perf_counter() if profile_timing else None
     dgp_kwargs = _merge_dgp_selector(dgp_kwargs, dgp_type=dgp_type, dgp_id=dgp_id)
     dgp_kind = _normalize_record_dgp(dgp_kwargs)
@@ -242,6 +259,9 @@ def run_replication(Tp, N, rep, tuning: Tuning, *, oracle=False,
     blocks = build_blocks(panel.Z)
     true_ranks = _true_rank_vector(panel, dgp_kwargs, len(blocks))
     targets, ctx = standard_targets(blocks, Tp, N)
+    requested_target_names = ([str(name).strip() for name in target_names]
+                              if target_names is not None else None)
+    targets = _filter_targets(targets, requested_target_names)
     estimate_t0 = time.perf_counter() if profile_timing else None
     res = estimate(panel.Y, panel.Z, targets, tuning, rng=est_rng,
                    oracle=oracle,
@@ -250,6 +270,10 @@ def run_replication(Tp, N, rep, tuning: Tuning, *, oracle=False,
                    profile_timing=profile_timing)
     estimate_sec = float(time.perf_counter() - estimate_t0) if profile_timing else None
     rec = {"rep": int(rep), "_mc_schema_version": MC_SCHEMA_VERSION,
+           "_oracle": bool(oracle),
+           "_true_spaces_computed": bool(panel.meta.get("true_spaces_computed", False)),
+           "_target_filter": requested_target_names,
+           "_target_names": [tg.name for tg in targets],
            "_master_seed": int(master),
            "_sim_seed_sequence": [int(master), int(rep)],
            "_est_seed_sequence": [int(master + 1), int(rep)]}
@@ -410,7 +434,7 @@ def _done_reps(path):
 
 def run_grid(Tp, N, R, tuning: Tuning, out_path, *, oracle=False,
              dgp_kwargs=None, dgp_type=None, dgp_id=None,
-             master=2024, n_jobs=1, resume=True):
+             master=2024, n_jobs=1, resume=True, target_names=None):
     """Run R replications at (Tp,N), appending JSONL records to ``out_path``.
 
     Resume-safe: already-recorded reps are skipped.  ``n_jobs>1`` uses joblib's
@@ -427,7 +451,8 @@ def run_grid(Tp, N, R, tuning: Tuning, out_path, *, oracle=False,
 
     def work(rep):
         return run_replication(Tp, N, rep, tuning, oracle=oracle,
-                               dgp_kwargs=dgp_kwargs, master=master)
+                               dgp_kwargs=dgp_kwargs, master=master,
+                               target_names=target_names)
 
     if n_jobs and n_jobs != 1:
         from joblib import Parallel, delayed
