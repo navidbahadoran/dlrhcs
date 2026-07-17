@@ -74,6 +74,16 @@ def _parse_targets(value: Optional[str]) -> Optional[list[str]]:
     return names
 
 
+def _parse_nonnegative_int(value: str) -> int:
+    try:
+        out = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expected a nonnegative integer") from exc
+    if out < 0:
+        raise argparse.ArgumentTypeError("expected a nonnegative integer")
+    return out
+
+
 def _load_config(path: str) -> Dict:
     with open(path) as fh:
         return json.load(fh)
@@ -247,14 +257,10 @@ def _spatial_bandwidth_for_signature(dgp_type: str, N: int):
 
 
 def _requested_signature(args, tuning: Tuning, dgp_kwargs: Dict, master: int) -> Dict:
-    cxi_info = dgp_kwargs.get("c_xi_info") or {}
     dgp_params = {
         key: value for key, value in dgp_kwargs.items()
         if key not in {"c_xi_info"}
     }
-    if cxi_info:
-        dgp_params["c_xi"] = cxi_info.get("c_xi")
-        dgp_params["PR2_target"] = cxi_info.get("PR2_target")
     return _norm_for_signature({
         "mc_schema_version": MC_SCHEMA_VERSION,
         "dgp_type": args.dgp_type,
@@ -302,10 +308,7 @@ def _existing_signature(path: Path, sidecar: Path) -> Optional[Dict]:
     dgp_params = get_meta_record("resolved_dgp_kwargs", default=None)
     if isinstance(dgp_params, dict):
         dgp_params = dict(dgp_params)
-        cxi_info = dgp_params.pop("c_xi_info", None)
-        if isinstance(cxi_info, dict):
-            dgp_params["c_xi"] = cxi_info.get("c_xi")
-            dgp_params["PR2_target"] = cxi_info.get("PR2_target")
+        dgp_params.pop("c_xi_info", None)
     if dgp_params is None:
         dgp_params = {
             "dgp_type": get_meta_record("dgp_type", "_dgp_type"),
@@ -317,8 +320,6 @@ def _existing_signature(path: Path, sidecar: Path) -> Optional[Dict]:
             "delta_x": get_meta_record("delta_x", "_delta_x"),
             "eta_x": get_meta_record("eta_x", "_eta_x"),
             "pi_h": get_meta_record("pi_h", "_pi_h"),
-            "c_xi": get_meta_record("c_xi", "_c_xi"),
-            "PR2_target": get_meta_record("PR2_target", "_PR2_target"),
         }
 
     master_seed = get_meta_record("master_seed", "_master_seed")
@@ -678,6 +679,10 @@ def _write_sidecar(path: Path, *, args, tuning: Tuning, completed: int,
         "completed_R": int(completed),
         "J_min": int(tuning.J_min),
         "c_J": float(tuning.c_J),
+        "q_T": int(tuning.q) if tuning.q is not None else None,
+        "q": int(tuning.q) if tuning.q is not None else None,
+        "r_N": int(tuning.buffer_r),
+        "buffer_r": int(tuning.buffer_r),
         "kappa_c": float(tuning.kappa_c),
         "c_xi_calibration_draws": int(args.c_xi_calibration_draws),
         "c_xi_parent_precompute_sec": float(getattr(args, "c_xi_parent_precompute_sec", 0.0)),
@@ -752,6 +757,8 @@ def main() -> None:
                     help="use oracle true tangent spaces in the Riesz solve")
     ap.add_argument("--targets", type=_parse_targets, default=None,
                     help="comma-separated subset of standard targets to compute, e.g. lag_fmean")
+    ap.add_argument("--buffer-r", type=_parse_nonnegative_int, default=None,
+                    help="override spatial cross-fitting buffer radius; default uses config")
     args = ap.parse_args()
     args.command_line_args = list(sys.argv)
     args.command_line = " ".join(sys.argv)
@@ -778,6 +785,8 @@ def main() -> None:
                                      rank_caps=args.rank_caps)
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
+    if args.buffer_r is not None:
+        tuning = dataclasses.replace(tuning, buffer_r=int(args.buffer_r))
     dgp_kwargs = dict(cfg.get("dgp", {}))
     dgp_kwargs.update({
         "dgp_type": args.dgp_type,

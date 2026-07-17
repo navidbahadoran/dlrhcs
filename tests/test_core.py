@@ -4,6 +4,7 @@ Run with:  python -m pytest tests/ -q     (or)     python tests/test_core.py
 """
 import os
 import sys
+import dataclasses
 
 # make `import dlrhcs` work when run directly (python tests/test_core.py) from a
 # clean checkout, without requiring PYTHONPATH or an editable install.
@@ -15,6 +16,8 @@ from dlrhcs.design import (A, A_adjoint, build_blocks, theta_dot)
 from dlrhcs.dgp import simulate
 from dlrhcs.factorridge import fit_factor_ridge
 from dlrhcs.folds import make_folds
+from dlrhcs.mc import run_replication
+from dlrhcs.pipeline import Tuning
 from dlrhcs.targets import (entry_direction, project_block, project_tangent,
                             riesz_weights, Target)
 
@@ -49,6 +52,39 @@ def test_forward_exclusion():
     # t=0 (not val, no prior held-out): train. t=2 has held-out at t=1 -> purged.
     # t=4 has held-out at t=3 -> purged. So only t=0 trains for fold 1.
     assert list(train1) == [True, False, False, False, False, False]
+
+
+def test_spatial_buffer_no_wrap_and_seed_invariant_dgp_truth():
+    Tp, N, J, q = 3, 5, 2, 0
+    foldid = np.zeros((Tp, N), dtype=int)
+    foldid[0, 0] = 1
+    foldid[1, N - 1] = 1
+    foldid[2, 2] = 1
+    folds0 = make_folds(Tp, N, J, q, r=0, foldid=foldid)
+    folds1 = make_folds(Tp, N, J, q, r=1, foldid=foldid)
+    tr0 = folds0[1].train
+    tr1 = folds1[1].train
+    assert not np.array_equal(tr0, tr1)
+    # Unit 1 (0-based 0) with r=1 removes units 0 and 1, not unit N (0-based 4).
+    assert list(tr1[0]) == [False, False, True, True, True]
+    # Unit N (0-based 4) removes units N-1 and N, with no circular wrap to unit 1.
+    assert list(tr1[1]) == [True, True, True, False, False]
+    # An interior held-out unit removes its immediate neighbours.
+    assert list(tr1[2]) == [True, False, False, False, True]
+
+    base = Tuning(ranks=(1, 1, 1), q=1, J_min=2, n_sweeps=2, n_restarts=0,
+                  riesz_maxiter=25, riesz_tol=1e-6, buffer_r=0)
+    dgp = dict(dgp_type="dgp3", c_xi_calibration_draws=3)
+    r0 = run_replication(8, 6, 0, base, dgp_kwargs=dgp, master=777,
+                         target_names=["lag_fmean"])
+    r1 = run_replication(8, 6, 0, dataclasses.replace(base, buffer_r=1),
+                         dgp_kwargs=dgp, master=777, target_names=["lag_fmean"])
+    assert r0["_sim_seed_sequence"] == r1["_sim_seed_sequence"]
+    assert r0["_est_seed_sequence"] == r1["_est_seed_sequence"]
+    assert r0["lag_fmean"]["true_value"] == r1["lag_fmean"]["true_value"]
+    assert r0["_r"] == 0
+    assert r1["_r"] == 1
+    assert r0["_retained_nonvalidation"] != r1["_retained_nonvalidation"]
 
 
 # 3. ALS objective monotone non-increasing ----------------------------------- #
