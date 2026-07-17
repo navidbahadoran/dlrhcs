@@ -1,0 +1,27 @@
+\begingroup
+\small
+\setlength{\LTleft}{0pt plus 1fill}
+\setlength{\LTright}{0pt plus 1fill}
+\begin{longtable}{ccrrrrrr}
+\caption{Monte Carlo fixed-rank inference performance: DGP 2.}\label{tab:mc_perf_dgp2}\\
+\toprule
+$N$ & $T$ & true & bias & RMSE & mean s.e. & size & coverage \\
+\midrule
+\endfirsthead
+\toprule
+$N$ & $T$ & true & bias & RMSE & mean s.e. & size & coverage \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\multicolumn{8}{l}{\textit{Panel A. Autoregressive coefficient full mean}}\\
+100 & 100 & 0.448 & -0.001 & 0.116 & 0.108 & 0.065 & 0.935 \\
+200 & 200 & 0.429 & 0.001 & 0.072 & 0.069 & 0.068 & 0.932 \\
+\addlinespace
+\multicolumn{8}{l}{\textit{Panel B. Slope coefficient full mean}}\\
+100 & 100 & 0.598 & -0.011 & 0.158 & 0.163 & 0.051 & 0.949 \\
+200 & 200 & 0.602 & -0.004 & 0.095 & 0.097 & 0.043 & 0.957 \\
+\end{longtable}
+\par\smallskip
+{\footnotesize\begin{minipage}{0.92\textwidth}\textit{Notes:} Panel A reports the full mean of the autoregressive coefficient $a_{it}$, and Panel B reports the full mean of the slope coefficient $\beta_{it}$. The full mean target averages over all units at the midpoint time $t^\star=\lfloor T/2\rfloor+1$. Coefficient matrices and shocks are redrawn independently across replications. Bias and RMSE are computed from replication-level errors $\widehat\theta^{(r)}-\theta_0^{(r)}$. For DGPs 2--3, inference uses the Bartlett spatial-kernel standard error with lattice distance $d_N(i,j)=|i-j|$ and bandwidth $h_N=\lfloor N^{1/3}\rfloor$. Size is the empirical rejection probability of the nominal two-sided 5\% test. Coverage is empirical coverage of the nominal 95\% confidence interval. The number of replications is 1000.\end{minipage}}
+\endgroup
