@@ -1,0 +1,467 @@
+{
+  "B_NT_fold_rule": 15.0,
+  "B_TN_fold_rule": 15.0,
+  "J_min": 10,
+  "J_realized": 23,
+  "J_rule": 23,
+  "J_rule_term": 23,
+  "L_NT_J": 1.5271796258079011,
+  "L_TN_J": 1.5271796258079011,
+  "N": 200,
+  "PR2_realized_available": true,
+  "PR2_realized_mean": 0.4980698373668661,
+  "PR2_realized_sd": 0.03260251614601276,
+  "PR2_target": 0.5,
+  "R_total": 100,
+  "T": 200,
+  "a_it_max_max": 0.8500000000000001,
+  "a_it_mean_mean": 0.4267837036783571,
+  "a_it_min_min": 0.07743698657486352,
+  "a_it_sd_mean": 0.09541861289326597,
+  "batch_size": 4,
+  "beta_it_max_max": 3.3057472012824443,
+  "beta_it_mean_mean": 0.6027473385898279,
+  "beta_it_min_min": -0.7710722786461359,
+  "beta_it_sd_mean": 0.32198219128817335,
+  "buffer_r": 2,
+  "c_J": 1.0,
+  "c_h": 0.6546536707079773,
+  "c_xi": 1.6188396832708016,
+  "c_xi_calibration_draws": 100,
+  "c_xi_from_records": 1.6188396832708016,
+  "c_xi_parent_precompute_sec": 0.4598549000220373,
+  "c_xi_precomputed_in_parent": true,
+  "coefficient_summaries_available": true,
+  "command_line": "scripts/run_mc_batches.py --dgp-type dgp3 --T 200 --N 200 --R-total 100 --batch-size 4 --out-path outputs/pilot/buffer_pilot/dgp3_200_r2_lag_fmean.jsonl --config configs/full.json --select false --fixed-ranks 1,1,1 --buffer-r 2 --targets lag_fmean --n-jobs 4 --progress-every 1 --profile-timing",
+  "command_line_args": [
+    "scripts/run_mc_batches.py",
+    "--dgp-type",
+    "dgp3",
+    "--T",
+    "200",
+    "--N",
+    "200",
+    "--R-total",
+    "100",
+    "--batch-size",
+    "4",
+    "--out-path",
+    "outputs/pilot/buffer_pilot/dgp3_200_r2_lag_fmean.jsonl",
+    "--config",
+    "configs/full.json",
+    "--select",
+    "false",
+    "--fixed-ranks",
+    "1,1,1",
+    "--buffer-r",
+    "2",
+    "--targets",
+    "lag_fmean",
+    "--n-jobs",
+    "4",
+    "--progress-every",
+    "1",
+    "--profile-timing"
+  ],
+  "companion_radius_max_max": 0.8500000000000001,
+  "companion_radius_mean_mean": 0.4267837036783571,
+  "companion_radius_min_min": 0.07743698657486352,
+  "companion_radius_sd_mean": 0.09541861289326597,
+  "completed_R": 100,
+  "config": "configs/full.json",
+  "config_path": "configs/full.json",
+  "config_snapshot": {
+    "J_min_robustness": [
+      5,
+      6,
+      8,
+      10,
+      12
+    ],
+    "description": "Submission-scale run. Clean geometric grid T+=N in {50,100,200,400}; each step doubles the panel so the sqrt(T+N) SE contraction is read straight off tab:sim_precision. R=1000 at 50/100/200; R=500 at the expensive 400 cell (raise to 1000 if compute allows). Baseline fold/rank tuning is J_min=10 and kappa_c=0.015; kappa_c=0.03 is retained for robustness.",
+    "dgp": {
+      "a_rms": 0.55,
+      "bh_rms": 0.5,
+      "c_x": 0.3,
+      "noise": "iid",
+      "rho_y": 0.85,
+      "sigma_u": 0.3
+    },
+    "empirical": {
+      "J_min": 10,
+      "c_J": 1.0,
+      "kappa_c": 0.03,
+      "n_restarts": 3,
+      "n_sweeps": 60,
+      "q": 1,
+      "r_bar": [
+        2,
+        2,
+        4
+      ],
+      "ranks": [
+        1,
+        1,
+        2
+      ],
+      "ridge": 0.1,
+      "riesz_maxiter": 600,
+      "riesz_ridge": 1e-06,
+      "riesz_tol": 1e-05,
+      "select": true
+    },
+    "grid": [
+      [
+        50,
+        50,
+        1000
+      ],
+      [
+        100,
+        100,
+        1000
+      ],
+      [
+        200,
+        200,
+        1000
+      ],
+      [
+        400,
+        400,
+        500
+      ]
+    ],
+    "kappa_c_robustness": [
+      0.015,
+      0.03
+    ],
+    "master_seed": 2024,
+    "metro": {
+      "J_min": 10,
+      "c_J": 1.0,
+      "enabled": true,
+      "kappa_c": 0.03,
+      "n_restarts": 2,
+      "n_sweeps": 60,
+      "q": 1,
+      "r_bar": [
+        2,
+        2,
+        6
+      ],
+      "ridge": 0.5,
+      "riesz_maxiter": 600,
+      "riesz_ridge": 1e-06,
+      "riesz_tol": 1e-05,
+      "select": true
+    },
+    "n_jobs": -1,
+    "name": "full",
+    "oracle": {
+      "N": 100,
+      "R": 1000,
+      "Tp": 100
+    },
+    "purge": {
+      "J": 12,
+      "N": 100,
+      "R": 1000,
+      "Tp": 100,
+      "q_grid": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "riesz_ridge": 1e-05
+    },
+    "purge_dgp": {
+      "a_rms": 0.6,
+      "bh_rms": 0.5,
+      "c_x": 0.3,
+      "noise": "iid",
+      "rho_y": 0.9,
+      "sigma_u": 0.3
+    },
+    "theorems": {
+      "R": 300,
+      "R_rank": 100,
+      "debias_TpN": [
+        200,
+        200
+      ],
+      "irf_TpN": [
+        100,
+        100
+      ],
+      "rank_grid": [
+        [
+          50,
+          50
+        ],
+        [
+          100,
+          100
+        ],
+        [
+          200,
+          200
+        ]
+      ],
+      "xs_TpN": [
+        120,
+        120
+      ]
+    },
+    "tuning": {
+      "J_min": 10,
+      "c_J": 1.0,
+      "kappa_c": 0.015,
+      "n_restarts": 2,
+      "n_sweeps": 50,
+      "q": 2,
+      "ranks": [
+        1,
+        1,
+        1
+      ],
+      "ridge": 0.02,
+      "riesz_tol": 1e-07
+    }
+  },
+  "contrast_definition": "group_1 mean minus group_0 mean",
+  "delta_x": 0.5,
+  "dgp_type": "dgp3",
+  "distance_metric": "lattice |i-j|",
+  "duplicate_reps": 0,
+  "eta_x": 0.3,
+  "fixed_ranks": [
+    1,
+    1,
+    1
+  ],
+  "git_commit": "fff34c01479ca2597ebffc622da026154ab373de",
+  "git_dirty": false,
+  "git_error": null,
+  "git_status_available": true,
+  "group_0_definition": "second half of units: {floor(N/2)+1,...,N}",
+  "group_1_definition": "first half of units: {1,...,floor(N/2)}",
+  "h_N_formula": "floor(N^(1/3))",
+  "h_N_realized": 5,
+  "kappa_c": 0.015,
+  "kernel": "Bartlett",
+  "master_seed": 2024,
+  "max_abs_a_it_max": 0.8500000000000001,
+  "max_abs_a_it_mean": 0.8395757979066932,
+  "mc_schema_version": "coeff_signal_v1",
+  "mc_schema_version_from_records": "coeff_signal_v1",
+  "n_jobs": 4,
+  "oracle": false,
+  "out_path": "outputs\\pilot\\buffer_pilot\\dgp3_200_r2_lag_fmean.jsonl",
+  "parsed_args": {
+    "N": 200,
+    "R_total": 100,
+    "T": 200,
+    "batch_size": 4,
+    "buffer_r": 2,
+    "c_xi_calibration_draws": 100,
+    "command_line": "scripts/run_mc_batches.py --dgp-type dgp3 --T 200 --N 200 --R-total 100 --batch-size 4 --out-path outputs/pilot/buffer_pilot/dgp3_200_r2_lag_fmean.jsonl --config configs/full.json --select false --fixed-ranks 1,1,1 --buffer-r 2 --targets lag_fmean --n-jobs 4 --progress-every 1 --profile-timing",
+    "command_line_args": [
+      "scripts/run_mc_batches.py",
+      "--dgp-type",
+      "dgp3",
+      "--T",
+      "200",
+      "--N",
+      "200",
+      "--R-total",
+      "100",
+      "--batch-size",
+      "4",
+      "--out-path",
+      "outputs/pilot/buffer_pilot/dgp3_200_r2_lag_fmean.jsonl",
+      "--config",
+      "configs/full.json",
+      "--select",
+      "false",
+      "--fixed-ranks",
+      "1,1,1",
+      "--buffer-r",
+      "2",
+      "--targets",
+      "lag_fmean",
+      "--n-jobs",
+      "4",
+      "--progress-every",
+      "1",
+      "--profile-timing"
+    ],
+    "config": "configs/full.json",
+    "dgp_type": "dgp3",
+    "fixed_ranks": [
+      1,
+      1,
+      1
+    ],
+    "git_metadata": {
+      "git_commit": "fff34c01479ca2597ebffc622da026154ab373de",
+      "git_dirty": false,
+      "git_error": null,
+      "git_status_available": true
+    },
+    "n_jobs": 4,
+    "oracle": false,
+    "out_path": "outputs\\pilot\\buffer_pilot\\dgp3_200_r2_lag_fmean.jsonl",
+    "profile_timing": true,
+    "progress_every": 1,
+    "quiet": false,
+    "rank_caps": null,
+    "runtime_metadata": {
+      "platform": "Windows-11-10.0.26200-SP0",
+      "platform_machine": "AMD64",
+      "platform_release": "11",
+      "platform_system": "Windows",
+      "python_executable": "D:\\Programing\\myenv\\Scripts\\python.exe",
+      "python_version": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]"
+    },
+    "select": false,
+    "start_rep": 0,
+    "targets": [
+      "lag_fmean"
+    ],
+    "true_ranks": null
+  },
+  "pi_h": 0.3,
+  "platform": "Windows-11-10.0.26200-SP0",
+  "platform_machine": "AMD64",
+  "platform_release": "11",
+  "platform_system": "Windows",
+  "profile_timing": true,
+  "progress_every": 1,
+  "python_executable": "D:\\Programing\\myenv\\Scripts\\python.exe",
+  "python_version": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "q": 2,
+  "q_T": 2,
+  "quiet": false,
+  "r_N": 2,
+  "rank_caps": null,
+  "realized_J": 23,
+  "resolved_dgp_kwargs": {
+    "a_rms": 0.55,
+    "bh_rms": 0.5,
+    "c_x": 0.3,
+    "c_xi_calibration_draws": 100,
+    "c_xi_info": {
+      "N": 200,
+      "PR2_calibration_mean": 0.5,
+      "PR2_calibration_std": 0.030397065081757577,
+      "PR2_target": 0.5,
+      "T": 200,
+      "burn": 50,
+      "c_xi": 1.6188396832708016,
+      "c_xi_calibration_draws": 100,
+      "delta_x": 0.5,
+      "dgp_type": "dgp3",
+      "eta_x": 0.3,
+      "rho_fx": 0.5,
+      "rho_s": 0.5,
+      "rho_x": 0.5
+    },
+    "dgp_type": "dgp3",
+    "noise": "iid",
+    "rho_y": 0.85,
+    "sigma_u": 0.3
+  },
+  "resolved_tuning": {
+    "J": null,
+    "J_min": 10,
+    "J_override": null,
+    "alpha_level": 0.05,
+    "buffer_r": 2,
+    "c_J": 1.0,
+    "kappa_c": 0.015,
+    "n_jobs": 1,
+    "n_restarts": 2,
+    "n_sweeps": 50,
+    "q": 2,
+    "r_bar": null,
+    "ranks": [
+      1,
+      1,
+      1
+    ],
+    "ridge": 0.02,
+    "riesz_maxiter": 2000,
+    "riesz_ridge": 1e-08,
+    "riesz_tol": 1e-07,
+    "riesz_use_cached_scale": false,
+    "scheme": "scatter",
+    "select": false,
+    "tol": 1e-08,
+    "use_riesz_cache": true,
+    "use_roadmap": false,
+    "xs_bandwidth": null,
+    "xs_kernel": "bartlett"
+  },
+  "retained_nonvalidation": 0.5411842878042992,
+  "retained_nonvalidation_max": 0.5480600654325216,
+  "retained_nonvalidation_min": 0.5345883429168845,
+  "retained_total": 0.5176546195652174,
+  "rho_fx": 0.5,
+  "rho_g": 0.5,
+  "rho_s": 0.5,
+  "rho_x": 0.5,
+  "se_type": "spatial-kernel",
+  "se_xs_type": "spatial_kernel",
+  "select": false,
+  "selected_ranks_first_record": [
+    1,
+    1,
+    1
+  ],
+  "share_abs_a_ge_1_mean": 0.0,
+  "spatial_bandwidth": 5,
+  "start_rep": 0,
+  "started_at": "2026-07-17T17:08:10.739510+00:00",
+  "target_cell_i": 101,
+  "target_cell_t": 101,
+  "target_filter": [
+    "lag_fmean"
+  ],
+  "timestamp": "2026-07-17T23:02:46.490368+00:00",
+  "timing_completed_R": 100,
+  "timing_max_sec_per_rep": 17907.271928300004,
+  "timing_mean_by_stage": {
+    "_time_cxi_calibration_sec": 3.164002555422485e-06,
+    "_time_dgp_sec": 0.02373224099719664,
+    "_time_estimate_sec": 849.0836976020012,
+    "_time_first_stage_sec": 832.3696566700015,
+    "_time_json_write_sec": 0.00015539700048975647,
+    "_time_onestep_sec": 16.6871804159999,
+    "_time_rank_selection_sec": 0.0,
+    "_time_riesz_sec": 16.653434167998785,
+    "_time_se_sec": 0.0011556639967602678,
+    "_time_targets_sec": 9.391299856361002e-05,
+    "_time_total_sec": 849.1153401779992
+  },
+  "timing_mean_sec_per_rep": 849.1153401779992,
+  "timing_median_sec_per_rep": 88.15432629999123,
+  "timing_p90_sec_per_rep": 97.93242215999929,
+  "timing_slowest_rep_id": 93,
+  "true_ranks": [
+    1,
+    1,
+    1
+  ],
+  "true_ranks_from_records": [
+    1,
+    1,
+    1
+  ],
+  "tuning_kappa_c_from_records": 0.015,
+  "validation_fold_share_mean": 0.04347826086956521,
+  "validation_fold_size_mean": 1739.1304347826087
+}
