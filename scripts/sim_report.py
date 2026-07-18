@@ -130,10 +130,12 @@ def _paper_target_label(label):
 
 
 EXCLUDED_JSONL_PREFIXES = ("tmp_", "smoke_", "test_")
-REPORT_JSONL_PREFIXES = ("grid_", "grid_v2_", "rank_")
+REPORT_JSONL_PREFIXES = ("grid_v3_", "grid_v2_", "grid_", "rank_")
+PRODUCTION_VERSION_PRIORITY = {"grid": 1, "grid_v2": 2, "grid_v3": 3}
 ALLOW_PARTIAL_PRODUCTION = False
 _LAST_DROPPED_DUPLICATE_JSONL = []
 _LAST_EXCLUDED_INCOMPLETE_JSONL = []
+_LAST_EXCLUDED_TARGET_FILTERED_JSONL = []
 
 ACTIVE_MANUSCRIPT_TEX = {
     "tab_mc_main_summary.tex",
@@ -164,6 +166,8 @@ def _is_report_jsonl(path):
 
 def _report_file_kind(path):
     base = os.path.basename(path)
+    if base.startswith("grid_v3_"):
+        return "grid_v3"
     if base.startswith("grid_v2_"):
         return "grid_v2"
     if base.startswith("grid_"):
@@ -175,6 +179,8 @@ def _report_file_kind(path):
 
 def _schema_source(item):
     kind = _report_file_kind(item["path"])
+    if kind == "grid_v3":
+        return "grid_v3"
     if kind == "grid_v2":
         return "grid_v2"
     if kind == "grid":
@@ -268,14 +274,28 @@ def _duplicate_cell_key(item):
     )
 
 
+def _version_priority(item):
+    return PRODUCTION_VERSION_PRIORITY.get(_report_file_kind(item["path"]), 0)
+
+
 def _resolve_duplicate_cells(items):
-    """Prefer complete grid_v2 over grid for the same fixed-rank production cell."""
+    """Resolve fixed-rank duplicate production cells by version.
+
+    Production-version priority is documented and intentional:
+
+        grid_v3 > grid_v2 > grid
+
+    Only the highest completed version for a substantive fixed-rank cell is
+    retained.  Lower versions are reported as dropped.  Two files of the same
+    highest version are ambiguous and must be resolved by the researcher rather
+    than silently selected.
+    """
     grouped = {}
     passthrough = []
     for item in items:
         kind = _report_file_kind(item["path"])
         select = _as_bool(item["meta"].get("select"), default=(kind == "rank"))
-        if kind in {"grid", "grid_v2"} and not select:
+        if kind in PRODUCTION_VERSION_PRIORITY and not select:
             grouped.setdefault(_duplicate_cell_key(item), []).append(item)
         else:
             passthrough.append(item)
@@ -283,15 +303,16 @@ def _resolve_duplicate_cells(items):
     kept = list(passthrough)
     dropped = []
     for group in grouped.values():
-        has_v2 = any(_report_file_kind(item["path"]) == "grid_v2" for item in group)
-        if has_v2:
-            for item in group:
-                if _report_file_kind(item["path"]) == "grid":
-                    dropped.append(item["path"])
-                else:
-                    kept.append(item)
-        else:
-            kept.extend(group)
+        max_priority = max(_version_priority(item) for item in group)
+        highest = [item for item in group if _version_priority(item) == max_priority]
+        if len(highest) > 1:
+            files = ", ".join(os.path.basename(item["path"]) for item in highest)
+            raise ValueError(
+                "ambiguous duplicate production files for the same fixed-rank cell "
+                f"at version priority {max_priority}: {files}"
+            )
+        kept.append(highest[0])
+        dropped.extend(item["path"] for item in group if item is not highest[0])
     return kept, sorted(dropped)
 
 
@@ -327,6 +348,41 @@ def _filter_incomplete_production(items, *, allow_partial=ALLOW_PARTIAL_PRODUCTI
     return kept, excluded
 
 
+def _target_filter_value(meta):
+    value = meta.get("target_filter")
+    if value in (None, "", []):
+        value = meta.get("_target_filter")
+    if value in (None, "", []):
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        return [] if text in {"", "[]", "None", "null"} else [text]
+    try:
+        return [str(x) for x in value if str(x).strip()]
+    except TypeError:
+        return [str(value)]
+
+
+def _filter_target_filtered_production(items):
+    kept = []
+    excluded = []
+    for item in items:
+        kind = _report_file_kind(item["path"])
+        select = _as_bool(item["meta"].get("select"), default=(kind == "rank"))
+        target_filter = _target_filter_value(item["meta"])
+        if kind in PRODUCTION_VERSION_PRIORITY and not select and target_filter:
+            excluded.append({
+                "path": item["path"],
+                "target_filter": target_filter,
+                "dgp_type": item["meta"].get("dgp_type"),
+                "N": item["meta"].get("N"),
+                "T": item["meta"].get("Tp", item["meta"].get("T")),
+            })
+        else:
+            kept.append(item)
+    return kept, excluded
+
+
 def _grid_jsonl_paths():
     """Production simulation files only; excludes temp/smoke/check files."""
     paths = []
@@ -338,6 +394,7 @@ def _grid_jsonl_paths():
 
 def _load_grid_aggs(paths=None):
     global _LAST_DROPPED_DUPLICATE_JSONL, _LAST_EXCLUDED_INCOMPLETE_JSONL
+    global _LAST_EXCLUDED_TARGET_FILTERED_JSONL
     out = []
     missing = []
     for path in paths or _grid_jsonl_paths():
@@ -370,9 +427,11 @@ def _load_grid_aggs(paths=None):
                 pass
         out.append({"path": path, "agg": agg, "meta": meta})
     out, excluded = _filter_incomplete_production(out)
+    out, target_filtered = _filter_target_filtered_production(out)
     out, dropped = _resolve_duplicate_cells(out)
     _LAST_DROPPED_DUPLICATE_JSONL = dropped
     _LAST_EXCLUDED_INCOMPLETE_JSONL = excluded
+    _LAST_EXCLUDED_TARGET_FILTERED_JSONL = target_filtered
     out.sort(key=lambda x: (
         str(x["meta"].get("dgp_type", "")),
         int(x["meta"].get("Tp", 0)),
@@ -534,6 +593,15 @@ def table_source_audit_rows(items):
             "select": _as_bool(meta.get("select"), default=(_report_file_kind(item["path"]) == "rank")),
             "fixed_ranks": _rank_cell(meta.get("fixed_ranks", meta.get("selected_ranks_first_record"))),
             "mc_schema_version": meta.get("mc_schema_version", meta.get("_mc_schema_version", "")),
+            "q_T": meta.get("q_T", meta.get("q", "")),
+            "r_N": meta.get("r_N", meta.get("r", meta.get("buffer_r", ""))),
+            "h_N_realized": meta.get("h_N_realized", meta.get("spatial_bandwidth", "")),
+            "J_realized": meta.get("J_realized", meta.get("J", "")),
+            "retained_nonvalidation": meta.get("retained_nonvalidation", meta.get("retained", "")),
+            "retained_total": meta.get("retained_total", ""),
+            "target_filter": ",".join(_target_filter_value(meta)),
+            "git_commit": meta.get("git_commit", ""),
+            "git_dirty": meta.get("git_dirty", ""),
             "coefficient_summaries_available": _available(
                 meta,
                 "a_it_mean_mean",
@@ -709,6 +777,8 @@ def _dgp_note(dgp_label, displayed_rows):
         f"{inference} "
         "Size is the empirical rejection probability of the nominal two-sided 5\\% test. "
         "Coverage is empirical coverage of the nominal 95\\% confidence interval. "
+        "Cross-fitting choices $q_T$, $r_N$, realized $J$, and retained shares "
+        "are reported in \\Cref{tab:mc_folds}. "
         + _replication_note(displayed_rows)
     )
 
@@ -1067,6 +1137,9 @@ def write_journal_tables(items):
     audit_fields = [
         "table_source_file", "dgp_type", "N", "T", "R_total", "completed_R",
         "select", "fixed_ranks", "mc_schema_version",
+        "q_T", "r_N", "h_N_realized", "J_realized",
+        "retained_nonvalidation", "retained_total", "target_filter",
+        "git_commit", "git_dirty",
         "coefficient_summaries_available", "PR2_realized_available",
         "profile_timing_available", "source_schema",
     ]
@@ -1123,6 +1196,14 @@ def main():
                 + os.path.basename(item["path"])
                 + f" completed_R={item['completed_R']} R_total={item['R_total']}"
             )
+    if _LAST_EXCLUDED_TARGET_FILTERED_JSONL:
+        print(f"excluded {len(_LAST_EXCLUDED_TARGET_FILTERED_JSONL)} target-filtered fixed-rank file(s):")
+        for item in _LAST_EXCLUDED_TARGET_FILTERED_JSONL:
+            print(
+                "  "
+                + os.path.basename(item["path"])
+                + f" target_filter={item['target_filter']}"
+            )
     if _LAST_DROPPED_DUPLICATE_JSONL:
         print(f"dropped {len(_LAST_DROPPED_DUPLICATE_JSONL)} older duplicate file(s):")
         for path in _LAST_DROPPED_DUPLICATE_JSONL:
@@ -1142,6 +1223,7 @@ def main():
         )
     old_schema = [row for row in result["source_audit"] if row["source_schema"] == "old grid"]
     v2_schema = [row for row in result["source_audit"] if row["source_schema"] == "grid_v2"]
+    v3_schema = [row for row in result["source_audit"] if row["source_schema"] == "grid_v3"]
     print("old-schema rows still used:")
     for row in old_schema:
         print(
@@ -1151,6 +1233,13 @@ def main():
         )
     print("grid_v2 rows used:")
     for row in v2_schema:
+        print(
+            "  "
+            + row["table_source_file"]
+            + f" dgp_type={row['dgp_type']} N={row['N']} T={row['T']}"
+        )
+    print("grid_v3 rows used:")
+    for row in v3_schema:
         print(
             "  "
             + row["table_source_file"]

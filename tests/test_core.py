@@ -20,6 +20,7 @@ from dlrhcs.mc import run_replication
 from dlrhcs.pipeline import Tuning
 from dlrhcs.targets import (entry_direction, project_block, project_tangent,
                             riesz_weights, Target)
+from scripts import sim_report
 
 
 def _panel(Tp=24, N=20, seed=0, sigma_u=0.30):
@@ -85,6 +86,77 @@ def test_spatial_buffer_no_wrap_and_seed_invariant_dgp_truth():
     assert r0["_r"] == 0
     assert r1["_r"] == 1
     assert r0["_retained_nonvalidation"] != r1["_retained_nonvalidation"]
+
+
+def _sim_report_item(name, dgp="dgp3", N=100, T=100, *,
+                     kind_select=False, completed=1000, total=1000,
+                     target_filter=None, fixed_ranks=(1, 1, 1)):
+    meta = dict(
+        dgp_type=dgp,
+        N=N,
+        Tp=T,
+        T=T,
+        completed_R=completed,
+        R_total=total,
+        select=kind_select,
+        fixed_ranks=list(fixed_ranks) if fixed_ranks is not None else None,
+        target_filter=target_filter,
+        q_T=2,
+        r_N=0,
+        h_N_realized=int(np.floor(N ** (1.0 / 3.0))),
+        J_realized=10,
+        retained_nonvalidation=0.8,
+        retained_total=0.7,
+    )
+    return {"path": os.path.join("outputs", "sim", name), "meta": meta, "agg": {"_meta": meta}}
+
+
+def test_sim_report_grid_v3_filtering_and_duplicate_resolution():
+    assert sim_report._is_report_jsonl(os.path.join("outputs", "sim", "grid_v3_dgp3_100.jsonl"))
+    assert sim_report._report_file_kind("grid_v3_dgp3_100.jsonl") == "grid_v3"
+    assert sim_report._report_file_kind("grid_v2_dgp3_100.jsonl") == "grid_v2"
+    assert sim_report._report_file_kind("grid_dgp3_100.jsonl") == "grid"
+
+    v3 = _sim_report_item("grid_v3_dgp3_100.jsonl")
+    v2 = _sim_report_item("grid_v2_dgp3_100.jsonl")
+    old = _sim_report_item("grid_dgp3_100.jsonl")
+    kept, dropped = sim_report._resolve_duplicate_cells([old, v2, v3])
+    assert [os.path.basename(item["path"]) for item in kept] == ["grid_v3_dgp3_100.jsonl"]
+    assert sorted(os.path.basename(path) for path in dropped) == [
+        "grid_dgp3_100.jsonl",
+        "grid_v2_dgp3_100.jsonl",
+    ]
+
+    kept, dropped = sim_report._resolve_duplicate_cells([old, v2])
+    assert [os.path.basename(item["path"]) for item in kept] == ["grid_v2_dgp3_100.jsonl"]
+    assert [os.path.basename(path) for path in dropped] == ["grid_dgp3_100.jsonl"]
+
+    filtered = _sim_report_item("grid_v3_dgp3_100_lag_fmean.jsonl",
+                                target_filter=["lag_fmean"])
+    kept, excluded = sim_report._filter_target_filtered_production([v3, filtered])
+    assert kept == [v3]
+    assert excluded[0]["target_filter"] == ["lag_fmean"]
+
+    incomplete = _sim_report_item("grid_v3_dgp3_200.jsonl", N=200, T=200,
+                                  completed=900, total=1000)
+    kept, excluded = sim_report._filter_incomplete_production([v3, incomplete])
+    assert kept == [v3]
+    assert excluded[0]["completed_R"] == 900
+
+    dup_a = _sim_report_item("grid_v3_dgp3_100_a.jsonl")
+    dup_b = _sim_report_item("grid_v3_dgp3_100_b.jsonl")
+    try:
+        sim_report._resolve_duplicate_cells([dup_a, dup_b])
+    except ValueError as exc:
+        assert "ambiguous duplicate production files" in str(exc)
+    else:
+        raise AssertionError("same-version duplicate grid_v3 files should be ambiguous")
+
+    dgp1 = _sim_report_item("grid_dgp1_100.jsonl", dgp="dgp1")
+    dgp2 = _sim_report_item("grid_v2_dgp2_100.jsonl", dgp="dgp2")
+    kept, dropped = sim_report._resolve_duplicate_cells([dgp1, dgp2])
+    assert kept == [dgp1, dgp2]
+    assert dropped == []
 
 
 # 3. ALS objective monotone non-increasing ----------------------------------- #
