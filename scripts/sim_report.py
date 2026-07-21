@@ -4,7 +4,8 @@
 The revised MC schema stores truth, estimates, White/diagonal inference,
 spatial-kernel inference, rank-selection metadata, and fold-retention diagnostics.
 This script re-aggregates JSONL checkpoints with :func:`dlrhcs.mc.aggregate` and
-writes CSV plus LaTeX fragments to ``outputs/sim/tables/``.
+writes CSV/audit outputs to ``outputs/sim/tables/`` and manuscript LaTeX
+fragments to ``tables/``.
 """
 from __future__ import annotations
 
@@ -23,8 +24,8 @@ sys.path.insert(0, ROOT)
 from dlrhcs.mc import aggregate  # noqa: E402
 
 SIM = os.path.join(ROOT, "outputs", "sim")
-OUT = os.path.join(SIM, "tables")
-PAPER_TABLES = os.path.join(ROOT, "tables")
+REPORT_TABLE_DATA_DIR = os.path.join(ROOT, "outputs", "sim", "tables")
+MANUSCRIPT_TABLE_DIR = os.path.join(ROOT, "tables")
 
 TARGET_OBJECT = {"lag": "lag", "slope": "covariate"}
 TARGET_TYPE = {
@@ -641,20 +642,14 @@ def _write_csv(path, rows, fields):
 
 def _remove_obsolete_tex():
     removed = []
-    for folder in (OUT, PAPER_TABLES):
-        if not os.path.isdir(folder):
-            continue
-        for name in OBSOLETE_OUTPUT_TEX:
-            path = os.path.join(folder, name)
-            if os.path.exists(path):
-                os.remove(path)
-                removed.append(path)
-        if folder == PAPER_TABLES:
-            for path in glob(os.path.join(folder, "*.tex")):
-                name = os.path.basename(path)
-                if (name.startswith("tab_mc_") or name in OBSOLETE_OUTPUT_TEX) and name not in ACTIVE_MANUSCRIPT_TEX:
-                    os.remove(path)
-                    removed.append(path)
+    if not os.path.isdir(REPORT_TABLE_DATA_DIR):
+        return removed
+    generated_tex = ACTIVE_MANUSCRIPT_TEX | OBSOLETE_OUTPUT_TEX
+    for name in generated_tex:
+        path = os.path.join(REPORT_TABLE_DATA_DIR, name)
+        if os.path.exists(path):
+            os.remove(path)
+            removed.append(path)
     return removed
 
 
@@ -1043,33 +1038,15 @@ def _write_opt_table(path, items):
         fh.write("\n".join(lines) + "\n")
 
 
-def _copy_text(src, dst):
-    with open(src) as fh:
-        text = fh.read()
-    with open(dst, "w") as fh:
-        fh.write(text)
-
-
-def _copy_text_replace(src, dst, replacements):
-    with open(src) as fh:
-        text = fh.read()
-    for old, new in replacements:
-        text = text.replace(old, new)
-    with open(dst, "w") as fh:
-        fh.write(text)
-
-
 def _write_manuscript_tables(items, perf):
-    os.makedirs(PAPER_TABLES, exist_ok=True)
+    os.makedirs(MANUSCRIPT_TABLE_DIR, exist_ok=True)
     for dgp in ("DGP 1", "DGP 2", "DGP 3"):
         name = f"tab_mc_perf_dgp{dgp[-1]}.tex"
-        _write_dgp_performance_tex(os.path.join(OUT, name), dgp, perf)
-        _write_dgp_performance_tex(os.path.join(PAPER_TABLES, name), dgp, perf)
-    _write_main_summary_tex(os.path.join(OUT, "tab_mc_main_summary.tex"), prefix="outputs/sim/tables")
-    _write_main_summary_tex(os.path.join(PAPER_TABLES, "tab_mc_main_summary.tex"), prefix="tables")
-    # These are written by write_journal_tables into OUT first, then mirrored below.
-    for name in ("tab_mc_rank.tex", "tab_mc_coeff_summary.tex", "tab_mc_folds.tex", "tab_mc_opt.tex"):
-        _copy_text(os.path.join(OUT, name), os.path.join(PAPER_TABLES, name))
+        _write_dgp_performance_tex(os.path.join(MANUSCRIPT_TABLE_DIR, name), dgp, perf)
+    _write_main_summary_tex(
+        os.path.join(MANUSCRIPT_TABLE_DIR, "tab_mc_main_summary.tex"),
+        prefix="tables",
+    )
 
 
 def _render_performance_rows(rows, *, include_size: bool):
@@ -1108,7 +1085,8 @@ def _render_performance_rows(rows, *, include_size: bool):
 
 
 def write_journal_tables(items):
-    os.makedirs(OUT, exist_ok=True)
+    os.makedirs(REPORT_TABLE_DATA_DIR, exist_ok=True)
+    os.makedirs(MANUSCRIPT_TABLE_DIR, exist_ok=True)
     perf, missing = main_performance_rows(items)
     rank = rank_frequency_rows(items)
     folds = fold_retention_rows(items)
@@ -1144,16 +1122,16 @@ def write_journal_tables(items):
         "profile_timing_available", "source_schema",
     ]
 
-    _write_csv(os.path.join(OUT, "tab_mc_performance.csv"), perf, perf_fields)
-    _write_csv(os.path.join(OUT, "tab_rank_frequency.csv"), rank, rank_fields)
-    _write_csv(os.path.join(OUT, "tab_fold_retention.csv"), folds, fold_fields)
-    _write_csv(os.path.join(OUT, "tab_mc_coeff_summary.csv"), coeff, coeff_fields)
-    _write_csv(os.path.join(OUT, "table_source_audit.csv"), source_audit, audit_fields)
+    _write_csv(os.path.join(REPORT_TABLE_DATA_DIR, "tab_mc_performance.csv"), perf, perf_fields)
+    _write_csv(os.path.join(REPORT_TABLE_DATA_DIR, "tab_rank_frequency.csv"), rank, rank_fields)
+    _write_csv(os.path.join(REPORT_TABLE_DATA_DIR, "tab_fold_retention.csv"), folds, fold_fields)
+    _write_csv(os.path.join(REPORT_TABLE_DATA_DIR, "tab_mc_coeff_summary.csv"), coeff, coeff_fields)
+    _write_csv(os.path.join(REPORT_TABLE_DATA_DIR, "table_source_audit.csv"), source_audit, audit_fields)
 
-    _write_rank_table(os.path.join(OUT, "tab_mc_rank.tex"), rank)
-    _write_coeff_summary_tex(os.path.join(OUT, "tab_mc_coeff_summary.tex"), coeff)
-    _write_fold_retention_tex(os.path.join(OUT, "tab_mc_folds.tex"), folds)
-    _write_opt_table(os.path.join(OUT, "tab_mc_opt.tex"), items)
+    _write_rank_table(os.path.join(MANUSCRIPT_TABLE_DIR, "tab_mc_rank.tex"), rank)
+    _write_coeff_summary_tex(os.path.join(MANUSCRIPT_TABLE_DIR, "tab_mc_coeff_summary.tex"), coeff)
+    _write_fold_retention_tex(os.path.join(MANUSCRIPT_TABLE_DIR, "tab_mc_folds.tex"), folds)
+    _write_opt_table(os.path.join(MANUSCRIPT_TABLE_DIR, "tab_mc_opt.tex"), items)
     _write_manuscript_tables(items, perf)
     removed = _remove_obsolete_tex()
     return {"performance": perf, "rank": rank, "folds": folds, "coeff": coeff,
@@ -1166,24 +1144,34 @@ def main():
         print("no grid*.jsonl files found in outputs/sim/")
         return
     result = write_journal_tables(items)
-    for name in (
+    csv_outputs = (
         "tab_mc_performance.csv",
+        "tab_rank_frequency.csv",
+        "tab_mc_coeff_summary.csv",
+        "table_source_audit.csv",
+        "tab_fold_retention.csv",
+    )
+    manuscript_outputs = (
         "tab_mc_main_summary.tex",
         "tab_mc_perf_dgp1.tex",
         "tab_mc_perf_dgp2.tex",
         "tab_mc_perf_dgp3.tex",
-        "tab_rank_frequency.csv",
-        "tab_mc_coeff_summary.csv",
-        "table_source_audit.csv",
-        "tab_mc_coeff_summary.tex",
-        "tab_fold_retention.csv",
-        "tab_mc_folds.tex",
         "tab_mc_rank.tex",
+        "tab_mc_coeff_summary.tex",
+        "tab_mc_folds.tex",
         "tab_mc_opt.tex",
-    ):
-        print(f"wrote {os.path.join(OUT, name)}")
+    )
+    print(f"CSV and audit outputs written to: {os.path.relpath(REPORT_TABLE_DATA_DIR, ROOT)}")
+    for name in csv_outputs:
+        print(f"  {os.path.join(os.path.relpath(REPORT_TABLE_DATA_DIR, ROOT), name)}")
+    print(f"manuscript LaTeX tables written to: {os.path.relpath(MANUSCRIPT_TABLE_DIR, ROOT)}")
+    for name in manuscript_outputs:
+        print(f"  {os.path.join(os.path.relpath(MANUSCRIPT_TABLE_DIR, ROOT), name)}")
     if result["removed_obsolete_tex"]:
-        print(f"removed {len(result['removed_obsolete_tex'])} obsolete table tex file(s):")
+        print(
+            f"removed {len(result['removed_obsolete_tex'])} stale duplicate .tex file(s) "
+            f"from {os.path.relpath(REPORT_TABLE_DATA_DIR, ROOT)}:"
+        )
         for path in result["removed_obsolete_tex"]:
             print("  " + os.path.relpath(path, ROOT))
     if load_missing:

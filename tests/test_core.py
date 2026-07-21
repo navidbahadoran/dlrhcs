@@ -5,6 +5,7 @@ Run with:  python -m pytest tests/ -q     (or)     python tests/test_core.py
 import os
 import sys
 import dataclasses
+import tempfile
 
 # make `import dlrhcs` work when run directly (python tests/test_core.py) from a
 # clean checkout, without requiring PYTHONPATH or an editable install.
@@ -104,6 +105,7 @@ def _sim_report_item(name, dgp="dgp3", N=100, T=100, *,
         q_T=2,
         r_N=0,
         h_N_realized=int(np.floor(N ** (1.0 / 3.0))),
+        J_min=10,
         J_realized=10,
         retained_nonvalidation=0.8,
         retained_total=0.7,
@@ -157,6 +159,63 @@ def test_sim_report_grid_v3_filtering_and_duplicate_resolution():
     kept, dropped = sim_report._resolve_duplicate_cells([dgp1, dgp2])
     assert kept == [dgp1, dgp2]
     assert dropped == []
+
+
+def test_sim_report_writes_tex_only_to_manuscript_dir_and_csv_only_to_data_dir():
+    old_data_dir = sim_report.REPORT_TABLE_DATA_DIR
+    old_manuscript_dir = sim_report.MANUSCRIPT_TABLE_DIR
+    with tempfile.TemporaryDirectory() as tmp:
+        data_dir = os.path.join(tmp, "outputs", "sim", "tables")
+        manuscript_dir = os.path.join(tmp, "tables")
+        os.makedirs(data_dir)
+        os.makedirs(manuscript_dir)
+        data_unrelated = os.path.join(data_dir, "user_notes.tex")
+        manuscript_unrelated = os.path.join(manuscript_dir, "user_table.tex")
+        with open(data_unrelated, "w") as fh:
+            fh.write("keep me\n")
+        with open(manuscript_unrelated, "w") as fh:
+            fh.write("keep me\n")
+        for name in sim_report.ACTIVE_MANUSCRIPT_TEX:
+            with open(os.path.join(data_dir, name), "w") as fh:
+                fh.write("stale duplicate\n")
+        with open(os.path.join(data_dir, "tab_mc_performance_full.tex"), "w") as fh:
+            fh.write("obsolete duplicate\n")
+
+        sim_report.REPORT_TABLE_DATA_DIR = data_dir
+        sim_report.MANUSCRIPT_TABLE_DIR = manuscript_dir
+        try:
+            result = sim_report.write_journal_tables([
+                _sim_report_item("grid_v3_dgp1_100.jsonl", dgp="dgp1")
+            ])
+        finally:
+            sim_report.REPORT_TABLE_DATA_DIR = old_data_dir
+            sim_report.MANUSCRIPT_TABLE_DIR = old_manuscript_dir
+
+        expected_tex = sim_report.ACTIVE_MANUSCRIPT_TEX
+        expected_csv = {
+            "tab_mc_performance.csv",
+            "tab_rank_frequency.csv",
+            "tab_fold_retention.csv",
+            "tab_mc_coeff_summary.csv",
+            "table_source_audit.csv",
+        }
+        for name in expected_tex:
+            assert os.path.exists(os.path.join(manuscript_dir, name))
+            assert not os.path.exists(os.path.join(data_dir, name))
+        for name in expected_csv:
+            assert os.path.exists(os.path.join(data_dir, name))
+            assert not os.path.exists(os.path.join(manuscript_dir, name))
+        assert os.path.exists(os.path.join(manuscript_dir, "tab_mc_rank.tex"))
+        with open(os.path.join(manuscript_dir, "tab_mc_main_summary.tex")) as fh:
+            main_summary = fh.read()
+        assert r"\input{tables/tab_mc_perf_dgp1.tex}" in main_summary
+        assert r"\input{tables/tab_mc_perf_dgp2.tex}" in main_summary
+        assert r"\input{tables/tab_mc_perf_dgp3.tex}" in main_summary
+        assert os.path.exists(data_unrelated)
+        assert os.path.exists(manuscript_unrelated)
+        removed_names = {os.path.basename(path) for path in result["removed_obsolete_tex"]}
+        assert "tab_mc_main_summary.tex" in removed_names
+        assert "tab_mc_performance_full.tex" in removed_names
 
 
 # 3. ALS objective monotone non-increasing ----------------------------------- #
