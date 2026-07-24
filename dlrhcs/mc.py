@@ -333,6 +333,7 @@ def run_replication(Tp, N, rep, tuning: Tuning, *, oracle=False,
     rec["_tuning_fixed_ranks"] = ([int(x) for x in tuning.ranks]
                                   if tuning.ranks is not None else None)
     rec["_kappa_c"] = float(tuning.kappa_c)
+    rec["_riesz_ridge"] = float(tuning.riesz_ridge)
     rec["_J_realized"] = int(res.diagnostics.get("J_realized", res.J))
     rec["_J_min"] = int(res.diagnostics.get("J_min", 0))
     rec["_c_J"] = float(res.diagnostics.get("c_J", float("nan")))

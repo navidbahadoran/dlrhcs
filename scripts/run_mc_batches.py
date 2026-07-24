@@ -84,6 +84,16 @@ def _parse_nonnegative_int(value: str) -> int:
     return out
 
 
+def _parse_positive_float(value: str) -> float:
+    try:
+        out = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expected a finite strictly positive float") from exc
+    if not math.isfinite(out) or out <= 0.0:
+        raise argparse.ArgumentTypeError("expected a finite strictly positive float")
+    return out
+
+
 def _load_config(path: str) -> Dict:
     with open(path) as fh:
         return json.load(fh)
@@ -277,6 +287,7 @@ def _requested_signature(args, tuning: Tuning, dgp_kwargs: Dict, master: int) ->
         "J_min": int(tuning.J_min),
         "c_J": float(tuning.c_J),
         "kappa_c": float(tuning.kappa_c),
+        "riesz_ridge": float(tuning.riesz_ridge),
         "c_xi_calibration_draws": int(args.c_xi_calibration_draws),
         "dgp_parameters": dgp_params,
         "se_type": "diagonal" if str(args.dgp_type).lower() == "dgp1" else "spatial-kernel",
@@ -342,6 +353,7 @@ def _existing_signature(path: Path, sidecar: Path) -> Optional[Dict]:
         "J_min": get_meta_record("J_min", "_J_min"),
         "c_J": get_meta_record("c_J", "_c_J"),
         "kappa_c": get_meta_record("kappa_c", "_kappa_c"),
+        "riesz_ridge": get_meta_record("riesz_ridge", "_riesz_ridge"),
         "c_xi_calibration_draws": get_meta_record("c_xi_calibration_draws", "_c_xi_calibration_draws"),
         "dgp_parameters": dgp_params,
         "se_type": get_meta_record("se_type"),
@@ -684,6 +696,7 @@ def _write_sidecar(path: Path, *, args, tuning: Tuning, completed: int,
         "r_N": int(tuning.buffer_r),
         "buffer_r": int(tuning.buffer_r),
         "kappa_c": float(tuning.kappa_c),
+        "riesz_ridge": float(tuning.riesz_ridge),
         "c_xi_calibration_draws": int(args.c_xi_calibration_draws),
         "c_xi_parent_precompute_sec": float(getattr(args, "c_xi_parent_precompute_sec", 0.0)),
         "c_xi_precomputed_in_parent": bool(getattr(args, "c_xi_precomputed_in_parent", False)),
@@ -759,6 +772,8 @@ def main() -> None:
                     help="comma-separated subset of standard targets to compute, e.g. lag_fmean")
     ap.add_argument("--buffer-r", type=_parse_nonnegative_int, default=None,
                     help="override spatial cross-fitting buffer radius; default uses config")
+    ap.add_argument("--riesz-ridge", type=_parse_positive_float, default=None,
+                    help="override Riesz-solve ridge regularization; default uses config")
     args = ap.parse_args()
     args.command_line_args = list(sys.argv)
     args.command_line = " ".join(sys.argv)
@@ -787,6 +802,8 @@ def main() -> None:
         raise SystemExit(str(exc)) from exc
     if args.buffer_r is not None:
         tuning = dataclasses.replace(tuning, buffer_r=int(args.buffer_r))
+    if args.riesz_ridge is not None:
+        tuning = dataclasses.replace(tuning, riesz_ridge=float(args.riesz_ridge))
     dgp_kwargs = dict(cfg.get("dgp", {}))
     dgp_kwargs.update({
         "dgp_type": args.dgp_type,

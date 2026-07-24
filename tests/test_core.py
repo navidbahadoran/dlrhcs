@@ -5,6 +5,8 @@ Run with:  python -m pytest tests/ -q     (or)     python tests/test_core.py
 import os
 import sys
 import dataclasses
+import argparse
+import json
 import tempfile
 
 # make `import dlrhcs` work when run directly (python tests/test_core.py) from a
@@ -21,7 +23,7 @@ from dlrhcs.mc import run_replication
 from dlrhcs.pipeline import Tuning
 from dlrhcs.targets import (entry_direction, project_block, project_tangent,
                             riesz_weights, Target)
-from scripts import sim_report
+from scripts import sim_report, run_mc_batches
 
 
 def _panel(Tp=24, N=20, seed=0, sigma_u=0.30):
@@ -87,6 +89,58 @@ def test_spatial_buffer_no_wrap_and_seed_invariant_dgp_truth():
     assert r0["_r"] == 0
     assert r1["_r"] == 1
     assert r0["_retained_nonvalidation"] != r1["_retained_nonvalidation"]
+
+
+def test_run_mc_batches_riesz_ridge_override_and_resume_signature():
+    assert Tuning().riesz_ridge == 1e-8
+    assert run_mc_batches._parse_positive_float("1e-6") == 1e-6
+    for bad in ("0", "-1e-8", "nan", "inf", "-inf"):
+        try:
+            run_mc_batches._parse_positive_float(bad)
+        except argparse.ArgumentTypeError:
+            pass
+        else:
+            raise AssertionError(f"{bad!r} should be rejected as a Riesz ridge override")
+
+    base = Tuning(ranks=(1, 1, 1), q=1, J_min=2, n_sweeps=2, n_restarts=0,
+                  riesz_maxiter=30, riesz_tol=1e-6, buffer_r=0, riesz_ridge=1e-8)
+    dgp = dict(dgp_type="dgp1", c_xi_calibration_draws=3)
+    r_default = run_replication(8, 6, 0, base, dgp_kwargs=dgp, master=888,
+                                target_names=["lag_fmean"])
+    r_ridge = run_replication(8, 6, 0, dataclasses.replace(base, riesz_ridge=1e-2),
+                              dgp_kwargs=dgp, master=888, target_names=["lag_fmean"])
+    assert r_default["_riesz_ridge"] == 1e-8
+    assert r_ridge["_riesz_ridge"] == 1e-2
+    assert r_default["_sim_seed_sequence"] == r_ridge["_sim_seed_sequence"]
+    assert r_default["_est_seed_sequence"] == r_ridge["_est_seed_sequence"]
+    assert r_default["lag_fmean"]["true_value"] == r_ridge["lag_fmean"]["true_value"]
+    assert r_default["lag_fmean"]["plugin_err"] == r_ridge["lag_fmean"]["plugin_err"]
+    assert abs(r_default["lag_fmean"]["estimate"] - r_ridge["lag_fmean"]["estimate"]) > 1e-10
+
+    args = argparse.Namespace(
+        dgp_type="dgp1", T=8, N=6, oracle=False, targets=None,
+        select=False, fixed_ranks=(1, 1, 1), rank_caps=None,
+        c_xi_calibration_draws=3,
+    )
+    old_sig = run_mc_batches._requested_signature(args, base, dgp, 888)
+    meta = dict(old_sig)
+    meta["resolved_dgp_kwargs"] = dgp
+    with tempfile.TemporaryDirectory() as tmp:
+        out_path = os.path.join(tmp, "ridge_resume.jsonl")
+        sidecar = os.path.join(tmp, "ridge_resume.meta.json")
+        with open(sidecar, "w") as fh:
+            json.dump(meta, fh)
+        requested = run_mc_batches._requested_signature(
+            args, dataclasses.replace(base, riesz_ridge=1e-6), dgp, 888
+        )
+        try:
+            run_mc_batches._assert_resume_compatible(
+                run_mc_batches.Path(out_path), run_mc_batches.Path(sidecar), requested
+            )
+        except SystemExit as exc:
+            assert "riesz_ridge" in str(exc)
+        else:
+            raise AssertionError("resuming a 1e-8 output with 1e-6 Riesz ridge should fail")
 
 
 def _sim_report_item(name, dgp="dgp3", N=100, T=100, *,
