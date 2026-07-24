@@ -15,10 +15,16 @@ $N$ & $T$ & true & bias & RMSE & mean s.e. & size & coverage \\
 \bottomrule
 \endfoot
 \multicolumn{8}{l}{\textit{Panel A. Autoregressive coefficient full mean}}\\
+50 & 50 & 0.466 & -0.166 & 4.725 & 0.370 & 0.058 & 0.942 \\
 100 & 100 & 0.448 & 0.002 & 0.098 & 0.102 & 0.049 & 0.951 \\
+200 & 200 & 0.429 & 0.003 & 0.058 & 0.062 & 0.042 & 0.958 \\
+400 & 400 & 0.411 & 0.001 & 0.042 & 0.041 & 0.052 & 0.948 \\
 \addlinespace
 \multicolumn{8}{l}{\textit{Panel B. Slope coefficient full mean}}\\
+50 & 50 & 0.592 & -0.142 & 1.010 & 0.449 & 0.051 & 0.949 \\
 100 & 100 & 0.598 & -0.011 & 0.160 & 0.165 & 0.041 & 0.959 \\
+200 & 200 & 0.602 & -0.003 & 0.089 & 0.094 & 0.044 & 0.956 \\
+400 & 400 & 0.594 & 0.003 & 0.058 & 0.059 & 0.053 & 0.947 \\
 \end{longtable}
 \par\smallskip
 {\footnotesize\begin{minipage}{0.92\textwidth}\textit{Notes:} Panel A reports the full mean of the autoregressive coefficient $a_{it}$, and Panel B reports the full mean of the slope coefficient $\beta_{it}$. The full mean target averages over all units at the midpoint time $t^\star=\lfloor T/2\rfloor+1$. Coefficient matrices and shocks are redrawn independently across replications. Bias and RMSE are computed from replication-level errors $\widehat\theta^{(r)}-\theta_0^{(r)}$. For DGP 1, inference uses the diagonal heteroskedasticity-robust standard error. Size is the empirical rejection probability of the nominal two-sided 5\% test. Coverage is empirical coverage of the nominal 95\% confidence interval. Cross-fitting choices $q_T$, $r_N$, realized $J$, and retained shares are reported in \Cref{tab:mc_folds}. The number of replications is 1000.\end{minipage}}
