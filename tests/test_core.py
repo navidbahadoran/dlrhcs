@@ -6,6 +6,7 @@ import os
 import sys
 import dataclasses
 import argparse
+import csv
 import json
 import tempfile
 
@@ -23,6 +24,7 @@ from dlrhcs.mc import run_replication
 from dlrhcs.pipeline import Tuning
 from dlrhcs.targets import (entry_direction, project_block, project_tangent,
                             riesz_weights, Target)
+from dlrhcs import housing_data
 from scripts import sim_report, run_mc_batches
 
 
@@ -270,6 +272,293 @@ def test_sim_report_writes_tex_only_to_manuscript_dir_and_csv_only_to_data_dir()
         removed_names = {os.path.basename(path) for path in result["removed_obsolete_tex"]}
         assert "tab_mc_main_summary.tex" in removed_names
         assert "tab_mc_performance_full.tex" in removed_names
+
+
+def test_housing_zillow_file_identification_and_date_parsing():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = os.path.join(tmp, "data", "zillow")
+        os.makedirs(root)
+        good = os.path.join(root, "Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv")
+        top = os.path.join(root, "zillow_metro_top.csv")
+        with open(good, "w", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["RegionID", "SizeRank", "RegionName", "RegionType", "StateName",
+                        "2000-01-31", "2000-02-29"])
+            w.writerow(["1", "0", "A City, AA", "msa", "AA", "100", "101"])
+        with open(top, "w", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["RegionID", "RegionName", "RegionType", "2000-01-31"])
+            w.writerow(["1", "A City, AA", "msa", "100"])
+        header, _ = housing_data.read_csv_rows(housing_data.Path(good))
+        cls = housing_data.classify_zillow_file(housing_data.Path(good), header)
+        assert cls["is_all_homes_metro_sa"]
+        rows, summary = housing_data.parse_zillow_all_homes(housing_data.Path(good))
+        assert rows[0]["date"] == "2000-01-01"
+        assert summary["n_metros"] == 1
+        header_top, _ = housing_data.read_csv_rows(housing_data.Path(top))
+        cls_top = housing_data.classify_zillow_file(housing_data.Path(top), header_top)
+        assert not cls_top["is_all_homes_metro_sa"]
+        assert cls_top["is_top_or_bottom_tier"]
+
+
+def test_housing_duplicate_missing_months_and_no_interpolation_guarantee():
+    rows = [
+        {"cbsa_code": "12345", "date": "2020-01-01", "value": 1},
+        {"cbsa_code": "12345", "date": "2020-01-01", "value": 1},
+        {"cbsa_code": "12345", "date": "2020-03-01", "value": 3},
+    ]
+    assert housing_data.duplicate_key_count(rows, ["cbsa_code", "date"]) == 1
+    assert housing_data.detect_missing_months(["2020-01", "2020-03"]) == ["2020-02"]
+    assert housing_data.contiguous_segments(["2020-01", "2020-03", "2020-04"]) == [
+        ("2020-01", "2020-01", 1),
+        ("2020-03", "2020-04", 2),
+    ]
+
+
+def test_housing_permit_zero_handling_and_x13_retains_observed_dates():
+    content = (
+        "202001,000,12345,1,Test CBSA,"
+        "0,0,0,0,2,0,0,3,0,0,4,0,"
+        "0,0,0,0,0,0,0,0,0,0,0,0\n"
+    ).encode("latin1")
+    rows, micro = housing_data.parse_bps_monthly_file(content, "fixture.txt")
+    assert micro == 0
+    assert rows[0]["total_units"] == 9
+    observed_dates = [r["date"] for r in rows]
+    assert observed_dates == ["2020-01-01"]
+    # The seasonal-adjustment helper writes only observed source dates; it never
+    # constructs endpoint forecasts/backcasts or fills internal missing dates.
+    assert housing_data.detect_missing_months([d[:7] for d in observed_dates]) == []
+
+
+def test_housing_official_vs_local_employment_labeling_and_exact_matching():
+    zillow = [
+        {"zillow_region_id": "1", "zillow_region_name": "Test City, AA",
+         "date": "2020-01-01", "zhvi_all_homes_sa": 100.0},
+    ]
+    geo = [
+        {"cbsa_code": "12345", "census_cbsa_title": "Test City, AA",
+         "metro_micro_type": "Metropolitan Statistical Area",
+         "geographic_vintage": "fixture"},
+    ]
+    bps = [{"cbsa_code": "12345", "cbsa_title": "Test City, AA", "date": "2020-01-01", "total_units": 1}]
+    emp = [{"cbsa_code": "12345", "area_title": "Test City, AA", "date": "2020-01-01", "employment_level": 10,
+            "employment_thousands_sa": 10,
+            "seasonal_adjustment_flag": "S"}]
+    cross, review = housing_data.build_crosswalk(zillow, bps, emp, geo)
+    assert len(cross) == 1
+    assert not review
+    assert cross[0]["match_status"].startswith("accepted")
+    avail = housing_data.build_availability(zillow, bps, [], emp, [], cross)
+    assert avail[0]["employment_official_sa_available"] == 1
+    assert avail[0]["employment_local_x13_sa_available"] == 0
+
+
+def test_housing_rejects_ambiguous_fuzzy_matches_and_frontier():
+    zillow = [{"zillow_region_id": "1", "zillow_region_name": "Twin City, AA",
+               "date": "2020-01-01", "zhvi_all_homes_sa": 100.0}]
+    geo = [
+        {"cbsa_code": "11111", "census_cbsa_title": "Twin City, AA",
+         "metro_micro_type": "Metropolitan Statistical Area"},
+        {"cbsa_code": "22222", "census_cbsa_title": "Twin City, AA",
+         "metro_micro_type": "Metropolitan Statistical Area"},
+    ]
+    cross, review = housing_data.build_crosswalk(zillow, [], [], geo)
+    assert not cross
+    assert review[0]["match_status"] == "manual_review"
+    assert "ambiguous" in review[0]["review_reason"]
+
+    availability = []
+    for month in ("2020-01", "2020-02", "2020-03"):
+        availability.append({
+            "cbsa_code": "12345", "date": month + "-01",
+            "zhvi_sa_available": 1, "permits_nsa_available": 1,
+            "permits_sa_available": 1, "employment_official_sa_available": 1,
+            "employment_local_x13_sa_available": 0,
+        })
+    frontier = housing_data.balanced_panel_frontier(availability, thresholds=(2,))
+    assert frontier[0]["N_complete_official_sa"] == 1
+    assert frontier[0]["T_months"] == 3
+
+
+def test_housing_bls_bulk_urls_are_uppercase_and_get_only():
+    assert "/SM/" in housing_data.BLS_SM_BASE
+    for _, url, _, _ in housing_data.BLS_BULK_FILES:
+        assert "/SM/" in url
+    assert housing_data._bls_expected_header("sm.area") == ["area_code", "area_name"]
+
+
+def test_housing_bls_validation_accepts_text_and_rejects_html():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = housing_data.Path(tmp)
+        good = root / "sm.area"
+        good.write_text("area_code\tarea_name\n12345\tTest City, AA\n", encoding="utf-8")
+        ok, reason = housing_data.validate_bls_bulk_file(good, ["area_code", "area_name"], 1)
+        assert ok, reason
+        bad = root / "sm.area.bad"
+        bad.write_text("<html><body>Access Denied</body></html>", encoding="utf-8")
+        ok, reason = housing_data.validate_bls_bulk_file(bad, ["area_code", "area_name"], 1)
+        assert not ok
+        assert "HTML" in reason or "access-denied" in reason
+
+
+def test_housing_bls_python_get_streams_and_writes_atomically():
+    class FakeHeaders(dict):
+        def items(self):
+            return super().items()
+
+    class FakeResponse:
+        status = 200
+        headers = FakeHeaders({"content-type": "application/octet-stream"})
+
+        def __init__(self, payload):
+            self.payload = payload
+            self.offset = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, n):
+            chunk = self.payload[self.offset:self.offset + n]
+            self.offset += len(chunk)
+            return chunk
+
+        def geturl(self):
+            return housing_data.BLS_AREA_URL
+
+    original = housing_data.urllib.request.urlopen
+    try:
+        payload = b"area_code\tarea_name\n12345\tTest City, AA\n"
+        housing_data.urllib.request.urlopen = lambda req, timeout=0: FakeResponse(payload)
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = housing_data.Path(tmp) / "sm.area"
+            rec, diag = housing_data.bls_python_get(
+                housing_data.BLS_AREA_URL,
+                dest,
+                1,
+                ["area_code", "area_name"],
+                tries=1,
+            )
+            assert rec is not None
+            assert rec.__dict__["transport"] == "python_http"
+            assert dest.exists()
+            assert not dest.with_name(dest.name + ".part").exists()
+            assert diag[0]["method"] == "GET"
+            assert not diag[0]["used_head"]
+    finally:
+        housing_data.urllib.request.urlopen = original
+
+
+def test_housing_bls_curl_fallback_uses_argument_list_no_shell_and_atomic_write():
+    class FakeProc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    captured = {}
+    original = housing_data.subprocess.run
+    try:
+        def fake_run(cmd, capture_output, text, timeout, check):
+            captured["cmd"] = cmd
+            captured["shell"] = False
+            part = housing_data.Path(cmd[cmd.index("-o") + 1])
+            part.write_text("area_code\tarea_name\n12345\tTest City, AA\n", encoding="utf-8")
+            return FakeProc()
+
+        housing_data.subprocess.run = fake_run
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = housing_data.Path(tmp) / "sm.area"
+            rec, diag = housing_data.bls_curl_get(
+                housing_data.BLS_AREA_URL,
+                dest,
+                1,
+                ["area_code", "area_name"],
+            )
+            assert rec is not None
+            assert rec.__dict__["transport"] == "curl_fallback"
+            assert isinstance(captured["cmd"], list)
+            assert diag["shell"] is False
+            assert "curl.exe" == captured["cmd"][0]
+            assert not dest.with_name(dest.name + ".part").exists()
+    finally:
+        housing_data.subprocess.run = original
+
+
+def test_housing_bls_series_selection_m13_footnote_and_preliminary_flags():
+    with tempfile.TemporaryDirectory() as tmp:
+        dirs = housing_data.ensure_dirs(housing_data.Path(tmp))
+        (dirs["raw_bls"] / "sm.area").write_text(
+            "area_code\tarea_name\n"
+            "12345\tTest City, AA\n"
+            "00000\tStatewide\n"
+            "54321\tOther Metropolitan Division\n",
+            encoding="utf-8",
+        )
+        (dirs["raw_bls"] / "sm.industry").write_text(
+            "industry_code\tindustry_name\n00000000\tTotal Nonfarm\n00000001\tMining\n",
+            encoding="utf-8",
+        )
+        (dirs["raw_bls"] / "sm.series").write_text(
+            "series_id\tarea_code\tstate_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\n"
+            "SMSGOOD\t12345\t12\t00\t00000000\t01\tS\n"
+            "SMUGOOD\t12345\t12\t00\t00000000\t01\tU\n"
+            "SMSSTATE\t00000\t12\t00\t00000000\t01\tS\n"
+            "SMSDIV\t54321\t54\t00\t00000000\t01\tS\n"
+            "SMSBADTYPE\t12345\t12\t00\t00000000\t26\tS\n"
+            "SMSBADIND\t12345\t12\t00\t00000001\t01\tS\n",
+            encoding="utf-8",
+        )
+        geo = [
+            {"cbsa_code": "12345", "metro_micro_type": "Metropolitan Statistical Area"},
+            {"cbsa_code": "54321", "metro_micro_type": "Metropolitan Statistical Area"},
+        ]
+        sa, nsa, _ = housing_data.parse_bls_series_metadata(dirs, geo)
+        assert sorted(sa) == ["SMSGOOD"]
+        assert sorted(nsa) == ["SMUGOOD"]
+        data_rows = [
+            {"series_id": "SMSGOOD", "year": "2020", "period": "M01", "value": "100.5", "footnote_codes": "P"},
+            {"series_id": "SMSGOOD", "year": "2020", "period": "M13", "value": "999", "footnote_codes": ""},
+            {"series_id": "SMUGOOD", "year": "2020", "period": "M02", "value": "99", "footnote_codes": "R"},
+        ]
+        official, nsa_rows = housing_data.parse_bls_employment_data(data_rows, sa, nsa)
+        assert len(official) == 1
+        assert official[0]["date"] == "2020-01-01"
+        assert official[0]["preliminary_flag"] == 1
+        assert official[0]["footnote_codes"] == "P"
+        assert len(nsa_rows) == 1
+        assert nsa_rows[0]["seasonal_adjustment_source"] == "not_seasonally_adjusted"
+
+
+def test_housing_zillow_geography_classification_no_fuzzy_or_interpolation():
+    zillow = [
+        {"zillow_region_id": "1", "zillow_region_name": "Metro City, AA", "region_type": "msa", "state_name": "AA"},
+        {"zillow_region_id": "2", "zillow_region_name": "Micro City, AA", "region_type": "msa", "state_name": "AA"},
+        {"zillow_region_id": "3", "zillow_region_name": "Division City, AA", "region_type": "msa", "state_name": "AA"},
+        {"zillow_region_id": "4", "zillow_region_name": "County Region, AA", "region_type": "county", "state_name": "AA"},
+        {"zillow_region_id": "5", "zillow_region_name": "Old City, AA", "region_type": "msa", "state_name": "AA"},
+        {"zillow_region_id": "6", "zillow_region_name": "Almost Metro City, AA", "region_type": "msa", "state_name": "AA"},
+    ]
+    geo = [
+        {"cbsa_code": "11111", "census_cbsa_title": "Metro City, AA",
+         "metro_micro_type": "Metropolitan Statistical Area", "metropolitan_division_title": ""},
+        {"cbsa_code": "22222", "census_cbsa_title": "Micro City, AA",
+         "metro_micro_type": "Micropolitan Statistical Area", "metropolitan_division_title": ""},
+        {"cbsa_code": "33333", "census_cbsa_title": "Parent City, AA",
+         "metro_micro_type": "Metropolitan Statistical Area", "metropolitan_division_title": "Division City, AA"},
+    ]
+    bps = [{"cbsa_code": "44444", "cbsa_title": "Old City, AA"}]
+    rows = housing_data.classify_zillow_geography(zillow, bps, [], geo)
+    cls = {r["zillow_region_id"]: r["classification"] for r in rows}
+    assert cls["1"] == "current_metropolitan_cbsa"
+    assert cls["2"] == "current_micropolitan_cbsa"
+    assert cls["3"] == "metropolitan_division"
+    assert cls["4"] == "non_cbsa_zillow_region"
+    assert cls["5"] == "historical_or_retired_cbsa"
+    assert cls["6"] == "unresolved"
+    assert housing_data.detect_missing_months(["2020-01", "2020-03"]) == ["2020-02"]
 
 
 # 3. ALS objective monotone non-increasing ----------------------------------- #
