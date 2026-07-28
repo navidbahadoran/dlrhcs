@@ -39,12 +39,17 @@ def main() -> int:
                     help="allow separately labeled local X-13 employment fallback diagnostics")
     ap.add_argument("--retry-source", choices=["bls"], default=None,
                     help="retry one source and recompute dependent overlap/audit outputs; currently supports bls")
+    ap.add_argument("--bls-local-dir", default=None,
+                    help="directory containing the six manually downloaded official BLS SM bulk files")
     args = ap.parse_args()
     if args.min_sa_months < 1:
         raise SystemExit("--min-sa-months must be positive")
     data_root = Path(args.data_root)
     if not data_root.is_absolute():
         data_root = ROOT / data_root
+    bls_local_dir = Path(args.bls_local_dir) if args.bls_local_dir else None
+    if bls_local_dir is not None and not bls_local_dir.is_absolute():
+        bls_local_dir = ROOT / bls_local_dir
     code, summary = run_housing_audit(
         data_root,
         audit_existing_only=args.audit_existing_only,
@@ -56,6 +61,7 @@ def main() -> int:
         official_employment_only=args.official_employment_only,
         allow_local_employment_x13=args.allow_local_employment_x13,
         retry_source=args.retry_source,
+        bls_local_dir=bls_local_dir,
     )
     print("[housing-audit] summary")
     for key in sorted(summary):

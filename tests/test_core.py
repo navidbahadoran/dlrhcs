@@ -561,6 +561,166 @@ def test_housing_zillow_geography_classification_no_fuzzy_or_interpolation():
     assert housing_data.detect_missing_months(["2020-01", "2020-03"]) == ["2020-02"]
 
 
+def _write_bls_manual_fixture(root, *, html_file=None, malformed_file=None, truncated_file=None,
+                              missing_file=None, extra_file=False):
+    root = housing_data.Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    files = {
+        "sm.area": (
+            "area_code\tarea_name\n"
+            "12345\tTest City, AA\n"
+            "00000\tStatewide\n"
+            "54321\tDivision City Metropolitan Division\n"
+        ),
+        "sm.seasonal": "seasonal_code\tseasonal_text\nS\tSeasonally Adjusted\nU\tNot Seasonally Adjusted\n",
+        "sm.industry": "industry_code\tindustry_name\n00000000\tTotal Nonfarm\n00000001\tTotal Private\n",
+        "sm.footnote": "footnote_code\tfootnote_text\nP\tPreliminary\nR\tRevised\n",
+        "sm.series": (
+            "series_id\tarea_code\tstate_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\n"
+            "SMSGOOD\t12345\t12\t00\t00000000\t01\tS\n"
+            "SMUGOOD\t12345\t12\t00\t00000000\t01\tU\n"
+            "SMSSTATE\t00000\t12\t00\t00000000\t01\tS\n"
+            "SMSDIV\t54321\t54\t00\t00000000\t01\tS\n"
+            "SMSPRIVATE\t12345\t12\t00\t00000001\t01\tS\n"
+            "SMSCHANGE\t12345\t12\t00\t00000000\t26\tS\n"
+        ),
+        "sm.data.54.TotalNonFarm.All": (
+            "series_id\tyear\tperiod\tvalue\tfootnote_codes\n"
+            "SMSGOOD\t2020\tM01\t100.5\tP\n"
+            "SMSGOOD\t2020\tM13\t999.0\t\n"
+            "SMUGOOD\t2020\tM01\t98.0\t\n"
+            "SMSSTATE\t2020\tM01\t500.0\t\n"
+            "SMSDIV\t2020\tM01\t50.0\t\n"
+        ),
+    }
+    if missing_file:
+        files.pop(missing_file, None)
+    for name, text in files.items():
+        if name == html_file:
+            text = "<html><title>Access Denied</title></html>\n"
+        if name == malformed_file:
+            text = "series_id\tyear\tperiod\tvalue\tfootnote_codes\nSMSGOOD\t2020\n"
+        if name == truncated_file:
+            text = text.rstrip("\n")
+        (root / name).write_text(text, encoding="utf-8")
+    if extra_file:
+        (root / "README.txt").write_text("not part of the official SM bulk set\n", encoding="utf-8")
+
+
+def test_housing_bls_local_import_success_checksums_atomic_and_parsing():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = housing_data.Path(tmp)
+        local = tmp / "manual" / "bls_ces"
+        _write_bls_manual_fixture(local)
+        dirs = housing_data.ensure_dirs(tmp / "data" / "zillow")
+        manifest = []
+        diag = housing_data.import_bls_local_files(local, dirs, manifest)
+        assert len(diag) == len(housing_data.BLS_REQUIRED_FILENAMES)
+        assert len(manifest) == len(housing_data.BLS_REQUIRED_FILENAMES)
+        for rec in manifest:
+            assert rec.__dict__["acquisition_method"] == "manual_official_download"
+            assert rec.__dict__["source_sha256"] == rec.__dict__["destination_sha256"]
+            assert not housing_data.Path(rec.local_path).with_name(housing_data.Path(rec.local_path).name + ".part").exists()
+        geo = [{"cbsa_code": "12345", "metro_micro_type": "Metropolitan Statistical Area"}]
+        official, nsa = housing_data.parse_bls_cached_files(dirs, geo)
+        assert len(official) == 1
+        assert official[0]["bls_series_id"] == "SMSGOOD"
+        assert official[0]["date"] == "2020-01-01"
+        assert official[0]["preliminary_flag"] == 1
+        assert len(nsa) == 1
+        assert nsa[0]["bls_series_id"] == "SMUGOOD"
+
+
+def test_housing_bls_local_import_rejects_missing_extra_html_malformed_truncated_and_conflict():
+    cases = [
+        {"missing_file": "sm.footnote"},
+        {"extra_file": True},
+        {"html_file": "sm.area"},
+        {"malformed_file": "sm.data.54.TotalNonFarm.All"},
+        {"truncated_file": "sm.series"},
+    ]
+    for kwargs in cases:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = housing_data.Path(tmp)
+            local = tmp / "manual"
+            _write_bls_manual_fixture(local, **kwargs)
+            dirs = housing_data.ensure_dirs(tmp / "data")
+            try:
+                housing_data.import_bls_local_files(local, dirs, [])
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"local BLS import unexpectedly accepted {kwargs}")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = housing_data.Path(tmp)
+        local = tmp / "manual"
+        _write_bls_manual_fixture(local)
+        dirs = housing_data.ensure_dirs(tmp / "data")
+        (dirs["raw_bls"] / "sm.area").write_text("area_code\tarea_name\n99999\tDifferent\n", encoding="utf-8")
+        try:
+            housing_data.import_bls_local_files(local, dirs, [])
+        except ValueError as exc:
+            assert "refusing to overwrite" in str(exc)
+        else:
+            raise AssertionError("conflicting raw BLS cache was silently overwritten")
+
+
+def test_housing_bls_local_import_validates_cross_references():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = housing_data.Path(tmp)
+        local = tmp / "manual"
+        _write_bls_manual_fixture(local)
+        path = local / "sm.series"
+        text = path.read_text(encoding="utf-8").replace("SMSGOOD\t12345", "SMSGOOD\t99999")
+        path.write_text(text, encoding="utf-8")
+        dirs = housing_data.ensure_dirs(tmp / "data")
+        try:
+            housing_data.import_bls_local_files(local, dirs, [])
+        except ValueError as exc:
+            assert "area_code" in str(exc)
+        else:
+            raise AssertionError("bad sm.series area_code cross-reference was accepted")
+
+
+def test_housing_bls_local_dir_run_recomputes_overlap_without_bls_network():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = housing_data.Path(tmp) / "data" / "zillow"
+        dirs = housing_data.ensure_dirs(root)
+        local = root / "manual_import" / "bls_ces"
+        _write_bls_manual_fixture(local)
+        (dirs["raw_zillow"] / housing_data.Path(housing_data.ZILLOW_ALL_HOMES_URL).name).write_text(
+            "RegionID,SizeRank,RegionName,RegionType,StateName,2020-01-31\n"
+            "1,0,\"Test City, AA\",msa,AA,100\n",
+            encoding="utf-8",
+        )
+        housing_data.atomic_write_csv(dirs["processed"] / "permits_metro_nsa_long.csv", [
+            {"cbsa_code": "12345", "cbsa_title": "Test City, AA", "date": "2020-01-01", "total_units": 10}
+        ], ["cbsa_code", "cbsa_title", "date", "total_units"])
+        housing_data.atomic_write_csv(dirs["processed"] / "permits_metro_sa_long.csv", [
+            {"cbsa_code": "12345", "cbsa_title": "Test City, AA", "date": "2020-01-01", "permits_units_sa": 10}
+        ], ["cbsa_code", "cbsa_title", "date", "permits_units_sa"])
+        housing_data.atomic_write_csv(root / "audit" / "x13_diagnostics.csv", [], ["series_id", "status"])
+        original_geo = housing_data.parse_cached_geography
+        original_fetch_bls = housing_data.fetch_bls
+        try:
+            housing_data.parse_cached_geography = lambda path, warnings: [
+                {"cbsa_code": "12345", "census_cbsa_title": "Test City, AA",
+                 "metro_micro_type": "Metropolitan Statistical Area", "geographic_vintage": "fixture"}
+            ]
+            housing_data.fetch_bls = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("BLS network fetch should not run"))
+            code, summary = housing_data.run_housing_audit(root, bls_local_dir=local, min_sa_months=84)
+            assert code == 0
+            assert summary["n_matched_official_sa_employment"] == 1
+            assert summary["n_matched_all_three_official"] == 1
+            official = housing_data.read_simple_csv(dirs["processed"] / "employment_metro_official_sa_long.csv")
+            assert official[0]["bls_series_id"] == "SMSGOOD"
+            avail = housing_data.read_simple_csv(dirs["processed"] / "housing_msa_monthly_availability.csv")
+            assert any(r["employment_official_sa_available"] == "1" for r in avail)
+        finally:
+            housing_data.parse_cached_geography = original_geo
+            housing_data.fetch_bls = original_fetch_bls
+
+
 # 3. ALS objective monotone non-increasing ----------------------------------- #
 def test_als_monotone():
     p = _panel()

@@ -68,6 +68,7 @@ BLS_BULK_FILES = (
     ("sm.series", BLS_SERIES_URL, "CES/SAE series metadata", 1000),
     ("sm.data.54.TotalNonFarm.All", BLS_TNF_DATA_URL, "CES/SAE total nonfarm data", 1000),
 )
+BLS_REQUIRED_FILENAMES = tuple(name for name, _, _, _ in BLS_BULK_FILES)
 
 DATE_RE = re.compile(r"^\d{4}[-/]\d{1,2}(?:[-/]\d{1,2})?$")
 BPS_COLS = [
@@ -360,7 +361,182 @@ def _bls_expected_header(filename: str) -> List[str]:
         return ["footnote_code", "footnote_text"]
     if filename == "sm.series":
         return ["series_id", "area_code", "industry_code", "data_type_code", "seasonal"]
-    return ["series_id", "year", "period", "value"]
+    return ["series_id", "year", "period", "value", "footnote_codes"]
+
+
+def _header_has(header: Sequence[str], name: str) -> bool:
+    low = {h.strip().lower() for h in header}
+    if name == "area_name":
+        return "area_name" in low or "area_title" in low
+    return name.lower() in low
+
+
+def _strict_tabular_validation(path: Path, filename: str) -> Tuple[bool, str]:
+    expected = _bls_expected_header(filename)
+    raw = path.read_bytes()
+    if not raw:
+        return False, "empty file"
+    if not (raw.endswith(b"\n") or raw.endswith(b"\r")):
+        return False, "file does not end with a newline; possible truncated final line"
+    if raw.lstrip().startswith((b"<?xml", b"<Error", b"<error")):
+        return False, "response looks like XML/browser error page"
+    try:
+        text = raw.decode("utf-8-sig", errors="replace")
+    except Exception as exc:
+        return False, f"could not decode text: {exc}"
+    lines = text.splitlines()
+    if not lines:
+        return False, "no rows"
+    header = _split_tab(lines[0])
+    missing = [h for h in expected if not _header_has(header, h)]
+    if missing:
+        return False, f"missing expected tab-delimited headers: {missing}; observed={header[:12]}"
+    width = len(header)
+    optional_last = bool(header and header[-1].strip().lower() == "footnote_codes")
+    for lineno, line in enumerate(lines[1:], start=2):
+        if not line.strip():
+            continue
+        parts = line.rstrip("\r\n").split("\t")
+        if len(parts) == width:
+            continue
+        if optional_last and len(parts) == width - 1:
+            continue
+        return False, f"malformed tab-delimited row at line {lineno}: expected {width} fields, observed {len(parts)}"
+    return True, "ok"
+
+
+def validate_bls_manual_file(path: Path, filename: str) -> Tuple[bool, str]:
+    if path.is_symlink():
+        return False, "manual import path is a symbolic link"
+    if not path.is_file():
+        return False, "manual import path is not a regular file"
+    if path.stat().st_size <= 0:
+        return False, "manual import file is empty"
+    ok, reason = validate_bls_bulk_file(path, _bls_expected_header(filename), 1)
+    if not ok:
+        return False, reason
+    return _strict_tabular_validation(path, filename)
+
+
+def validate_bls_manual_directory(local_dir: Path) -> Dict[str, Dict[str, object]]:
+    if not local_dir.exists() or not local_dir.is_dir():
+        raise ValueError(f"BLS local import directory does not exist or is not a directory: {local_dir}")
+    children = [p for p in local_dir.iterdir()]
+    names = [p.name for p in children]
+    lowered = [n.lower() for n in names]
+    duplicates = sorted({n for n in lowered if lowered.count(n) > 1})
+    if duplicates:
+        raise ValueError(f"duplicate BLS filenames in local import directory: {duplicates}")
+    required = set(BLS_REQUIRED_FILENAMES)
+    observed = set(names)
+    missing = sorted(required - observed)
+    extra = sorted(observed - required)
+    if missing:
+        raise ValueError(f"missing required BLS files: {missing}")
+    if extra:
+        raise ValueError(f"unexpected files in BLS local import directory: {extra}")
+    info: Dict[str, Dict[str, object]] = {}
+    for filename in BLS_REQUIRED_FILENAMES:
+        path = local_dir / filename
+        ok, reason = validate_bls_manual_file(path, filename)
+        if not ok:
+            raise ValueError(f"{filename}: {reason}")
+        header, rows = read_bls_table(path)
+        info[filename] = {
+            "path": path,
+            "header": header,
+            "rows": rows,
+            "size": path.stat().st_size,
+            "sha256": sha256_file(path),
+            "schema_validation_status": "ok",
+        }
+    area_codes = {r.get("area_code", "") for r in info["sm.area"]["rows"]}
+    industry_codes = {r.get("industry_code", "") for r in info["sm.industry"]["rows"]}
+    seasonal_codes = {r.get("seasonal_code", "") for r in info["sm.seasonal"]["rows"]}
+    series_ids = set()
+    for row in info["sm.series"]["rows"]:
+        sid = row.get("series_id", "")
+        if sid:
+            series_ids.add(sid)
+        if row.get("area_code", "") not in area_codes:
+            raise ValueError(f"sm.series references area_code not present in sm.area: {row.get('area_code', '')}")
+        if row.get("industry_code", "") not in industry_codes:
+            raise ValueError(f"sm.series references industry_code not present in sm.industry: {row.get('industry_code', '')}")
+        seasonal = row.get("seasonal", "")
+        if seasonal_codes and seasonal not in seasonal_codes:
+            raise ValueError(f"sm.series references seasonal code not present in sm.seasonal: {seasonal}")
+    for row in info["sm.data.54.TotalNonFarm.All"]["rows"]:
+        sid = row.get("series_id", "")
+        if sid not in series_ids:
+            raise ValueError(f"sm.data.54.TotalNonFarm.All contains series_id not present in sm.series: {sid}")
+    return info
+
+
+def import_bls_local_files(local_dir: Path, dirs: Dict[str, Path],
+                           manifest: List[DownloadRecord]) -> List[Dict[str, object]]:
+    info = validate_bls_manual_directory(local_dir)
+    diagnostics: List[Dict[str, object]] = []
+    for filename in BLS_REQUIRED_FILENAMES:
+        source = Path(info[filename]["path"])
+        dest = dirs["raw_bls"] / filename
+        source_sha = str(info[filename]["sha256"])
+        source_size = int(info[filename]["size"])
+        if dest.exists():
+            dest_sha = sha256_file(dest)
+            if dest_sha != source_sha:
+                raise ValueError(f"refusing to overwrite different existing raw BLS cache file: {dest}")
+        tmp = dest.with_name(dest.name + ".part")
+        if tmp.exists():
+            tmp.unlink()
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with source.open("rb") as src, tmp.open("wb") as out:
+            shutil.copyfileobj(src, out, length=1 << 20)
+        tmp.replace(dest)
+        dest_sha = sha256_file(dest)
+        dest_size = dest.stat().st_size
+        if dest_sha != source_sha or dest_size != source_size:
+            dest.unlink(missing_ok=True)
+            raise ValueError(f"checksum/size mismatch after copying {filename}")
+        rec = DownloadRecord(
+            "U.S. Bureau of Labor Statistics",
+            "CES State and Area",
+            BLS_SAE_PAGE,
+            urllib.parse.urljoin(BLS_SM_BASE, filename),
+            utc_now(),
+            None,
+            str(dest),
+            "manual-official-import",
+            dest_size,
+            dest_sha,
+            "manual official BLS bulk download",
+            PARSER_VERSION,
+            "metadata-defined",
+        )
+        rec.__dict__.update({
+            "official_source_directory": BLS_SM_BASE,
+            "original_filename": filename,
+            "acquisition_method": "manual_official_download",
+            "manual_import_path": str(source),
+            "permanent_raw_path": str(dest),
+            "import_timestamp_utc": rec.download_timestamp_utc,
+            "source_file_size": source_size,
+            "destination_file_size": dest_size,
+            "source_sha256": source_sha,
+            "destination_sha256": dest_sha,
+            "schema_validation_status": "ok",
+            "transport": "manual_official_import",
+        })
+        manifest.append(rec)
+        diagnostics.append({
+            "filename": filename,
+            "transport": "manual_official_import",
+            "source_sha256": source_sha,
+            "destination_sha256": dest_sha,
+            "source_file_size": source_size,
+            "destination_file_size": dest_size,
+            "schema_validation_status": "ok",
+        })
+    return diagnostics
 
 
 def bls_python_get(url: str, dest: Path, min_size: int, expected_header: Sequence[str],
@@ -1078,7 +1254,7 @@ def parse_bls_series_metadata(dirs: Dict[str, Path], geo_rows: Sequence[Dict[str
         str(r.get("cbsa_code", "")).zfill(5) for r in geo_rows
         if "Metropolitan" in str(r.get("metro_micro_type", ""))
     }
-    area_meta = {r.get("area_code", ""): r.get("area_name", "") for r in area_rows}
+    area_meta = {r.get("area_code", ""): r.get("area_name", r.get("area_title", "")) for r in area_rows}
     sa, nsa = {}, {}
     for row in series_rows:
         sid = row.get("series_id", "")
@@ -1155,6 +1331,12 @@ def parse_bls_employment_data(data_rows: Sequence[Dict[str, str]],
             sorted(nsa_rows, key=lambda r: (r["cbsa_code"], r["date"])))
 
 
+def parse_bls_cached_files(dirs: Dict[str, Path], geo_rows: Sequence[Dict[str, object]]) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
+    official_ids, nsa_ids, _ = parse_bls_series_metadata(dirs, geo_rows)
+    _, data_rows = read_bls_table(dirs["raw_bls"] / "sm.data.54.TotalNonFarm.All")
+    return parse_bls_employment_data(data_rows, official_ids, nsa_ids)
+
+
 def fetch_bls(dirs: Dict[str, Path], force: bool, manifest: List[DownloadRecord],
               warnings: List[Dict[str, object]],
               geo_rows: Sequence[Dict[str, object]],
@@ -1193,8 +1375,7 @@ def fetch_bls(dirs: Dict[str, Path], force: bool, manifest: List[DownloadRecord]
                 write_bls_download_diagnosis(data_root, diagnostics)
             return [], [], diagnostics
     manifest.append(rec)
-    _, data_rows = read_bls_table(dirs["raw_bls"] / "sm.data.54.TotalNonFarm.All")
-    official_rows, nsa_rows = parse_bls_employment_data(data_rows, official_ids, nsa_ids)
+    official_rows, nsa_rows = parse_bls_cached_files(dirs, geo_rows)
     if data_root is not None:
         write_bls_download_diagnosis(data_root, diagnostics)
     return official_rows, nsa_rows, diagnostics
@@ -1235,20 +1416,11 @@ def parse_xlsx_first_sheet(path: Path) -> List[List[str]]:
         return rows
 
 
-def fetch_geography(dirs: Dict[str, Path], force: bool, manifest: List[DownloadRecord],
-                    warnings: List[Dict[str, object]]) -> List[Dict[str, object]]:
-    dest = dirs["raw_geo"] / "list1_2023.xlsx"
-    rec = http_download(CBSA_DELINEATION_URL, dest, force=force)
-    rec.agency = "U.S. Census Bureau / OMB"
-    rec.dataset = "2023 CBSA metropolitan and micropolitan delineation file"
-    rec.official_source_page = CENSUS_DELINEATION_PAGE
-    rec.release_vintage = "July 2023"
-    rec.seasonal_adjustment_status = "not applicable"
-    manifest.append(rec)
-    if rec.status == "download-failed":
-        warnings.append({"stage": "geography_download", "message": rec.error, "severity": "error"})
+def parse_cached_geography(path: Path, warnings: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    if not path.exists():
+        warnings.append({"stage": "geography_cache", "source_file": str(path), "message": "cached CBSA delineation file missing", "severity": "error"})
         return []
-    rows = parse_xlsx_first_sheet(dest)
+    rows = parse_xlsx_first_sheet(path)
     header_i = None
     for i, row in enumerate(rows[:40]):
         low = [str(x).strip().lower() for x in row]
@@ -1286,6 +1458,22 @@ def fetch_geography(dirs: Dict[str, Path], force: bool, manifest: List[DownloadR
             "geographic_vintage": "2023 Census/OMB delineation",
         })
     return out
+
+
+def fetch_geography(dirs: Dict[str, Path], force: bool, manifest: List[DownloadRecord],
+                    warnings: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    dest = dirs["raw_geo"] / "list1_2023.xlsx"
+    rec = http_download(CBSA_DELINEATION_URL, dest, force=force)
+    rec.agency = "U.S. Census Bureau / OMB"
+    rec.dataset = "2023 CBSA metropolitan and micropolitan delineation file"
+    rec.official_source_page = CENSUS_DELINEATION_PAGE
+    rec.release_vintage = "July 2023"
+    rec.seasonal_adjustment_status = "not applicable"
+    manifest.append(rec)
+    if rec.status == "download-failed":
+        warnings.append({"stage": "geography_download", "message": rec.error, "severity": "error"})
+        return []
+    return parse_cached_geography(dest, warnings)
 
 
 def find_x13_executable(data_root: Path) -> Optional[Path]:
@@ -1764,7 +1952,8 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
                       force_download: bool = False, min_sa_months: int = 84,
                       skip_x13: bool = False, official_employment_only: bool = False,
                       allow_local_employment_x13: bool = False,
-                      retry_source: Optional[str] = None) -> Tuple[int, Dict[str, object]]:
+                      retry_source: Optional[str] = None,
+                      bls_local_dir: Optional[Path] = None) -> Tuple[int, Dict[str, object]]:
     if retry_source not in (None, "bls"):
         raise ValueError("retry_source currently supports only None or 'bls'")
     dirs = ensure_dirs(data_root)
@@ -1792,8 +1981,9 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
     emp_sa: List[Dict[str, object]] = []
     emp_nsa: List[Dict[str, object]] = []
     bls_diagnostics: List[Dict[str, object]] = []
+    local_bls_mode = bls_local_dir is not None
 
-    if retry_source == "bls":
+    if retry_source == "bls" or local_bls_mode:
         zillow_path = dirs["raw_zillow"] / Path(ZILLOW_ALL_HOMES_URL).name
         if zillow_path.exists():
             accepted_existing.append(str(zillow_path.relative_to(data_root)))
@@ -1802,7 +1992,12 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
         permits_nsa = read_simple_csv(dirs["processed"] / "permits_metro_nsa_long.csv")
         permits_sa = read_simple_csv(dirs["processed"] / "permits_metro_sa_long.csv")
         x13_diag = read_simple_csv(data_root / "audit" / "x13_diagnostics.csv")
-        geo = fetch_geography(dirs, False, manifest, warnings)
+        if local_bls_mode:
+            geo = parse_cached_geography(dirs["raw_geo"] / "list1_2023.xlsx", warnings)
+            if geo:
+                accepted_existing.append("raw/geography/list1_2023.xlsx")
+        else:
+            geo = fetch_geography(dirs, False, manifest, warnings)
         if permits_nsa:
             accepted_existing.append("processed/permits_metro_nsa_long.csv")
         if permits_sa:
@@ -1820,7 +2015,14 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
         except Exception as exc:
             warnings.append({"stage": "zillow_parse", "source_file": str(zillow_path), "message": str(exc), "severity": "error"})
 
-    if clean_download or retry_source == "bls":
+    if local_bls_mode:
+        try:
+            bls_diagnostics = import_bls_local_files(Path(bls_local_dir), dirs, manifest)
+            emp_sa, emp_nsa = parse_bls_cached_files(dirs, geo)
+        except Exception as exc:
+            warnings.append({"stage": "bls_manual_import", "source_file": str(bls_local_dir), "message": str(exc), "severity": "error"})
+            emp_sa, emp_nsa = [], []
+    elif clean_download or retry_source == "bls":
         emp_sa, emp_nsa, bls_diagnostics = fetch_bls(dirs, force, manifest, warnings, geo, data_root)
 
     fields_z = ["zillow_region_id", "zillow_region_name", "region_type", "state_name", "date", "zhvi_all_homes_sa", "source_file", "source_vintage"]
@@ -1843,7 +2045,7 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
     atomic_write_csv(dirs["processed"] / "employment_metro_nsa_availability_long.csv", emp_nsa, fields_e_nsa)
 
     fields_psa = ["cbsa_code", "cbsa_title", "date", "permits_units_nsa", "permits_units_sa", "x13_status", "x13_spec_id", "contiguous_segment_start", "contiguous_segment_end", "source_vintage"]
-    if retry_source != "bls":
+    if retry_source != "bls" and not local_bls_mode:
         permits_sa, x13_diag, x13_ok = seasonal_adjust_permits(permits_nsa, data_root, min_sa_months,
                                                                skip_x13, manifest, warnings, force)
         atomic_write_csv(dirs["processed"] / "permits_metro_sa_long.csv", permits_sa, fields_psa)
