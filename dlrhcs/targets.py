@@ -28,6 +28,7 @@ and fast.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 from typing import List, Optional, Sequence
 
 import numpy as np
@@ -115,6 +116,39 @@ class RieszResult:
     cg_iters: int
     converged: bool
     min_eig_proxy: float     # Rayleigh quotient of the solution (diagnostic)
+    solver_name: str = "scipy.sparse.linalg.cg"
+    convergence_info_code: int = 0
+    maxiter: int = 0
+    requested_tolerance: float = 0.0
+    achieved_absolute_residual: float = 0.0
+    achieved_relative_residual: float = 0.0
+    rhs_norm: float = 0.0
+    solution_norm: float = 0.0
+    maximum_absolute_solution_entry: float = 0.0
+    riesz_ridge: float = 0.0
+    scaling_value: float = 1.0
+    cached_scale: bool = False
+    elapsed_seconds: float = 0.0
+    contains_nonfinite: bool = False
+
+
+def cg_converged_from_status(info, achieved_relative_residual, requested_tolerance,
+                             contains_nonfinite=False) -> bool:
+    """Interpret SciPy CG status using solver status and achieved residual.
+
+    SciPy's ``cg`` returns ``info == 0`` on successful convergence, ``info > 0``
+    when tolerance is not achieved within the iteration limit, and ``info < 0``
+    for illegal input or breakdown.  A solve that reaches the final allowed
+    callback iteration can still be converged if SciPy reports success and the
+    residual criterion is met.
+    """
+    try:
+        rel = float(achieved_relative_residual)
+        tol = float(requested_tolerance)
+    except Exception:
+        return False
+    return bool(int(info) == 0 and not contains_nonfinite and
+                np.isfinite(rel) and np.isfinite(tol) and rel <= tol)
 
 
 class RieszFoldSolver:
@@ -192,6 +226,7 @@ class RieszFoldSolver:
 
     def solve(self, direction, ridge=1e-8, tol=1e-10, maxiter=2000,
               use_cached_scale=False):
+        t0 = time.perf_counter()
         rhs_theta = self.project(direction)
         rhs = theta_flatten(rhs_theta)
         scale = self.fold_scale() if use_cached_scale else self._power_scale_from_seed(rhs)
@@ -207,10 +242,35 @@ class RieszFoldSolver:
         q = self.project(q)
         Psi = A(q, self.blocks)
         Gq = theta_unflatten(G.matvec(q_vec), self.blocks)
+        residual_vec = rhs - G.matvec(q_vec)
+        abs_resid = float(np.linalg.norm(residual_vec))
+        rhs_norm = float(np.linalg.norm(rhs))
+        rel_resid = abs_resid / max(rhs_norm, 1e-30)
+        sol_norm = float(np.linalg.norm(q_vec))
+        max_abs_sol = float(np.max(np.abs(q_vec))) if q_vec.size else 0.0
+        contains_nonfinite = not (
+            np.all(np.isfinite(q_vec)) and
+            np.isfinite(abs_resid) and np.isfinite(rel_resid) and
+            np.isfinite(rhs_norm) and np.isfinite(scale)
+        )
         num = theta_dot(q, Gq)
         den = max(theta_dot(q, q), 1e-30)
         return RieszResult(Psi=Psi, q=q, cg_iters=counter["k"],
-                           converged=(info == 0), min_eig_proxy=num / den)
+                           converged=cg_converged_from_status(info, rel_resid, tol, contains_nonfinite),
+                           min_eig_proxy=num / den,
+                           convergence_info_code=int(info),
+                           maxiter=int(maxiter),
+                           requested_tolerance=float(tol),
+                           achieved_absolute_residual=abs_resid,
+                           achieved_relative_residual=rel_resid,
+                           rhs_norm=rhs_norm,
+                           solution_norm=sol_norm,
+                           maximum_absolute_solution_entry=max_abs_sol,
+                           riesz_ridge=float(ridge),
+                           scaling_value=float(scale),
+                           cached_scale=bool(use_cached_scale),
+                           elapsed_seconds=float(time.perf_counter() - t0),
+                           contains_nonfinite=bool(contains_nonfinite))
 
 
 def riesz_weights(direction, blocks, U_list, V_list, train_mask, alpha,

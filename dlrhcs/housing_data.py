@@ -28,6 +28,8 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from xml.etree import ElementTree as ET
 
+from .paths import find_repo_root
+
 
 PARSER_VERSION = "housing_audit_v1"
 USER_AGENT = "DLRHCS-replication-housing-audit/1.0 (academic reproducibility workflow)"
@@ -131,7 +133,7 @@ def atomic_write_text(path: Path, text: str) -> None:
                                     dir=str(path.parent)) as fh:
         fh.write(text)
         tmp = Path(fh.name)
-    tmp.replace(path)
+    replace_with_retry(tmp, path)
 
 
 def atomic_write_json(path: Path, obj) -> None:
@@ -147,7 +149,22 @@ def atomic_write_csv(path: Path, rows: Sequence[Dict[str, object]], fieldnames: 
         for row in rows:
             w.writerow({k: _csv_value(row.get(k)) for k in fieldnames})
         tmp = Path(fh.name)
-    tmp.replace(path)
+    replace_with_retry(tmp, path)
+
+
+def replace_with_retry(tmp: Path, path: Path, *, tries: int = 8, delay: float = 0.5) -> None:
+    last_exc: Optional[Exception] = None
+    for attempt in range(tries):
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError as exc:
+            last_exc = exc
+            if attempt == tries - 1:
+                break
+            time.sleep(delay)
+    if last_exc is not None:
+        raise last_exc
 
 
 def read_simple_csv(path: Path) -> List[Dict[str, str]]:
@@ -330,9 +347,9 @@ def _looks_like_html(path: Path) -> bool:
 
 
 def _tab_header(path: Path) -> List[str]:
-    with path.open("r", encoding="utf-8-sig", errors="replace") as fh:
-        first = fh.readline().rstrip("\n")
-    return [x.strip() for x in first.split("\t")]
+    with path.open("r", encoding="utf-8-sig", errors="replace", newline="") as fh:
+        reader = csv.reader(fh, delimiter="\t")
+        return [x.strip() for x in next(reader)]
 
 
 def validate_bls_bulk_file(path: Path, expected_header: Sequence[str], min_size: int) -> Tuple[bool, str]:
@@ -380,23 +397,21 @@ def _strict_tabular_validation(path: Path, filename: str) -> Tuple[bool, str]:
         return False, "file does not end with a newline; possible truncated final line"
     if raw.lstrip().startswith((b"<?xml", b"<Error", b"<error")):
         return False, "response looks like XML/browser error page"
-    try:
-        text = raw.decode("utf-8-sig", errors="replace")
-    except Exception as exc:
-        return False, f"could not decode text: {exc}"
-    lines = text.splitlines()
-    if not lines:
-        return False, "no rows"
-    header = _split_tab(lines[0])
+    with path.open("r", encoding="utf-8-sig", errors="replace", newline="") as fh:
+        reader = csv.reader(fh, delimiter="\t")
+        try:
+            header = [x.strip() for x in next(reader)]
+        except StopIteration:
+            return False, "no rows"
+        rows = list(reader)
     missing = [h for h in expected if not _header_has(header, h)]
     if missing:
         return False, f"missing expected tab-delimited headers: {missing}; observed={header[:12]}"
     width = len(header)
     optional_last = bool(header and header[-1].strip().lower() == "footnote_codes")
-    for lineno, line in enumerate(lines[1:], start=2):
-        if not line.strip():
+    for lineno, parts in enumerate(rows, start=2):
+        if not any(cell.strip() for cell in parts):
             continue
-        parts = line.rstrip("\r\n").split("\t")
         if len(parts) == width:
             continue
         if optional_last and len(parts) == width - 1:
@@ -524,12 +539,12 @@ def import_bls_local_files(local_dir: Path, dirs: Dict[str, Path],
             "source_sha256": source_sha,
             "destination_sha256": dest_sha,
             "schema_validation_status": "ok",
-            "transport": "manual_official_import",
+            "transport": "manual_official_download",
         })
         manifest.append(rec)
         diagnostics.append({
             "filename": filename,
-            "transport": "manual_official_import",
+            "transport": "manual_official_download",
             "source_sha256": source_sha,
             "destination_sha256": dest_sha,
             "source_file_size": source_size,
@@ -1213,17 +1228,26 @@ def fetch_bps(dirs: Dict[str, Path], force: bool, manifest: List[DownloadRecord]
 
 
 def _split_tab(line: str) -> List[str]:
-    return [p.strip() for p in line.rstrip("\n").split("\t")]
+    return [p.strip() for p in line.rstrip("\r\n").split("\t")]
 
 
 def read_bls_table(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
-    with path.open(encoding="utf-8-sig", errors="replace") as fh:
-        header = _split_tab(next(fh))
+    with path.open(encoding="utf-8-sig", errors="replace", newline="") as fh:
+        reader = csv.reader(fh, delimiter="\t")
+        header = [p.strip() for p in next(reader)]
         rows = []
-        for line in fh:
-            p = _split_tab(line)
-            if len(p) < len(header):
-                p.extend([""] * (len(header) - len(p)))
+        optional_last = bool(header and header[-1].strip().lower() == "footnote_codes")
+        for lineno, raw in enumerate(reader, start=2):
+            if not any(cell.strip() for cell in raw):
+                continue
+            if len(raw) == len(header) - 1 and optional_last:
+                raw.append("")
+            if len(raw) != len(header):
+                raise ValueError(
+                    f"{path.name}: malformed tab-delimited row at line {lineno}: "
+                    f"expected {len(header)} fields, observed {len(raw)}"
+                )
+            p = [cell.strip() for cell in raw]
             rows.append({h: p[i] for i, h in enumerate(header)})
     return header, rows
 
@@ -1877,20 +1901,38 @@ def balanced_panel_frontier(availability: Sequence[Dict[str, object]],
     codes = sorted({str(r["cbsa_code"]) for r in availability})
     months = sorted({str(r["date"])[:7] for r in availability})
     by = {(str(r["cbsa_code"]), str(r["date"])[:7]): r for r in availability}
+    def prefix_for(code: str, col: str) -> List[int]:
+        prefix = [0]
+        total = 0
+        for month in months:
+            total += int(by.get((code, month), {}).get(col, 0))
+            prefix.append(total)
+        return prefix
+    prefixes = {
+        code: {
+            "z": prefix_for(code, "zhvi_sa_available"),
+            "p": prefix_for(code, "permits_sa_available"),
+            "e": prefix_for(code, "employment_official_sa_available"),
+            "el": prefix_for(code, "employment_local_x13_sa_available"),
+        }
+        for code in codes
+    }
+    def complete(pref: Sequence[int], i: int, j: int) -> bool:
+        return pref[j + 1] - pref[i] == (j - i + 1)
     rows = []
     for L in thresholds:
         best = None
         for i in range(0, max(len(months) - L + 1, 0)):
             for j in range(i + L - 1, len(months)):
-                window = months[i:j + 1]
                 official = []
                 fallback = []
                 miss_z = miss_p = miss_e = 0
                 for code in codes:
-                    ok_z = all(int(by.get((code, m), {}).get("zhvi_sa_available", 0)) for m in window)
-                    ok_p = all(int(by.get((code, m), {}).get("permits_sa_available", 0)) for m in window)
-                    ok_e = all(int(by.get((code, m), {}).get("employment_official_sa_available", 0)) for m in window)
-                    ok_el = all(int(by.get((code, m), {}).get("employment_local_x13_sa_available", 0)) for m in window)
+                    pref = prefixes[code]
+                    ok_z = complete(pref["z"], i, j)
+                    ok_p = complete(pref["p"], i, j)
+                    ok_e = complete(pref["e"], i, j)
+                    ok_el = complete(pref["el"], i, j)
                     if ok_z and ok_p and ok_e:
                         official.append(code)
                     if ok_z and ok_p and (ok_e or ok_el):
@@ -1900,9 +1942,9 @@ def balanced_panel_frontier(availability: Sequence[Dict[str, object]],
                     miss_e += int(not ok_e)
                 cand = {
                     "min_window_months": L,
-                    "start_date": window[0] + "-01",
-                    "end_date": window[-1] + "-01",
-                    "T_months": len(window),
+                    "start_date": months[i] + "-01",
+                    "end_date": months[j] + "-01",
+                    "T_months": j - i + 1,
                     "N_complete_official_sa": len(official),
                     "N_complete_with_local_employment_fallback": len(fallback),
                     "N_missing_zhvi": miss_z,
@@ -1929,7 +1971,7 @@ def write_overlap_report(data_root: Path, summary: Dict[str, object],
         "## Required Questions",
         f"1. Existing files accepted: {', '.join(accepted_existing) if accepted_existing else 'none'}",
         f"2. Existing files archived/rejected: {len(archived)}. " + "; ".join(f"{a['relative_path']} ({a['reason']})" for a in archived[:20]),
-        f"3. Required raw data downloaded programmatically: {summary.get('raw_downloads_complete')}",
+        f"3. Required raw data complete: {summary.get('raw_downloads_complete')}",
         f"4. X-13 requires manual installation: {summary.get('x13_manual_install_required')}",
         f"5. Zillow all-homes metros available: {summary.get('n_zillow_metros')}",
         f"6. Matched to permits: {summary.get('n_matched_permits')}",
@@ -1959,11 +2001,11 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
     dirs = ensure_dirs(data_root)
     warnings: List[Dict[str, object]] = []
     manifest: List[DownloadRecord] = []
-    write_code_audit(Path(__file__).resolve().parents[1], data_root)
+    write_code_audit(find_repo_root(start=__file__), data_root)
     inventory = inventory_existing_data(data_root)
     write_inventory(data_root, inventory)
     archive_dir, archived = (data_root / "archive_existing_skipped", [])
-    if retry_source is None:
+    if retry_source is None and bls_local_dir is None:
         archive_dir, archived = archive_invalid_existing(data_root, inventory)
     accepted_existing: List[str] = []
     if audit_existing_only:
@@ -2017,8 +2059,19 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
 
     if local_bls_mode:
         try:
-            bls_diagnostics = import_bls_local_files(Path(bls_local_dir), dirs, manifest)
+            local_manifest: List[DownloadRecord] = []
+            bls_diagnostics = import_bls_local_files(Path(bls_local_dir), dirs, local_manifest)
+            official_ids, nsa_ids, _ = parse_bls_series_metadata(dirs, geo)
+            if not official_ids:
+                raise ValueError("manual BLS import produced zero selected official-SA series")
+            if not nsa_ids:
+                raise ValueError("manual BLS import produced zero selected NSA series")
             emp_sa, emp_nsa = parse_bls_cached_files(dirs, geo)
+            if not emp_sa:
+                raise ValueError("manual BLS import produced zero official-SA employment observations")
+            if not emp_nsa:
+                raise ValueError("manual BLS import produced zero NSA employment observations")
+            manifest.extend(local_manifest)
         except Exception as exc:
             warnings.append({"stage": "bls_manual_import", "source_file": str(bls_local_dir), "message": str(exc), "severity": "error"})
             emp_sa, emp_nsa = [], []
@@ -2026,9 +2079,11 @@ def run_housing_audit(data_root: Path, *, audit_existing_only: bool = False,
         emp_sa, emp_nsa, bls_diagnostics = fetch_bls(dirs, force, manifest, warnings, geo, data_root)
 
     fields_z = ["zillow_region_id", "zillow_region_name", "region_type", "state_name", "date", "zhvi_all_homes_sa", "source_file", "source_vintage"]
-    atomic_write_csv(dirs["processed"] / "zhvi_all_homes_metro_sa_long.csv", zillow_rows, fields_z)
+    if not local_bls_mode:
+        atomic_write_csv(dirs["processed"] / "zhvi_all_homes_metro_sa_long.csv", zillow_rows, fields_z)
     fields_p = ["cbsa_code", "cbsa_title", "metropolitan_or_micropolitan_flag", "year", "month", "date", "total_units", "source_vintage", "source_file"]
-    atomic_write_csv(dirs["processed"] / "permits_metro_nsa_long.csv", permits_nsa, fields_p)
+    if not local_bls_mode:
+        atomic_write_csv(dirs["processed"] / "permits_metro_nsa_long.csv", permits_nsa, fields_p)
     fields_e_sa = [
         "bls_series_id", "bls_state_code", "bls_area_code", "cbsa_code",
         "bls_area_title", "date", "employment_thousands_sa",

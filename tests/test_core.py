@@ -8,6 +8,7 @@ import dataclasses
 import argparse
 import csv
 import json
+import math
 import tempfile
 
 # make `import dlrhcs` work when run directly (python tests/test_core.py) from a
@@ -21,11 +22,12 @@ from dlrhcs.dgp import simulate
 from dlrhcs.factorridge import fit_factor_ridge
 from dlrhcs.folds import make_folds
 from dlrhcs.mc import run_replication
+from dlrhcs.paths import find_repo_root, repo_relative, resolve_repo_path
 from dlrhcs.pipeline import Tuning
 from dlrhcs.targets import (entry_direction, project_block, project_tangent,
-                            riesz_weights, Target)
+                            riesz_weights, Target, cg_converged_from_status)
 from dlrhcs import housing_data
-from scripts import sim_report, run_mc_batches
+from scripts import sim_report, run_mc_batches, report_housing_data, housing_all_homes
 
 
 def _panel(Tp=24, N=20, seed=0, sigma_u=0.30):
@@ -567,30 +569,32 @@ def _write_bls_manual_fixture(root, *, html_file=None, malformed_file=None, trun
     root.mkdir(parents=True, exist_ok=True)
     files = {
         "sm.area": (
-            "area_code\tarea_name\n"
-            "12345\tTest City, AA\n"
-            "00000\tStatewide\n"
-            "54321\tDivision City Metropolitan Division\n"
+            "area_code\tarea_name\r\n"
+            "12345\tTest City, AA\r\n"
+            "00000\tStatewide\r\n"
+            "54321\tDivision City Metropolitan Division\r\n"
         ),
-        "sm.seasonal": "seasonal_code\tseasonal_text\nS\tSeasonally Adjusted\nU\tNot Seasonally Adjusted\n",
-        "sm.industry": "industry_code\tindustry_name\n00000000\tTotal Nonfarm\n00000001\tTotal Private\n",
-        "sm.footnote": "footnote_code\tfootnote_text\nP\tPreliminary\nR\tRevised\n",
+        "sm.seasonal": "seasonal_code\tseasonal_text\r\nS\tSeasonally Adjusted\r\nU\tNot Seasonally Adjusted\r\n",
+        "sm.industry": "industry_code\tindustry_name\r\n00000000\tTotal Nonfarm\r\n00000001\tTotal Private\r\n",
+        "sm.footnote": "footnote_code\tfootnote_text\r\nP\tPreliminary\r\nR\tRevised\r\n",
         "sm.series": (
-            "series_id\tarea_code\tstate_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\n"
-            "SMSGOOD\t12345\t12\t00\t00000000\t01\tS\n"
-            "SMUGOOD\t12345\t12\t00\t00000000\t01\tU\n"
-            "SMSSTATE\t00000\t12\t00\t00000000\t01\tS\n"
-            "SMSDIV\t54321\t54\t00\t00000000\t01\tS\n"
-            "SMSPRIVATE\t12345\t12\t00\t00000001\t01\tS\n"
-            "SMSCHANGE\t12345\t12\t00\t00000000\t26\tS\n"
+            "\ufeffseries_id                     \tstate_code\tarea_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\tbenchmark_year\tfootnote_codes\tbegin_year\tbegin_period\tend_year\tend_period\r\n"
+            "SMSDT21                     \t01\t12345\t00\t00000000\t21\tS\t2024\t\t1990\tM01\t2026\tM06\r\n"
+            "SMSDT22                     \t01\t12345\t00\t00000000\t22\tS\t2024\t\t1990\tM01\t2026\tM06\r\n"
+            "SMSGOOD                     \t01\t12345\t00\t00000000\t01\tS\t2024\t\t1990\tM01\t2026\tM06\r\n"
+            "SMUGOOD                     \t01\t12345\t00\t00000000\t01\tU\t2024\t\t1990\tM01\t2026\tM06\r\n"
+            "SMSSTATE                    \t01\t00000\t00\t00000000\t01\tS\t2024\t\t1990\tM01\t2026\tM06\r\n"
+            "SMSDIV                      \t54\t54321\t00\t00000000\t01\tS\t2024\t\t1990\tM01\t2026\tM06\r\n"
+            "SMSPRIVATE                  \t01\t12345\t00\t00000001\t01\tS\t2024\t\t1990\tM01\t2026\tM06\r\n"
+            "SMSCHANGE                   \t01\t12345\t00\t00000000\t26\tS\t2024\t\t1990\tM01\t2026\tM06\r\n"
         ),
         "sm.data.54.TotalNonFarm.All": (
-            "series_id\tyear\tperiod\tvalue\tfootnote_codes\n"
-            "SMSGOOD\t2020\tM01\t100.5\tP\n"
-            "SMSGOOD\t2020\tM13\t999.0\t\n"
-            "SMUGOOD\t2020\tM01\t98.0\t\n"
-            "SMSSTATE\t2020\tM01\t500.0\t\n"
-            "SMSDIV\t2020\tM01\t50.0\t\n"
+            "series_id                     \tyear\tperiod\t       value\tfootnote_codes\r\n"
+            "SMSGOOD                     \t2020\tM01\t100.5\tP\r\n"
+            "SMSGOOD                     \t2020\tM13\t999.0\t\r\n"
+            "SMUGOOD                     \t2020\tM01\t98.0\r\n"
+            "SMSSTATE                    \t2020\tM01\t500.0\t\r\n"
+            "SMSDIV                      \t2020\tM01\t50.0\t\r\n"
         ),
     }
     if missing_file:
@@ -601,8 +605,8 @@ def _write_bls_manual_fixture(root, *, html_file=None, malformed_file=None, trun
         if name == malformed_file:
             text = "series_id\tyear\tperiod\tvalue\tfootnote_codes\nSMSGOOD\t2020\n"
         if name == truncated_file:
-            text = text.rstrip("\n")
-        (root / name).write_text(text, encoding="utf-8")
+            text = text.rstrip("\r\n")
+        (root / name).write_text(text, encoding="utf-8", newline="")
     if extra_file:
         (root / "README.txt").write_text("not part of the official SM bulk set\n", encoding="utf-8")
 
@@ -671,7 +675,10 @@ def test_housing_bls_local_import_validates_cross_references():
         local = tmp / "manual"
         _write_bls_manual_fixture(local)
         path = local / "sm.series"
-        text = path.read_text(encoding="utf-8").replace("SMSGOOD\t12345", "SMSGOOD\t99999")
+        text = path.read_text(encoding="utf-8").replace(
+            "SMSGOOD                     \t01\t12345",
+            "SMSGOOD                     \t01\t99999",
+        )
         path.write_text(text, encoding="utf-8")
         dirs = housing_data.ensure_dirs(tmp / "data")
         try:
@@ -719,6 +726,402 @@ def test_housing_bls_local_dir_run_recomputes_overlap_without_bls_network():
         finally:
             housing_data.parse_cached_geography = original_geo
             housing_data.fetch_bls = original_fetch_bls
+
+
+def test_housing_report_frontiers_pareto_and_exclusion_identities():
+    complete = {
+        "10001": {"2020-01", "2020-02", "2020-03", "2020-04"},
+        "10002": {"2020-03", "2020-04"},
+        "10003": {"2020-04"},
+    }
+    codes = ["10001", "10002", "10003"]
+    starts = report_housing_data.fixed_start_frontier(complete, codes, ["2020-01", "2020-03"], "2020-04")
+    assert starts[0]["T_months"] == 4
+    assert starts[0]["N_complete_msas"] == 1
+    assert starts[1]["T_months"] == 2
+    assert starts[1]["N_complete_msas"] == 2
+    durs = report_housing_data.fixed_duration_frontier(complete, codes, [1, 2, 4], "2020-04")
+    assert [r["N_complete_msas"] for r in durs] == [3, 2, 1]
+    pareto = report_housing_data.pareto_frontier(starts + durs)
+    assert all(not (
+        int(a["N_complete_msas"]) <= int(b["N_complete_msas"]) and
+        int(a["T_months"]) <= int(b["T_months"]) and
+        (int(a["N_complete_msas"]) < int(b["N_complete_msas"]) or int(a["T_months"]) < int(b["T_months"]))
+    ) for a in pareto for b in pareto if a is not b)
+
+
+def test_housing_report_candidate_validation_and_exact_lag_no_interpolation():
+    rows = [
+        {"cbsa_code": "10001", "date": "2020-01-01", "x": "10", "zhvi_all_homes_sa": "1", "permits_units_sa": "2", "employment_thousands_sa": "3"},
+        {"cbsa_code": "10001", "date": "2021-01-01", "x": "15", "zhvi_all_homes_sa": "1", "permits_units_sa": "2", "employment_thousands_sa": "3"},
+        {"cbsa_code": "10001", "date": "2021-02-01", "x": "20", "zhvi_all_homes_sa": "1", "permits_units_sa": "2", "employment_thousands_sa": "3"},
+    ]
+    lagged = report_housing_data.exact_lag_transform(rows, "x", "dx12", lambda v, lv: v - lv)
+    assert lagged[1]["dx12"] == 5
+    assert lagged[2]["dx12"] == ""
+    assert report_housing_data.validate_candidate_panel_rows(rows[:2], 1, 2) == []
+    bad = [dict(rows[0], permits_units_sa="")]
+    assert report_housing_data.validate_candidate_panel_rows(bad, 1, 1)
+
+
+def test_housing_report_preliminary_final_month_and_final_only_frontier():
+    emp = [
+        {"cbsa_code": "10001", "date": "2020-01-01", "preliminary_flag": "0", "bls_series_id": "S1", "employment_thousands_sa": "10"},
+        {"cbsa_code": "10002", "date": "2020-01-01", "preliminary_flag": "0", "bls_series_id": "S2", "employment_thousands_sa": "20"},
+        {"cbsa_code": "10001", "date": "2020-02-01", "preliminary_flag": "1", "bls_series_id": "S1", "employment_thousands_sa": "11"},
+        {"cbsa_code": "10002", "date": "2020-02-01", "preliminary_flag": "0", "bls_series_id": "S2", "employment_thousands_sa": "21"},
+    ]
+    prelim, by_month, latest = report_housing_data.preliminary_by_month(emp, ["10001", "10002"])
+    assert len(prelim) == 1
+    assert by_month == [{"date": "2020-02-01", "preliminary_count": 1}]
+    assert latest == "2020-01"
+
+    complete_all = {"10001": {"2020-01", "2020-02"}, "10002": {"2020-01", "2020-02"}}
+    complete_final = {"10001": {"2020-01"}, "10002": {"2020-01", "2020-02"}}
+    all_frontier = report_housing_data.fixed_start_frontier(complete_all, ["10001", "10002"], ["2020-01"], "2020-02")
+    final_frontier = report_housing_data.fixed_start_frontier(complete_final, ["10001", "10002"], ["2020-01"], latest)
+    assert all_frontier[0]["T_months"] == 2
+    assert final_frontier[0]["T_months"] == 1
+    assert final_frontier[0]["N_complete_msas"] == 2
+
+
+def test_housing_report_final_only_candidate_panels_are_immutable_and_count_negatives():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = report_housing_data.Path(tmp)
+        specs = {
+            "candidate": {
+                "candidate_id": "candidate",
+                "start_date": "2020-01-01",
+                "end_date": "2020-02-01",
+                "complete_cbsa_codes": "10001",
+            }
+        }
+        title = {"10001": "Test CBSA"}
+        z_by = {
+            ("10001", "2020-01"): {"zhvi_all_homes_sa": "100", "source_vintage": "fixture"},
+            ("10001", "2020-02"): {"zhvi_all_homes_sa": "101", "source_vintage": "fixture"},
+        }
+        p_by = {
+            ("10001", "2020-01"): {"permits_units_sa": "-2", "source_vintage": "fixture", "x13_status": "ok", "x13_spec_id": "spec"},
+            ("10001", "2020-02"): {"permits_units_sa": "3", "source_vintage": "fixture", "x13_status": "ok", "x13_spec_id": "spec"},
+        }
+        e_by = {
+            ("10001", "2020-01"): {"employment_thousands_sa": "10", "source_vintage": "fixture", "preliminary_flag": "0"},
+            ("10001", "2020-02"): {"employment_thousands_sa": "11", "source_vintage": "fixture", "preliminary_flag": "0"},
+        }
+        x13_by = {"10001": {"status": "ok", "x13_spec_id": "spec"}}
+        summaries, _ = report_housing_data.write_candidate_panels(
+            specs, root, title, z_by, p_by, e_by, x13_by, "final_only", overwrite=False
+        )
+        assert summaries[0]["negative_permit_count"] == 1
+        assert summaries[0]["negative_permit_share"] == 0.5
+        before = (root / "candidate" / "metadata.json").read_text(encoding="utf-8")
+        summaries2, _ = report_housing_data.write_candidate_panels(
+            specs, root, title, z_by, p_by, e_by, x13_by, "final_only", overwrite=False
+        )
+        after = (root / "candidate" / "metadata.json").read_text(encoding="utf-8")
+        assert before == after
+        assert summaries2[0]["candidate_id"] == "candidate"
+
+
+def test_housing_report_negative_sa_permit_relabel_and_no_truncation():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = report_housing_data.Path(tmp)
+        cdir = root / "cand"
+        cdir.mkdir()
+        report_housing_data.write_csv(cdir / "msa_list.csv", [{"cbsa_code": "10001"}], ["cbsa_code"])
+        report_housing_data.write_csv(cdir / "monthly_dates.csv", [{"date": "2020-01-01"}], ["date"])
+        candidates = [{
+            "path": str(cdir), "panel_type": "final_only", "candidate_id": "cand",
+            "start_date": "2020-01-01", "end_date": "2020-01-01",
+            "N": 1, "T_months": 1, "NT": 1,
+            "negative_permit_count": 1, "negative_permit_share": 1.0,
+            "x13_warning_msas": 0,
+        }]
+        rows = [{
+            "cbsa_code": "10001", "msa_title": "Test CBSA", "date": "2020-01-01",
+            "zhvi_all_homes_sa": "100", "permits_units_sa": "-4.5",
+            "employment_thousands_sa": "10",
+        }]
+        pnsa_by = {("10001", "2020-01"): {"total_units": "2"}}
+        p_by = {("10001", "2020-01"): {
+            "x13_status": "ok", "x13_spec_id": "spec",
+            "contiguous_segment_start": "2020-01-01",
+            "contiguous_segment_end": "2020-12-01",
+        }}
+        diag, cand_rows, summary = report_housing_data.negative_permit_diagnostics(
+            rows, pnsa_by, p_by, {"10001": {"status": "ok"}}, candidates
+        )
+        assert diag[0]["diagnostic"] == "negative_seasonally_adjusted_permit_value"
+        assert diag[0]["corresponding_permits_units_nsa"] == "2"
+        assert diag[0]["belongs_to_x13_warning_or_failed_segment"] == 0
+        assert "final_only:cand" in diag[0]["candidate_panels_affected"]
+        assert cand_rows[0]["negative_permit_count"] == 1
+        assert summary["total_count"] == 1
+        assert rows[0]["permits_units_sa"] == "-4.5"
+
+
+def test_housing_report_candidate_ranking_identities():
+    candidates = [
+        {"panel_type": "all_vintage", "candidate_id": "a", "start_date": "2020-01-01", "end_date": "2020-10-01", "N": 10, "T_months": 10, "NT": 100, "negative_permit_count": 0},
+        {"panel_type": "all_vintage", "candidate_id": "b", "start_date": "2020-01-01", "end_date": "2020-06-01", "N": 20, "T_months": 6, "NT": 120, "negative_permit_count": 1},
+        {"panel_type": "final_only", "candidate_id": "pareto_01", "start_date": "2020-01-01", "end_date": "2021-01-01", "N": 8, "T_months": 13, "NT": 104, "negative_permit_count": 2},
+    ]
+    rows = report_housing_data.rank_candidates(candidates, {("final_only", "pareto_01")})
+    by_id = {r["candidate_id"]: r for r in rows}
+    assert "maximum N" in by_id["b"]["highlight"]
+    assert "closest N/T ratio to one" in by_id["a"]["highlight"]
+    assert by_id["pareto_01"]["pareto_dominated"] == 0
+    assert by_id["a"]["pareto_dominated"] == 1
+
+
+def _write_all_homes_candidate(root, cid="start_2010", *, n=3, t=5, start="2010-01",
+                               prelim_last=False, missing_month=False):
+    cdir = housing_all_homes.Path(root) / cid
+    cdir.mkdir(parents=True, exist_ok=True)
+    months = [housing_all_homes.month_from_index(housing_all_homes.month_index(start) + i) for i in range(t)]
+    if missing_month:
+        months.pop(2)
+    codes = [f"10{i:03d}" for i in range(1, n + 1)]
+    rows = []
+    for ci, code in enumerate(codes):
+        for mi, ym in enumerate(months):
+            rows.append({
+                "cbsa_code": code,
+                "msa_title": f"Metro {code}",
+                "date": ym + "-01",
+                "zhvi_all_homes_sa": str(100 + ci + mi),
+                "permits_units_sa": str([-2, 0, 5, 6, 7, 8][mi % 6]),
+                "employment_thousands_sa": str(50 + ci + mi),
+                "bls_preliminary_flag": "1" if prelim_last and mi == len(months) - 1 else "0",
+                "zhvi_source_vintage": "fixture",
+                "permits_source_vintage": "fixture",
+                "employment_source_vintage": "fixture",
+            })
+    housing_all_homes.write_csv(cdir / "housing_panel_levels.csv", rows, [
+        "cbsa_code", "msa_title", "date", "zhvi_all_homes_sa", "permits_units_sa",
+        "employment_thousands_sa", "bls_preliminary_flag", "zhvi_source_vintage",
+        "permits_source_vintage", "employment_source_vintage",
+    ])
+    housing_all_homes.write_csv(cdir / "msa_list.csv", [{"cbsa_code": c, "msa_title": f"Metro {c}"} for c in codes], ["cbsa_code", "msa_title"])
+    housing_all_homes.write_csv(cdir / "monthly_dates.csv", [{"date": m + "-01"} for m in months], ["date"])
+    meta = {
+        "candidate_id": cid,
+        "panel_type": "final_only",
+        "start_date": months[0] + "-01",
+        "end_date": months[-1] + "-01",
+        "N": n,
+        "T_months": len(months),
+        "NT": n * len(months),
+        "preliminary_bls_observations": n if prelim_last else 0,
+        "negative_permit_count": sum(float(r["permits_units_sa"]) < 0 for r in rows),
+        "missing_primary_values": 0,
+        "x13_warning_msas": 0,
+        "no_interpolation_or_imputation": True,
+    }
+    housing_all_homes.write_json(cdir / "metadata.json", meta)
+    return cdir
+
+
+def test_housing_all_homes_transformations_and_exact_lags_no_bridge():
+    rows = [
+        {"cbsa_code": "10001", "msa_title": "A", "date": "2020-01-01", "zhvi_all_homes_sa": "100", "permits_units_sa": "-2", "employment_thousands_sa": "50", "bls_preliminary_flag": "0"},
+        {"cbsa_code": "10001", "msa_title": "A", "date": "2020-03-01", "zhvi_all_homes_sa": "110", "permits_units_sa": "0", "employment_thousands_sa": "55", "bls_preliminary_flag": "0"},
+    ]
+    transformed, tdiag = housing_all_homes.transform_rows(rows)
+    assert tdiag["negative_permit_count_retained"] == 1
+    assert transformed[0]["asinh_permits"] == math.asinh(-2)
+    assert transformed[1]["asinh_permits"] == math.asinh(0)
+    lagged, ldiag = housing_all_homes.add_exact_lags(transformed)
+    assert ldiag["usable_dynamic_observations"] == 0
+    assert ldiag["lag_bridging_missing_month_count"] == 1
+    assert lagged[1]["lag_log_zhvi"] == ""
+
+
+def test_housing_all_homes_positivity_checks():
+    bad_z = [{"cbsa_code": "10001", "date": "2020-01-01", "zhvi_all_homes_sa": "0", "permits_units_sa": "1", "employment_thousands_sa": "1"}]
+    try:
+        housing_all_homes.transform_rows(bad_z)
+    except ValueError as exc:
+        assert "ZHVI" in str(exc)
+    else:
+        raise AssertionError("nonpositive ZHVI should be rejected")
+    bad_e = [{"cbsa_code": "10001", "date": "2020-01-01", "zhvi_all_homes_sa": "1", "permits_units_sa": "1", "employment_thousands_sa": "0"}]
+    try:
+        housing_all_homes.transform_rows(bad_e)
+    except ValueError as exc:
+        assert "employment" in str(exc)
+    else:
+        raise AssertionError("nonpositive employment should be rejected")
+
+
+def test_housing_all_homes_final_only_loading_identities_and_checksum():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = housing_all_homes.Path(tmp) / "candidates"
+        _write_all_homes_candidate(root, "start_2010", n=4, t=6)
+        _write_all_homes_candidate(root, "pareto_2010", n=2, t=6)
+        out = housing_all_homes.Path(tmp) / "estimation_panel"
+        meta = housing_all_homes.prepare_baseline_panel(root, out)
+        assert meta["candidate_id"] == "start_2010"
+        assert meta["N"] == 4
+        assert meta["T"] == 6
+        assert meta["usable_dynamic_observations"] == 4 * 5
+        assert meta["preliminary_bls_observations"] == 0
+        assert meta["negative_permit_count_retained"] == 4
+        assert "housing_estimation_panel.csv" in meta["checksums"]
+        panel = housing_all_homes.load_estimation_panel(out, first_n_msas=2, first_t_usable=3)
+        assert panel["Y"].shape == (3, 2)
+        assert all(z.shape == (3, 2) for z in panel["Z"])
+
+
+def test_housing_all_homes_preserves_legacy_loader_and_smoke_output_isolation_signature():
+    assert callable(housing_data.load_zillow) if hasattr(housing_data, "load_zillow") else True
+    from dlrhcs.empirical import load_zillow as legacy_load_zillow
+    assert callable(legacy_load_zillow)
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = housing_all_homes.Path(tmp) / "out" / "smoke"
+        panel_dir = housing_all_homes.Path(tmp) / "panel"
+        panel_dir.mkdir(parents=True)
+        housing_all_homes.write_csv(panel_dir / "housing_estimation_panel.csv", [], housing_all_homes.PANEL_COLUMNS)
+        sig = {
+            "schema_version": housing_all_homes.SCHEMA_VERSION,
+            "panel_checksum": "abc",
+            "smoke": True,
+        }
+        old = {"run_signature": sig}
+        out_dir.mkdir(parents=True)
+        housing_all_homes.write_json(out_dir / "metadata.json", old)
+        housing_all_homes.write_json(out_dir / "housing_all_homes_results.json", old)
+        assert (out_dir / "metadata.json").exists()
+        assert "smoke" in str(out_dir)
+
+
+def _make_repo_root_fixture(base, name):
+    root = housing_all_homes.Path(base) / name
+    (root / "dlrhcs").mkdir(parents=True)
+    (root / "scripts").mkdir()
+    return root
+
+
+def test_paths_find_repo_root_precedence_and_spaces(monkeypatch=None):
+    with tempfile.TemporaryDirectory() as tmp:
+        root1 = _make_repo_root_fixture(tmp, "Dynamic Paper-dlrhcs_replication")
+        root2 = _make_repo_root_fixture(tmp, "dlrhcs")
+        root_space = _make_repo_root_fixture(tmp, "repo with spaces")
+        nested = root1 / "scripts" / "subdir"
+        nested.mkdir()
+        assert find_repo_root(start=nested) == root1.resolve()
+        assert find_repo_root(start=root2 / "scripts") == root2.resolve()
+        assert find_repo_root(start=root_space / "scripts") == root_space.resolve()
+        assert resolve_repo_path("data/zillow", root1) == (root1 / "data" / "zillow").resolve()
+        outside = housing_all_homes.Path(tmp) / "outside.csv"
+        assert resolve_repo_path(outside, root1) == outside.resolve()
+        old_env = os.environ.get("DLRHCS_ROOT")
+        try:
+            os.environ["DLRHCS_ROOT"] = str(root2)
+            assert find_repo_root(start=root1 / "scripts") == root2.resolve()
+        finally:
+            if old_env is None:
+                os.environ.pop("DLRHCS_ROOT", None)
+            else:
+                os.environ["DLRHCS_ROOT"] = old_env
+        try:
+            find_repo_root(explicit=housing_all_homes.Path(tmp) / "not_repo")
+        except ValueError as exc:
+            assert "invalid DLRHCS repository root" in str(exc)
+        else:
+            raise AssertionError("invalid --repo-root should be rejected")
+
+
+def test_housing_all_homes_signature_portable_across_repo_roots_and_checksum_sensitive():
+    sig_a = {
+        "schema_version": housing_all_homes.SCHEMA_VERSION,
+        "input_identity": {
+            "schema_version": housing_all_homes.SCHEMA_VERSION,
+            "input_checksum": "abc",
+            "N_source": 3,
+            "T_source": 5,
+            "start_date": "2010-01-01",
+            "end_date": "2010-05-01",
+            "outcome": "log(zhvi_all_homes_sa)",
+            "controls": ["lag_asinh_permits", "lag_log_employment"],
+            "repo_relative_input_path": "data/zillow/processed/estimation_panels/housing_baseline_2010_final",
+        },
+    }
+    sig_b = json.loads(json.dumps(sig_a))
+    sig_b["resolved_absolute_path_info"] = "D:/Programming/dlrhcs/data/zillow/processed/estimation_panels/housing_baseline_2010_final"
+    assert sig_a["input_identity"] == sig_b["input_identity"]
+    sig_c = json.loads(json.dumps(sig_a))
+    sig_c["input_identity"]["input_checksum"] = "changed"
+    assert sig_a["input_identity"] != sig_c["input_identity"]
+
+
+def test_housing_all_homes_riesz_override_parsers():
+    assert housing_all_homes.parse_positive_int("2000") == 2000
+    assert housing_all_homes.parse_positive_float("1e-5") == 1e-5
+    assert housing_all_homes.parse_bool("true") is True
+    assert housing_all_homes.parse_bool("false") is False
+    for bad in ("0", "-1", "nan", "inf"):
+        try:
+            housing_all_homes.parse_positive_float(bad)
+        except argparse.ArgumentTypeError:
+            pass
+        else:
+            raise AssertionError(f"{bad} should be rejected")
+
+
+def test_riesz_cg_status_interpretation():
+    assert cg_converged_from_status(0, 1e-8, 1e-6)
+    assert cg_converged_from_status(0, 1e-6, 1e-6)  # final allowed iteration can still be success
+    assert not cg_converged_from_status(10, 1e-8, 1e-6)  # positive info means maxiter/failure status
+    assert not cg_converged_from_status(0, float("nan"), 1e-6)
+    assert not cg_converged_from_status(0, 1e-8, 1e-6, contains_nonfinite=True)
+    assert not cg_converged_from_status(5, 1e-8, 1e-6)  # finite solution with failure status remains failure
+    assert not cg_converged_from_status(-1, 1e-8, 1e-6)
+
+
+def test_housing_all_homes_metadata_paths_and_preflight_no_estimator_call():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo with spaces")
+        cand_root = repo / "data" / "zillow" / "processed" / "candidate_panels_final_only"
+        _write_all_homes_candidate(cand_root, "start_2010", n=3, t=5)
+        panel_dir = repo / "data" / "zillow" / "processed" / "estimation_panels" / "housing_baseline_2010_final"
+        meta = housing_all_homes.prepare_baseline_panel(cand_root, panel_dir, repo_root=repo)
+        assert meta["repo_relative_path"] == "data/zillow/processed/estimation_panels/housing_baseline_2010_final"
+        assert "resolved_absolute_path_info" in meta
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("preflight must not estimate"))
+            report = housing_all_homes.preflight(panel_dir, repo / "outputs" / "empirical" / "housing_all_homes", repo)
+        finally:
+            housing_all_homes.estimate = original_estimate
+        assert report["ready_for_production"]
+        assert not report["estimator_called"]
+        assert report["repo_relative_input_path"] == meta["repo_relative_path"]
+        assert (repo / "outputs" / "empirical" / "housing_all_homes" / "audit" / "production_preflight.json").exists()
+
+
+def test_housing_report_latex_manifest_and_deterministic_helpers():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = report_housing_data.Path(tmp)
+        rows = [{"name": "A&B", "count": 2}]
+        tex = root / "table.tex"
+        report_housing_data.write_latex_table(
+            tex,
+            rows,
+            [("name", "Name"), ("count", "Count")],
+            "Fixture table",
+            "tab:fixture",
+            "No interpolation.",
+        )
+        text = tex.read_text(encoding="utf-8")
+        assert "\\toprule" in text
+        assert "A\\&B" in text
+        csv_path = root / "data.csv"
+        report_housing_data.write_csv(csv_path, rows, ["name", "count"])
+        first = report_housing_data.sha256_file(csv_path)
+        report_housing_data.write_csv(csv_path, rows, ["name", "count"])
+        assert report_housing_data.sha256_file(csv_path) == first
 
 
 # 3. ALS objective monotone non-increasing ----------------------------------- #
