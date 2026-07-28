@@ -11,14 +11,17 @@ import argparse
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+BOOTSTRAP_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BOOTSTRAP_ROOT))
 
 from dlrhcs.housing_data import run_housing_audit  # noqa: E402
+from dlrhcs.paths import find_repo_root, resolve_repo_path  # noqa: E402
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Audit and acquire monthly MSA housing data.")
+    ap.add_argument("--repo-root", default=None,
+                    help="explicit DLRHCS repository root; default uses DLRHCS_ROOT or script discovery")
     ap.add_argument("--data-root", default="data/zillow",
                     help="repository-relative or absolute data/zillow root")
     ap.add_argument("--audit-existing-only", action="store_true",
@@ -44,12 +47,14 @@ def main() -> int:
     args = ap.parse_args()
     if args.min_sa_months < 1:
         raise SystemExit("--min-sa-months must be positive")
-    data_root = Path(args.data_root)
-    if not data_root.is_absolute():
-        data_root = ROOT / data_root
+    try:
+        repo_root = find_repo_root(start=__file__, explicit=args.repo_root)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
+    data_root = resolve_repo_path(args.data_root, repo_root)
     bls_local_dir = Path(args.bls_local_dir) if args.bls_local_dir else None
-    if bls_local_dir is not None and not bls_local_dir.is_absolute():
-        bls_local_dir = ROOT / bls_local_dir
+    if bls_local_dir is not None:
+        bls_local_dir = resolve_repo_path(bls_local_dir, repo_root)
     code, summary = run_housing_audit(
         data_root,
         audit_existing_only=args.audit_existing_only,

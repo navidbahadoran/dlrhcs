@@ -1,0 +1,567 @@
+﻿# Housing Git/Data Portability Audit
+
+## Ignore Checks
+
+- data/zillow	NOT IGNORED
+- data/zillow/raw/bls_ces/sm.area	NOT IGNORED
+- data/zillow/processed	NOT IGNORED
+- data/zillow/processed/candidate_panels	NOT IGNORED
+
+## Summary
+
+- normal Git tracked files under data/zillow: 498
+- Git LFS files: 0
+- ignored checked paths: 0
+- modified tracked data paths: 14
+- deleted tracked data paths: 1
+- untracked data path entries: 7
+
+## Files Tracked By Normal Git
+
+- data/zillow/README.md
+- data/zillow/audit/balanced_panel_frontier.csv
+- data/zillow/audit/bls_download_diagnosis.md
+- data/zillow/audit/download_log.txt
+- data/zillow/audit/existing_code_audit.md
+- data/zillow/audit/existing_data_inventory.csv
+- data/zillow/audit/existing_data_inventory.md
+- data/zillow/audit/msa_matches_manual_review.csv
+- data/zillow/audit/overlap_report.md
+- data/zillow/audit/overlap_summary.csv
+- data/zillow/audit/parser_warnings.csv
+- data/zillow/audit/series_coverage_by_msa.csv
+- data/zillow/audit/source_manifest.json
+- data/zillow/audit/x13_diagnostics.csv
+- data/zillow/audit/zillow_geography_classification.csv
+- data/zillow/cbsa_county_crosswalk_2023.csv
+- data/zillow/manual_import/bls_ces/proposed_assumptions.pdf
+- data/zillow/manual_import/bls_ces/sm.area
+- data/zillow/manual_import/bls_ces/sm.data.54.TotalNonFarm.All
+- data/zillow/manual_import/bls_ces/sm.footnote
+- data/zillow/manual_import/bls_ces/sm.industry
+- data/zillow/manual_import/bls_ces/sm.seasonal
+- data/zillow/manual_import/bls_ces/sm.series
+- data/zillow/metro_monthly_covariates_2000_present.csv
+- data/zillow/processed/employment_metro_local_x13_sa_long.csv
+- data/zillow/processed/employment_metro_nsa_availability_long.csv
+- data/zillow/processed/employment_metro_official_sa_long.csv
+- data/zillow/processed/housing_msa_crosswalk.csv
+- data/zillow/processed/housing_msa_monthly_availability.csv
+- data/zillow/processed/permits_metro_nsa_long.csv
+- data/zillow/processed/permits_metro_sa_long.csv
+- data/zillow/processed/zhvi_all_homes_metro_sa_long.csv
+- data/zillow/raw/census_bps/cbsa2401c.txt
+- data/zillow/raw/census_bps/cbsa2402c.txt
+- data/zillow/raw/census_bps/cbsa2403c.txt
+- data/zillow/raw/census_bps/cbsa2404c.txt
+- data/zillow/raw/census_bps/cbsa2405c.txt
+- data/zillow/raw/census_bps/cbsa2406c.txt
+- data/zillow/raw/census_bps/cbsa2407c.txt
+- data/zillow/raw/census_bps/cbsa2408c.txt
+- data/zillow/raw/census_bps/cbsa2409c.txt
+- data/zillow/raw/census_bps/cbsa2410c.txt
+- data/zillow/raw/census_bps/cbsa2411c.txt
+- data/zillow/raw/census_bps/cbsa2412c.txt
+- data/zillow/raw/census_bps/cbsa2501c.txt
+- data/zillow/raw/census_bps/cbsa2502c.txt
+- data/zillow/raw/census_bps/cbsa2503c.txt
+- data/zillow/raw/census_bps/cbsa2504c.txt
+- data/zillow/raw/census_bps/cbsa2505c.txt
+- data/zillow/raw/census_bps/cbsa2506c.txt
+- data/zillow/raw/census_bps/cbsa2507c.txt
+- data/zillow/raw/census_bps/cbsa2508c.txt
+- data/zillow/raw/census_bps/cbsa2509c.txt
+- data/zillow/raw/census_bps/cbsa2510c.txt
+- data/zillow/raw/census_bps/cbsa2511c.txt
+- data/zillow/raw/census_bps/cbsa2512c.txt
+- data/zillow/raw/census_bps/cbsa2601c.txt
+- data/zillow/raw/census_bps/cbsa2602c.txt
+- data/zillow/raw/census_bps/cbsa2603c.txt
+- data/zillow/raw/census_bps/cbsa2604c.txt
+- data/zillow/raw/census_bps/cbsa2605c.txt
+- data/zillow/raw/census_bps/cbsa2606c.txt
+- data/zillow/raw/census_bps/ma0001c.txt
+- data/zillow/raw/census_bps/ma0002c.txt
+- data/zillow/raw/census_bps/ma0003c.txt
+- data/zillow/raw/census_bps/ma0004c.txt
+- data/zillow/raw/census_bps/ma0005c.txt
+- data/zillow/raw/census_bps/ma0006c.txt
+- data/zillow/raw/census_bps/ma0007c.txt
+- data/zillow/raw/census_bps/ma0008c.txt
+- data/zillow/raw/census_bps/ma0009c.txt
+- data/zillow/raw/census_bps/ma0010c.txt
+- data/zillow/raw/census_bps/ma0011c.txt
+- data/zillow/raw/census_bps/ma0012c.txt
+- data/zillow/raw/census_bps/ma0101c.txt
+- data/zillow/raw/census_bps/ma0102c.txt
+- data/zillow/raw/census_bps/ma0103c.txt
+- data/zillow/raw/census_bps/ma0104c.txt
+- data/zillow/raw/census_bps/ma0105c.txt
+- data/zillow/raw/census_bps/ma0106c.txt
+- data/zillow/raw/census_bps/ma0107c.txt
+- data/zillow/raw/census_bps/ma0108c.txt
+- data/zillow/raw/census_bps/ma0109c.txt
+- data/zillow/raw/census_bps/ma0110c.txt
+- data/zillow/raw/census_bps/ma0111c.txt
+- data/zillow/raw/census_bps/ma0112c.txt
+- data/zillow/raw/census_bps/ma0201c.txt
+- data/zillow/raw/census_bps/ma0202c.txt
+- data/zillow/raw/census_bps/ma0203c.txt
+- data/zillow/raw/census_bps/ma0204c.txt
+- data/zillow/raw/census_bps/ma0205c.txt
+- data/zillow/raw/census_bps/ma0206c.txt
+- data/zillow/raw/census_bps/ma0207c.txt
+- data/zillow/raw/census_bps/ma0208c.txt
+- data/zillow/raw/census_bps/ma0209c.txt
+- data/zillow/raw/census_bps/ma0210c.txt
+- data/zillow/raw/census_bps/ma0211c.txt
+- data/zillow/raw/census_bps/ma0212c.txt
+- data/zillow/raw/census_bps/ma0301c.txt
+- data/zillow/raw/census_bps/ma0302c.txt
+- data/zillow/raw/census_bps/ma0303c.txt
+- data/zillow/raw/census_bps/ma0304c.txt
+- data/zillow/raw/census_bps/ma0305c.txt
+- data/zillow/raw/census_bps/ma0306c.txt
+- data/zillow/raw/census_bps/ma0307c.txt
+- data/zillow/raw/census_bps/ma0308c.txt
+- data/zillow/raw/census_bps/ma0309c.txt
+- data/zillow/raw/census_bps/ma0310c.txt
+- data/zillow/raw/census_bps/ma0311c.txt
+- data/zillow/raw/census_bps/ma0312c.txt
+- data/zillow/raw/census_bps/ma0401c.txt
+- data/zillow/raw/census_bps/ma0402c.txt
+- data/zillow/raw/census_bps/ma0403c.txt
+- data/zillow/raw/census_bps/ma0404c.txt
+- data/zillow/raw/census_bps/ma0405c.txt
+- data/zillow/raw/census_bps/ma0406c.txt
+- data/zillow/raw/census_bps/ma0407c.txt
+- data/zillow/raw/census_bps/ma0408c.txt
+- data/zillow/raw/census_bps/ma0409c.txt
+- data/zillow/raw/census_bps/ma0410c.txt
+- data/zillow/raw/census_bps/ma0411c.txt
+- data/zillow/raw/census_bps/ma0412c.txt
+- data/zillow/raw/census_bps/ma0501c.txt
+- data/zillow/raw/census_bps/ma0502c.txt
+- data/zillow/raw/census_bps/ma0503c.txt
+- data/zillow/raw/census_bps/ma0504c.txt
+- data/zillow/raw/census_bps/ma0505c.txt
+- data/zillow/raw/census_bps/ma0506c.txt
+- data/zillow/raw/census_bps/ma0507c.txt
+- data/zillow/raw/census_bps/ma0508c.txt
+- data/zillow/raw/census_bps/ma0509c.txt
+- data/zillow/raw/census_bps/ma0510c.txt
+- data/zillow/raw/census_bps/ma0511c.txt
+- data/zillow/raw/census_bps/ma0512c.txt
+- data/zillow/raw/census_bps/ma0601c.txt
+- data/zillow/raw/census_bps/ma0602c.txt
+- data/zillow/raw/census_bps/ma0603c.txt
+- data/zillow/raw/census_bps/ma0604c.txt
+- data/zillow/raw/census_bps/ma0605c.txt
+- data/zillow/raw/census_bps/ma0606c.txt
+- data/zillow/raw/census_bps/ma0607c.txt
+- data/zillow/raw/census_bps/ma0608c.txt
+- data/zillow/raw/census_bps/ma0609c.txt
+- data/zillow/raw/census_bps/ma0610c.txt
+- data/zillow/raw/census_bps/ma0611c.txt
+- data/zillow/raw/census_bps/ma0612c.txt
+- data/zillow/raw/census_bps/ma0701c.txt
+- data/zillow/raw/census_bps/ma0702c.txt
+- data/zillow/raw/census_bps/ma0703c.txt
+- data/zillow/raw/census_bps/ma0704c.txt
+- data/zillow/raw/census_bps/ma0705c.txt
+- data/zillow/raw/census_bps/ma0706c.txt
+- data/zillow/raw/census_bps/ma0707c.txt
+- data/zillow/raw/census_bps/ma0708c.txt
+- data/zillow/raw/census_bps/ma0709c.txt
+- data/zillow/raw/census_bps/ma0710c.txt
+- data/zillow/raw/census_bps/ma0711c.txt
+- data/zillow/raw/census_bps/ma0712c.txt
+- data/zillow/raw/census_bps/ma0801c.txt
+- data/zillow/raw/census_bps/ma0802c.txt
+- data/zillow/raw/census_bps/ma0803c.txt
+- data/zillow/raw/census_bps/ma0804c.txt
+- data/zillow/raw/census_bps/ma0805c.txt
+- data/zillow/raw/census_bps/ma0806c.txt
+- data/zillow/raw/census_bps/ma0807c.txt
+- data/zillow/raw/census_bps/ma0808c.txt
+- data/zillow/raw/census_bps/ma0809c.txt
+- data/zillow/raw/census_bps/ma0810c.txt
+- data/zillow/raw/census_bps/ma0811c.txt
+- data/zillow/raw/census_bps/ma0812c.txt
+- data/zillow/raw/census_bps/ma0901c.txt
+- data/zillow/raw/census_bps/ma0902c.txt
+- data/zillow/raw/census_bps/ma0903c.txt
+- data/zillow/raw/census_bps/ma0904c.txt
+- data/zillow/raw/census_bps/ma0905c.txt
+- data/zillow/raw/census_bps/ma0906c.txt
+- data/zillow/raw/census_bps/ma0907c.txt
+- data/zillow/raw/census_bps/ma0908c.txt
+- data/zillow/raw/census_bps/ma0909c.txt
+- data/zillow/raw/census_bps/ma0910c.txt
+- data/zillow/raw/census_bps/ma0911c.txt
+- data/zillow/raw/census_bps/ma0912c.txt
+- data/zillow/raw/census_bps/ma1001c.txt
+- data/zillow/raw/census_bps/ma1002c.txt
+- data/zillow/raw/census_bps/ma1003c.txt
+- data/zillow/raw/census_bps/ma1004c.txt
+- data/zillow/raw/census_bps/ma1005c.txt
+- data/zillow/raw/census_bps/ma1006c.txt
+- data/zillow/raw/census_bps/ma1007c.txt
+- data/zillow/raw/census_bps/ma1008c.txt
+- data/zillow/raw/census_bps/ma1009c.txt
+- data/zillow/raw/census_bps/ma1010c.txt
+- data/zillow/raw/census_bps/ma1011c.txt
+- data/zillow/raw/census_bps/ma1012c.txt
+- data/zillow/raw/census_bps/ma1101c.txt
+- data/zillow/raw/census_bps/ma1102c.txt
+- data/zillow/raw/census_bps/ma1103c.txt
+- data/zillow/raw/census_bps/ma1104c.txt
+- data/zillow/raw/census_bps/ma1105c.txt
+- data/zillow/raw/census_bps/ma1106c.txt
+- data/zillow/raw/census_bps/ma1107c.txt
+- data/zillow/raw/census_bps/ma1108c.txt
+- data/zillow/raw/census_bps/ma1109c.txt
+- data/zillow/raw/census_bps/ma1110c.txt
+- data/zillow/raw/census_bps/ma1111c.txt
+- data/zillow/raw/census_bps/ma1112c.txt
+- data/zillow/raw/census_bps/ma1201c.txt
+- data/zillow/raw/census_bps/ma1202c.txt
+- data/zillow/raw/census_bps/ma1203c.txt
+- data/zillow/raw/census_bps/ma1204c.txt
+- data/zillow/raw/census_bps/ma1205c.txt
+- data/zillow/raw/census_bps/ma1206c.txt
+- data/zillow/raw/census_bps/ma1207c.txt
+- data/zillow/raw/census_bps/ma1208c.txt
+- data/zillow/raw/census_bps/ma1209c.txt
+- data/zillow/raw/census_bps/ma1210c.txt
+- data/zillow/raw/census_bps/ma1211c.txt
+- data/zillow/raw/census_bps/ma1212c.txt
+- data/zillow/raw/census_bps/ma1301c.txt
+- data/zillow/raw/census_bps/ma1302c.txt
+- data/zillow/raw/census_bps/ma1303c.txt
+- data/zillow/raw/census_bps/ma1304c.txt
+- data/zillow/raw/census_bps/ma1305c.txt
+- data/zillow/raw/census_bps/ma1306c.txt
+- data/zillow/raw/census_bps/ma1307c.txt
+- data/zillow/raw/census_bps/ma1308c.txt
+- data/zillow/raw/census_bps/ma1309c.txt
+- data/zillow/raw/census_bps/ma1310c.txt
+- data/zillow/raw/census_bps/ma1311c.txt
+- data/zillow/raw/census_bps/ma1312c.txt
+- data/zillow/raw/census_bps/ma1401c.txt
+- data/zillow/raw/census_bps/ma1402c.txt
+- data/zillow/raw/census_bps/ma1403c.txt
+- data/zillow/raw/census_bps/ma1404c.txt
+- data/zillow/raw/census_bps/ma1405c.txt
+- data/zillow/raw/census_bps/ma1406c.txt
+- data/zillow/raw/census_bps/ma1407c.txt
+- data/zillow/raw/census_bps/ma1408c.txt
+- data/zillow/raw/census_bps/ma1409c.txt
+- data/zillow/raw/census_bps/ma1410c.txt
+- data/zillow/raw/census_bps/ma1411c.txt
+- data/zillow/raw/census_bps/ma1412c.txt
+- data/zillow/raw/census_bps/ma1501c.txt
+- data/zillow/raw/census_bps/ma1502c.txt
+- data/zillow/raw/census_bps/ma1503c.txt
+- data/zillow/raw/census_bps/ma1504c.txt
+- data/zillow/raw/census_bps/ma1505c.txt
+- data/zillow/raw/census_bps/ma1506c.txt
+- data/zillow/raw/census_bps/ma1507c.txt
+- data/zillow/raw/census_bps/ma1508c.txt
+- data/zillow/raw/census_bps/ma1509c.txt
+- data/zillow/raw/census_bps/ma1510c.txt
+- data/zillow/raw/census_bps/ma1511c.txt
+- data/zillow/raw/census_bps/ma1512c.txt
+- data/zillow/raw/census_bps/ma1601c.txt
+- data/zillow/raw/census_bps/ma1602c.txt
+- data/zillow/raw/census_bps/ma1603c.txt
+- data/zillow/raw/census_bps/ma1604c.txt
+- data/zillow/raw/census_bps/ma1605c.txt
+- data/zillow/raw/census_bps/ma1606c.txt
+- data/zillow/raw/census_bps/ma1607c.txt
+- data/zillow/raw/census_bps/ma1608c.txt
+- data/zillow/raw/census_bps/ma1609c.txt
+- data/zillow/raw/census_bps/ma1610c.txt
+- data/zillow/raw/census_bps/ma1611c.txt
+- data/zillow/raw/census_bps/ma1612c.txt
+- data/zillow/raw/census_bps/ma1701c.txt
+- data/zillow/raw/census_bps/ma1702c.txt
+- data/zillow/raw/census_bps/ma1703c.txt
+- data/zillow/raw/census_bps/ma1704c.txt
+- data/zillow/raw/census_bps/ma1705c.txt
+- data/zillow/raw/census_bps/ma1706c.txt
+- data/zillow/raw/census_bps/ma1707c.txt
+- data/zillow/raw/census_bps/ma1708c.txt
+- data/zillow/raw/census_bps/ma1709c.txt
+- data/zillow/raw/census_bps/ma1710c.txt
+- data/zillow/raw/census_bps/ma1711c.txt
+- data/zillow/raw/census_bps/ma1712c.txt
+- data/zillow/raw/census_bps/ma1801c.txt
+- data/zillow/raw/census_bps/ma1802c.txt
+- data/zillow/raw/census_bps/ma1803c.txt
+- data/zillow/raw/census_bps/ma1804c.txt
+- data/zillow/raw/census_bps/ma1805c.txt
+- data/zillow/raw/census_bps/ma1806c.txt
+- data/zillow/raw/census_bps/ma1807c.txt
+- data/zillow/raw/census_bps/ma1808c.txt
+- data/zillow/raw/census_bps/ma1809c.txt
+- data/zillow/raw/census_bps/ma1810c.txt
+- data/zillow/raw/census_bps/ma1811c.txt
+- data/zillow/raw/census_bps/ma1812c.txt
+- data/zillow/raw/census_bps/ma1901c.txt
+- data/zillow/raw/census_bps/ma1902c.txt
+- data/zillow/raw/census_bps/ma1903c.txt
+- data/zillow/raw/census_bps/ma1904c.txt
+- data/zillow/raw/census_bps/ma1905c.txt
+- data/zillow/raw/census_bps/ma1906c.txt
+- data/zillow/raw/census_bps/ma1907c.txt
+- data/zillow/raw/census_bps/ma1908c.txt
+- data/zillow/raw/census_bps/ma1909c.txt
+- data/zillow/raw/census_bps/ma1910c.txt
+- data/zillow/raw/census_bps/ma1911c.txt
+- data/zillow/raw/census_bps/ma1912c.txt
+- data/zillow/raw/census_bps/ma2001c.txt
+- data/zillow/raw/census_bps/ma2002c.txt
+- data/zillow/raw/census_bps/ma2003c.txt
+- data/zillow/raw/census_bps/ma2004c.txt
+- data/zillow/raw/census_bps/ma2005c.txt
+- data/zillow/raw/census_bps/ma2006c.txt
+- data/zillow/raw/census_bps/ma2007c.txt
+- data/zillow/raw/census_bps/ma2008c.txt
+- data/zillow/raw/census_bps/ma2009c.txt
+- data/zillow/raw/census_bps/ma2010c.txt
+- data/zillow/raw/census_bps/ma2011c.txt
+- data/zillow/raw/census_bps/ma2012c.txt
+- data/zillow/raw/census_bps/ma2101c.txt
+- data/zillow/raw/census_bps/ma2102c.txt
+- data/zillow/raw/census_bps/ma2103c.txt
+- data/zillow/raw/census_bps/ma2104c.txt
+- data/zillow/raw/census_bps/ma2105c.txt
+- data/zillow/raw/census_bps/ma2106c.txt
+- data/zillow/raw/census_bps/ma2107c.txt
+- data/zillow/raw/census_bps/ma2108c.txt
+- data/zillow/raw/census_bps/ma2109c.txt
+- data/zillow/raw/census_bps/ma2110c.txt
+- data/zillow/raw/census_bps/ma2111c.txt
+- data/zillow/raw/census_bps/ma2112c.txt
+- data/zillow/raw/census_bps/ma2201c.txt
+- data/zillow/raw/census_bps/ma2202c.txt
+- data/zillow/raw/census_bps/ma2203c.txt
+- data/zillow/raw/census_bps/ma2204c.txt
+- data/zillow/raw/census_bps/ma2205c.txt
+- data/zillow/raw/census_bps/ma2206c.txt
+- data/zillow/raw/census_bps/ma2207c.txt
+- data/zillow/raw/census_bps/ma2208c.txt
+- data/zillow/raw/census_bps/ma2209c.txt
+- data/zillow/raw/census_bps/ma2210c.txt
+- data/zillow/raw/census_bps/ma2211c.txt
+- data/zillow/raw/census_bps/ma2212c.txt
+- data/zillow/raw/census_bps/ma2301c.txt
+- data/zillow/raw/census_bps/ma2302c.txt
+- data/zillow/raw/census_bps/ma2303c.txt
+- data/zillow/raw/census_bps/ma2304c.txt
+- data/zillow/raw/census_bps/ma2305c.txt
+- data/zillow/raw/census_bps/ma2306c.txt
+- data/zillow/raw/census_bps/ma2307c.txt
+- data/zillow/raw/census_bps/ma2308c.txt
+- data/zillow/raw/census_bps/ma2309c.txt
+- data/zillow/raw/census_bps/ma2310c.txt
+- data/zillow/raw/census_bps/ma2311c.txt
+- data/zillow/raw/census_bps/ma2312c.txt
+- data/zillow/raw/census_bps/ma8801c.txt
+- data/zillow/raw/census_bps/ma8802c.txt
+- data/zillow/raw/census_bps/ma8803c.txt
+- data/zillow/raw/census_bps/ma8804c.txt
+- data/zillow/raw/census_bps/ma8805c.txt
+- data/zillow/raw/census_bps/ma8806c.txt
+- data/zillow/raw/census_bps/ma8807c.txt
+- data/zillow/raw/census_bps/ma8808c.txt
+- data/zillow/raw/census_bps/ma8809c.txt
+- data/zillow/raw/census_bps/ma8810c.txt
+- data/zillow/raw/census_bps/ma8811c.txt
+- data/zillow/raw/census_bps/ma8812c.txt
+- data/zillow/raw/census_bps/ma8901c.txt
+- data/zillow/raw/census_bps/ma8902c.txt
+- data/zillow/raw/census_bps/ma8903c.txt
+- data/zillow/raw/census_bps/ma8904c.txt
+- data/zillow/raw/census_bps/ma8905c.txt
+- data/zillow/raw/census_bps/ma8906c.txt
+- data/zillow/raw/census_bps/ma8907c.txt
+- data/zillow/raw/census_bps/ma8908c.txt
+- data/zillow/raw/census_bps/ma8909c.txt
+- data/zillow/raw/census_bps/ma8910c.txt
+- data/zillow/raw/census_bps/ma8911c.txt
+- data/zillow/raw/census_bps/ma8912c.txt
+- data/zillow/raw/census_bps/ma9001c.txt
+- data/zillow/raw/census_bps/ma9002c.txt
+- data/zillow/raw/census_bps/ma9003c.txt
+- data/zillow/raw/census_bps/ma9004c.txt
+- data/zillow/raw/census_bps/ma9005c.txt
+- data/zillow/raw/census_bps/ma9006c.txt
+- data/zillow/raw/census_bps/ma9007c.txt
+- data/zillow/raw/census_bps/ma9008c.txt
+- data/zillow/raw/census_bps/ma9009c.txt
+- data/zillow/raw/census_bps/ma9010c.txt
+- data/zillow/raw/census_bps/ma9011c.txt
+- data/zillow/raw/census_bps/ma9012c.txt
+- data/zillow/raw/census_bps/ma9101c.txt
+- data/zillow/raw/census_bps/ma9102c.txt
+- data/zillow/raw/census_bps/ma9103c.txt
+- data/zillow/raw/census_bps/ma9104c.txt
+- data/zillow/raw/census_bps/ma9105c.txt
+- data/zillow/raw/census_bps/ma9106c.txt
+- data/zillow/raw/census_bps/ma9107c.txt
+- data/zillow/raw/census_bps/ma9108c.txt
+- data/zillow/raw/census_bps/ma9109c.txt
+- data/zillow/raw/census_bps/ma9110c.txt
+- data/zillow/raw/census_bps/ma9111c.txt
+- data/zillow/raw/census_bps/ma9112c.txt
+- data/zillow/raw/census_bps/ma9201c.txt
+- data/zillow/raw/census_bps/ma9202c.txt
+- data/zillow/raw/census_bps/ma9203c.txt
+- data/zillow/raw/census_bps/ma9204c.txt
+- data/zillow/raw/census_bps/ma9205c.txt
+- data/zillow/raw/census_bps/ma9206c.txt
+- data/zillow/raw/census_bps/ma9207c.txt
+- data/zillow/raw/census_bps/ma9208c.txt
+- data/zillow/raw/census_bps/ma9209c.txt
+- data/zillow/raw/census_bps/ma9210c.txt
+- data/zillow/raw/census_bps/ma9211c.txt
+- data/zillow/raw/census_bps/ma9212c.txt
+- data/zillow/raw/census_bps/ma9301c.txt
+- data/zillow/raw/census_bps/ma9302c.txt
+- data/zillow/raw/census_bps/ma9303c.txt
+- data/zillow/raw/census_bps/ma9304c.txt
+- data/zillow/raw/census_bps/ma9305c.txt
+- data/zillow/raw/census_bps/ma9306c.txt
+- data/zillow/raw/census_bps/ma9307c.txt
+- data/zillow/raw/census_bps/ma9308c.txt
+- data/zillow/raw/census_bps/ma9309c.txt
+- data/zillow/raw/census_bps/ma9310c.txt
+- data/zillow/raw/census_bps/ma9311c.txt
+- data/zillow/raw/census_bps/ma9312c.txt
+- data/zillow/raw/census_bps/ma9401c.txt
+- data/zillow/raw/census_bps/ma9402c.txt
+- data/zillow/raw/census_bps/ma9403c.txt
+- data/zillow/raw/census_bps/ma9404c.txt
+- data/zillow/raw/census_bps/ma9405c.txt
+- data/zillow/raw/census_bps/ma9406c.txt
+- data/zillow/raw/census_bps/ma9407c.txt
+- data/zillow/raw/census_bps/ma9408c.txt
+- data/zillow/raw/census_bps/ma9409c.txt
+- data/zillow/raw/census_bps/ma9410c.txt
+- data/zillow/raw/census_bps/ma9411c.txt
+- data/zillow/raw/census_bps/ma9412c.txt
+- data/zillow/raw/census_bps/ma9501c.txt
+- data/zillow/raw/census_bps/ma9502c.txt
+- data/zillow/raw/census_bps/ma9503c.txt
+- data/zillow/raw/census_bps/ma9504c.txt
+- data/zillow/raw/census_bps/ma9505c.txt
+- data/zillow/raw/census_bps/ma9506c.txt
+- data/zillow/raw/census_bps/ma9507c.txt
+- data/zillow/raw/census_bps/ma9508c.txt
+- data/zillow/raw/census_bps/ma9509c.txt
+- data/zillow/raw/census_bps/ma9510c.txt
+- data/zillow/raw/census_bps/ma9511c.txt
+- data/zillow/raw/census_bps/ma9512c.txt
+- data/zillow/raw/census_bps/ma9601c.txt
+- data/zillow/raw/census_bps/ma9602c.txt
+- data/zillow/raw/census_bps/ma9603c.txt
+- data/zillow/raw/census_bps/ma9604c.txt
+- data/zillow/raw/census_bps/ma9605c.txt
+- data/zillow/raw/census_bps/ma9606c.txt
+- data/zillow/raw/census_bps/ma9607c.txt
+- data/zillow/raw/census_bps/ma9608c.txt
+- data/zillow/raw/census_bps/ma9609c.txt
+- data/zillow/raw/census_bps/ma9610c.txt
+- data/zillow/raw/census_bps/ma9611c.txt
+- data/zillow/raw/census_bps/ma9612c.txt
+- data/zillow/raw/census_bps/ma9701c.txt
+- data/zillow/raw/census_bps/ma9702c.txt
+- data/zillow/raw/census_bps/ma9703c.txt
+- data/zillow/raw/census_bps/ma9704c.txt
+- data/zillow/raw/census_bps/ma9705c.txt
+- data/zillow/raw/census_bps/ma9706c.txt
+- data/zillow/raw/census_bps/ma9707c.txt
+- data/zillow/raw/census_bps/ma9708c.txt
+- data/zillow/raw/census_bps/ma9709c.txt
+- data/zillow/raw/census_bps/ma9710c.txt
+- data/zillow/raw/census_bps/ma9711c.txt
+- data/zillow/raw/census_bps/ma9712c.txt
+- data/zillow/raw/census_bps/ma9801c.txt
+- data/zillow/raw/census_bps/ma9802c.txt
+- data/zillow/raw/census_bps/ma9803c.txt
+- data/zillow/raw/census_bps/ma9804c.txt
+- data/zillow/raw/census_bps/ma9805c.txt
+- data/zillow/raw/census_bps/ma9806c.txt
+- data/zillow/raw/census_bps/ma9807c.txt
+- data/zillow/raw/census_bps/ma9808c.txt
+- data/zillow/raw/census_bps/ma9809c.txt
+- data/zillow/raw/census_bps/ma9810c.txt
+- data/zillow/raw/census_bps/ma9811c.txt
+- data/zillow/raw/census_bps/ma9812c.txt
+- data/zillow/raw/census_bps/ma9901c.txt
+- data/zillow/raw/census_bps/ma9902c.txt
+- data/zillow/raw/census_bps/ma9903c.txt
+- data/zillow/raw/census_bps/ma9904c.txt
+- data/zillow/raw/census_bps/ma9905c.txt
+- data/zillow/raw/census_bps/ma9906c.txt
+- data/zillow/raw/census_bps/ma9907c.txt
+- data/zillow/raw/census_bps/ma9908c.txt
+- data/zillow/raw/census_bps/ma9909c.txt
+- data/zillow/raw/census_bps/ma9910c.txt
+- data/zillow/raw/census_bps/ma9911c.txt
+- data/zillow/raw/census_bps/ma9912c.txt
+- data/zillow/raw/zillow/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv
+- data/zillow/zillow-covariate.py
+- data/zillow/zillow_metro_bottom.csv
+- data/zillow/zillow_metro_top.csv
+
+## Files Tracked By Git LFS
+
+- none reported by `git lfs ls-files`.
+
+## Current Data Status
+
+-  M data/zillow/audit/balanced_panel_frontier.csv
+-  M data/zillow/audit/download_log.txt
+-  M data/zillow/audit/existing_code_audit.md
+-  M data/zillow/audit/existing_data_inventory.csv
+-  M data/zillow/audit/existing_data_inventory.md
+-  M data/zillow/audit/overlap_report.md
+-  M data/zillow/audit/overlap_summary.csv
+-  M data/zillow/audit/parser_warnings.csv
+-  M data/zillow/audit/series_coverage_by_msa.csv
+-  M data/zillow/audit/source_manifest.json
+-  D data/zillow/manual_import/bls_ces/proposed_assumptions.pdf
+-  M data/zillow/processed/employment_metro_nsa_availability_long.csv
+-  M data/zillow/processed/employment_metro_official_sa_long.csv
+-  M data/zillow/processed/housing_msa_crosswalk.csv
+-  M data/zillow/processed/housing_msa_monthly_availability.csv
+- ?? data/zillow/audit/bls_local_import_diagnosis.md
+- ?? data/zillow/audit/permit_2000_2003_diagnosis.csv
+- ?? data/zillow/audit/permit_2000_2003_diagnosis.md
+- ?? data/zillow/processed/candidate_panels/
+- ?? data/zillow/processed/candidate_panels_final_only/
+- ?? data/zillow/processed/estimation_panels/
+- ?? data/zillow/raw/bls_ces/
+
+## Required For Production On The Second Laptop
+
+The second laptop must have the validated processed housing inputs and prepared candidate panels before production:
+
+- `data/zillow/processed/zhvi_all_homes_metro_sa_long.csv`
+- `data/zillow/processed/permits_metro_sa_long.csv`
+- `data/zillow/processed/permits_metro_nsa_long.csv`
+- `data/zillow/processed/employment_metro_official_sa_long.csv`
+- `data/zillow/processed/housing_msa_crosswalk.csv`
+- `data/zillow/audit/x13_diagnostics.csv`
+- `data/zillow/processed/candidate_panels_final_only/start_2010/`
+- `data/zillow/processed/estimation_panels/housing_baseline_2010_final/`
+
+If these files are not tracked or are untracked on the second laptop, copy them from this machine or regenerate them from already-downloaded local data only after confirming the audit inputs are present. Do not download data, rerun X-13, or run production estimation until `python scripts/housing_all_homes.py --preflight --repo-root . --panel-id start_2010` reports `ready_for_production=true`.
+
+## Policy Note
+
+No `.gitignore`, Git LFS, or data-tracking policy was changed in this task.
+

@@ -62,11 +62,11 @@ def one_step(blocks, foldfits: Sequence[FoldFit], targets: Sequence[Target],
     plugins = {tg.name: 0.0 for tg in targets}
     Psi_cf = {tg.name: np.zeros((Tp, N)) for tg in targets}
     u_cf = np.zeros((Tp, N))
-    diag = {tg.name: {"cg_iters": [], "converged": [], "min_eig": []}
+    diag = {tg.name: {"cg_iters": [], "converged": [], "min_eig": [], "folds": []}
             for tg in targets}
     riesz_time = 0.0
 
-    for ff in foldfits:
+    for fold_id, ff in enumerate(foldfits):
         u_cf[ff.val] = ff.residual[ff.val]
         solver = (RieszFoldSolver(blocks, ff.U, ff.V, ff.train, ff.alpha)
                   if use_riesz_cache else None)
@@ -87,6 +87,26 @@ def one_step(blocks, foldfits: Sequence[FoldFit], targets: Sequence[Target],
             diag[tg.name]["cg_iters"].append(rr.cg_iters)
             diag[tg.name]["converged"].append(rr.converged)
             diag[tg.name]["min_eig"].append(rr.min_eig_proxy)
+            diag[tg.name]["folds"].append({
+                "target_name": tg.name,
+                "fold_id": int(fold_id),
+                "solver_name": rr.solver_name,
+                "convergence_info_code": int(rr.convergence_info_code),
+                "converged": bool(rr.converged),
+                "iterations": int(rr.cg_iters),
+                "maxiter": int(rr.maxiter),
+                "requested_tolerance": float(rr.requested_tolerance),
+                "achieved_absolute_residual": float(rr.achieved_absolute_residual),
+                "achieved_relative_residual": float(rr.achieved_relative_residual),
+                "rhs_norm": float(rr.rhs_norm),
+                "solution_norm": float(rr.solution_norm),
+                "maximum_absolute_solution_entry": float(rr.maximum_absolute_solution_entry),
+                "riesz_ridge": float(rr.riesz_ridge),
+                "scaling_value": float(rr.scaling_value),
+                "cached_scale": bool(rr.cached_scale),
+                "elapsed_seconds": float(rr.elapsed_seconds),
+                "contains_nonfinite": bool(rr.contains_nonfinite),
+            })
 
     timing = {}
     if profile_timing:
