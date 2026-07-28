@@ -923,6 +923,35 @@ def _write_all_homes_candidate(root, cid="start_2010", *, n=3, t=5, start="2010-
     return cdir
 
 
+def _write_all_homes_config(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "empirical": {
+            "q": 1,
+            "J_min": 10,
+            "c_J": 1.0,
+            "ridge": 0.1,
+            "n_restarts": 1,
+            "n_sweeps": 2,
+            "riesz_tol": 1e-5,
+            "riesz_ridge": 1e-6,
+            "riesz_maxiter": 600,
+            "r_bar": [1, 1, 1, 1],
+        }
+    }), encoding="utf-8")
+    return path
+
+
+def _file_state(paths):
+    return {
+        str(p): {
+            "sha256": housing_all_homes.sha256_file(p),
+            "mtime_ns": p.stat().st_mtime_ns,
+        }
+        for p in paths
+    }
+
+
 def test_housing_all_homes_transformations_and_exact_lags_no_bridge():
     rows = [
         {"cbsa_code": "10001", "msa_title": "A", "date": "2020-01-01", "zhvi_all_homes_sa": "100", "permits_units_sa": "-2", "employment_thousands_sa": "50", "bls_preliminary_flag": "0"},
@@ -1092,13 +1121,156 @@ def test_housing_all_homes_metadata_paths_and_preflight_no_estimator_call():
         original_estimate = housing_all_homes.estimate
         try:
             housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("preflight must not estimate"))
-            report = housing_all_homes.preflight(panel_dir, repo / "outputs" / "empirical" / "housing_all_homes", repo)
+            report = housing_all_homes.preflight(
+                panel_dir, repo / "outputs" / "empirical" / "housing_all_homes", repo,
+                expected_n=3, expected_t=5, expected_usable=12,
+            )
         finally:
             housing_all_homes.estimate = original_estimate
         assert report["ready_for_production"]
         assert not report["estimator_called"]
         assert report["repo_relative_input_path"] == meta["repo_relative_path"]
-        assert (repo / "outputs" / "empirical" / "housing_all_homes" / "audit" / "production_preflight.json").exists()
+        assert (repo / "outputs" / "empirical" / "housing_all_homes" / "runtime" / "production_preflight.json").exists()
+
+
+def test_housing_all_homes_preflight_preserves_immutable_panel_and_never_prepares():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        cand_root = repo / "data" / "zillow" / "processed" / "candidate_panels_final_only"
+        _write_all_homes_candidate(cand_root, "start_2010", n=3, t=5)
+        panel_dir = repo / "data" / "zillow" / "processed" / "estimation_panels" / "housing_baseline_2010_final"
+        housing_all_homes.prepare_estimation_panel(cand_root, panel_dir, repo_root=repo)
+        config = _write_all_homes_config(repo / "configs" / "full.json")
+        files = [panel_dir / name for name in housing_all_homes.REQUIRED_PANEL_FILES]
+        before = _file_state(files)
+        original_prepare = housing_all_homes.prepare_estimation_panel
+        original_estimate = housing_all_homes.estimate
+        old_expected = (
+            housing_all_homes.BASELINE_EXPECTED_N,
+            housing_all_homes.BASELINE_EXPECTED_T,
+            housing_all_homes.BASELINE_EXPECTED_USABLE,
+        )
+        calls = {"prepare": 0}
+        try:
+            housing_all_homes.BASELINE_EXPECTED_N = 3
+            housing_all_homes.BASELINE_EXPECTED_T = 5
+            housing_all_homes.BASELINE_EXPECTED_USABLE = 12
+            def forbidden_prepare(*args, **kwargs):
+                calls["prepare"] += 1
+                raise AssertionError("preflight must not prepare panel")
+            housing_all_homes.prepare_estimation_panel = forbidden_prepare
+            housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("preflight must not estimate"))
+            code = housing_all_homes.main([
+                "--preflight",
+                "--repo-root", str(repo),
+                "--panel-dir", str(panel_dir),
+                "--output-root", str(repo / "outputs" / "empirical" / "housing_all_homes"),
+                "--config", str(config),
+            ])
+        finally:
+            housing_all_homes.prepare_estimation_panel = original_prepare
+            housing_all_homes.estimate = original_estimate
+            (
+                housing_all_homes.BASELINE_EXPECTED_N,
+                housing_all_homes.BASELINE_EXPECTED_T,
+                housing_all_homes.BASELINE_EXPECTED_USABLE,
+            ) = old_expected
+        after = _file_state(files)
+        assert code == 0
+        assert calls["prepare"] == 0
+        assert before == after
+        report = json.loads((repo / "outputs" / "empirical" / "housing_all_homes" / "runtime" / "production_preflight.json").read_text(encoding="utf-8"))
+        assert report["estimator_called"] is False
+
+
+def test_housing_all_homes_missing_or_checksum_mismatch_fails_without_rebuild():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        output = repo / "outputs" / "empirical" / "housing_all_homes"
+        original_prepare = housing_all_homes.prepare_estimation_panel
+        try:
+            housing_all_homes.prepare_estimation_panel = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("must not rebuild"))
+            try:
+                housing_all_homes.main([
+                    "--preflight",
+                    "--repo-root", str(repo),
+                    "--panel-dir", str(repo / "missing_panel"),
+                    "--output-root", str(output),
+                ])
+            except FileNotFoundError as exc:
+                assert "missing required file" in str(exc)
+            else:
+                raise AssertionError("missing panel should fail")
+        finally:
+            housing_all_homes.prepare_estimation_panel = original_prepare
+
+        cand_root = repo / "data" / "zillow" / "processed" / "candidate_panels_final_only"
+        _write_all_homes_candidate(cand_root, "start_2010", n=3, t=5)
+        panel_dir = repo / "data" / "zillow" / "processed" / "estimation_panels" / "housing_baseline_2010_final"
+        housing_all_homes.prepare_estimation_panel(cand_root, panel_dir, repo_root=repo)
+        with (panel_dir / "housing_estimation_panel.csv").open("a", encoding="utf-8", newline="") as fh:
+            fh.write("# checksum corruption\n")
+        try:
+            housing_all_homes.preflight(panel_dir, output, repo, expected_n=3, expected_t=5, expected_usable=12)
+        except ValueError as exc:
+            assert "checksum mismatch" in str(exc)
+        else:
+            raise AssertionError("checksum mismatch should fail")
+
+
+def test_housing_all_homes_production_loads_existing_and_prepare_mode_is_explicit():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        cand_root = repo / "data" / "zillow" / "processed" / "candidate_panels_final_only"
+        _write_all_homes_candidate(cand_root, "start_2010", n=3, t=5)
+        panel_dir = repo / "data" / "zillow" / "processed" / "estimation_panels" / "housing_baseline_2010_final"
+        config = _write_all_homes_config(repo / "configs" / "full.json")
+        original_prepare = housing_all_homes.prepare_estimation_panel
+        try:
+            housing_all_homes.prepare_estimation_panel = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("default mode must not prepare"))
+            code = housing_all_homes.main([
+                "--repo-root", str(repo),
+                "--panel-dir", str(panel_dir),
+                "--candidate-root", str(cand_root),
+                "--output-root", str(repo / "outputs" / "empirical" / "housing_all_homes"),
+                "--config", str(config),
+            ])
+            assert code == 0
+            assert not panel_dir.exists()
+        finally:
+            housing_all_homes.prepare_estimation_panel = original_prepare
+
+        code = housing_all_homes.main([
+            "--prepare-panel",
+            "--repo-root", str(repo),
+            "--panel-dir", str(panel_dir),
+            "--candidate-root", str(cand_root),
+            "--output-root", str(repo / "outputs" / "empirical" / "housing_all_homes"),
+            "--config", str(config),
+        ])
+        assert code == 0
+        assert (panel_dir / "housing_estimation_panel.csv").exists()
+
+
+def test_housing_all_homes_preflight_substantive_report_portable_across_roots():
+    reports = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for name in ["repo A", "repo B"]:
+            repo = _make_repo_root_fixture(tmp, name)
+            cand_root = repo / "data" / "zillow" / "processed" / "candidate_panels_final_only"
+            _write_all_homes_candidate(cand_root, "start_2010", n=3, t=5)
+            panel_dir = repo / "data" / "zillow" / "processed" / "estimation_panels" / "housing_baseline_2010_final"
+            housing_all_homes.prepare_estimation_panel(cand_root, panel_dir, repo_root=repo)
+            reports.append(housing_all_homes.preflight(
+                panel_dir, repo / "outputs" / "empirical" / "housing_all_homes", repo,
+                expected_n=3, expected_t=5, expected_usable=12,
+            ))
+    keys = [
+        "schema_version", "repo_relative_input_path", "input_checksum", "N", "T",
+        "usable_dynamic_observations", "start_date", "end_date", "panel_checksums",
+        "ready_for_production", "estimator_called",
+    ]
+    assert {k: reports[0][k] for k in keys} == {k: reports[1][k] for k in keys}
 
 
 def test_housing_report_latex_manifest_and_deterministic_helpers():

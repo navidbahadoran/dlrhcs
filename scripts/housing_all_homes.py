@@ -44,6 +44,24 @@ PANEL_COLUMNS = [
     "bls_preliminary_flag",
     "zhvi_source_vintage", "permits_source_vintage", "employment_source_vintage",
 ]
+REQUIRED_PANEL_FILES = [
+    "housing_estimation_panel.csv",
+    "lag_check.csv",
+    "metadata.json",
+    "monthly_dates.csv",
+    "msa_list.csv",
+    "transformation_check.csv",
+]
+RECORDED_CHECKSUM_FILES = [
+    "housing_estimation_panel.csv",
+    "lag_check.csv",
+    "monthly_dates.csv",
+    "msa_list.csv",
+    "transformation_check.csv",
+]
+BASELINE_EXPECTED_N = 169
+BASELINE_EXPECTED_T = 197
+BASELINE_EXPECTED_USABLE = 33124
 
 
 def month_index(ym: str) -> int:
@@ -322,9 +340,9 @@ def validate_panel(rows: Sequence[Mapping[str, object]], meta: Mapping[str, obje
     return required
 
 
-def prepare_baseline_panel(candidate_root: Path,
-                           out_dir: Path,
-                           repo_root: Optional[Path] = None) -> Dict[str, object]:
+def prepare_estimation_panel(candidate_root: Path,
+                             out_dir: Path,
+                             repo_root: Optional[Path] = None) -> Dict[str, object]:
     repo_root = repo_root or find_repo_root(start=__file__)
     candidates = load_candidate_metadata(candidate_root)
     baseline = choose_baseline_candidate(candidates)
@@ -396,11 +414,66 @@ def prepare_baseline_panel(candidate_root: Path,
     return metadata
 
 
+def prepare_baseline_panel(candidate_root: Path,
+                           out_dir: Path,
+                           repo_root: Optional[Path] = None) -> Dict[str, object]:
+    return prepare_estimation_panel(candidate_root, out_dir, repo_root=repo_root)
+
+
+def load_existing_estimation_panel(panel_dir: Path,
+                                   expected_n: Optional[int] = None,
+                                   expected_t: Optional[int] = None,
+                                   expected_usable: Optional[int] = None) -> Dict[str, object]:
+    missing = [name for name in REQUIRED_PANEL_FILES if not (panel_dir / name).exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"prepared housing estimation panel is missing required file(s): {', '.join(missing)}"
+        )
+    meta = json.loads((panel_dir / "metadata.json").read_text(encoding="utf-8"))
+    checksums = meta.get("checksums", {})
+    checksum_actual = {name: sha256_file(panel_dir / name) for name in RECORDED_CHECKSUM_FILES}
+    checksum_mismatches = {
+        name: {"recorded": checksums.get(name), "actual": actual}
+        for name, actual in checksum_actual.items()
+        if checksums.get(name) != actual
+    }
+    if checksum_mismatches:
+        raise ValueError(f"prepared housing estimation panel checksum mismatch: {checksum_mismatches}")
+
+    rows = read_csv(panel_dir / "housing_estimation_panel.csv")
+    validation = validate_panel(rows, {"N": meta["N"], "T_months": meta["T"]})
+    errors = []
+    if not validation.get("validation_passed"):
+        errors.append(f"validation failed: {validation}")
+    if expected_n is not None and int(meta.get("N", -1)) != int(expected_n):
+        errors.append(f"expected N={expected_n}, found N={meta.get('N')}")
+    if expected_t is not None and int(meta.get("T", -1)) != int(expected_t):
+        errors.append(f"expected T={expected_t}, found T={meta.get('T')}")
+    usable = int(meta.get("usable_dynamic_observations", -1))
+    if expected_usable is not None and usable != int(expected_usable):
+        errors.append(f"expected usable lagged observations={expected_usable}, found {usable}")
+    if int(meta.get("preliminary_bls_observations", -1)) != 0:
+        errors.append(f"expected no preliminary BLS observations, found {meta.get('preliminary_bls_observations')}")
+    if int(validation.get("preliminary_bls_observations", -1)) != 0:
+        errors.append(f"validation found preliminary BLS observations={validation.get('preliminary_bls_observations')}")
+    if not validation.get("lag_values_equal_preceding_observed_calendar_month"):
+        errors.append("exact monthly lag validation failed")
+    if errors:
+        raise ValueError("prepared housing estimation panel is invalid: " + "; ".join(errors))
+    return {
+        "metadata": meta,
+        "rows": rows,
+        "validation": validation,
+        "checksums": checksum_actual,
+    }
+
+
 def load_estimation_panel(panel_dir: Path,
                           first_n_msas: Optional[int] = None,
                           first_t_usable: Optional[int] = None) -> Dict[str, object]:
-    meta = json.loads((panel_dir / "metadata.json").read_text(encoding="utf-8"))
-    rows = read_csv(panel_dir / "housing_estimation_panel.csv")
+    loaded = load_existing_estimation_panel(panel_dir)
+    meta = loaded["metadata"]
+    rows = loaded["rows"]
     codes = [r["cbsa_code"] for r in read_csv(panel_dir / "msa_list.csv")]
     months = [r["date"][:7] for r in read_csv(panel_dir / "monthly_dates.csv")]
     if first_n_msas is not None:
@@ -510,7 +583,7 @@ def package_checks() -> Dict[str, object]:
 
 def output_dirs_writable(output_root: Path) -> Dict[str, bool]:
     checks = {}
-    for sub in ["", "tables", "figures", "audit", "smoke"]:
+    for sub in ["", "tables", "figures", "runtime", "smoke"]:
         d = output_root / sub if sub else output_root
         d.mkdir(parents=True, exist_ok=True)
         probe = d / ".write_test"
@@ -562,19 +635,31 @@ def preflight(panel_dir: Path, output_root: Path, repo_root: Path,
               riesz_maxiter: Optional[int] = None,
               riesz_tol: Optional[float] = None,
               riesz_ridge: Optional[float] = None,
-              riesz_use_cached_scale: Optional[bool] = None) -> Dict[str, object]:
-    meta = json.loads((panel_dir / "metadata.json").read_text(encoding="utf-8"))
-    panel_path = panel_dir / "housing_estimation_panel.csv"
-    rows = read_csv(panel_path)
-    validation = validate_panel(rows, {"N": meta["N"], "T_months": meta["T"]})
-    checksum = sha256_file(panel_path)
-    checksum_ok = checksum == meta.get("checksums", {}).get("housing_estimation_panel.csv")
+              riesz_use_cached_scale: Optional[bool] = None,
+              expected_n: Optional[int] = None,
+              expected_t: Optional[int] = None,
+              expected_usable: Optional[int] = None) -> Dict[str, object]:
+    if expected_n is None:
+        expected_n = BASELINE_EXPECTED_N
+    if expected_t is None:
+        expected_t = BASELINE_EXPECTED_T
+    if expected_usable is None:
+        expected_usable = BASELINE_EXPECTED_USABLE
+    loaded = load_existing_estimation_panel(
+        panel_dir,
+        expected_n=expected_n,
+        expected_t=expected_t,
+        expected_usable=expected_usable,
+    )
+    meta = loaded["metadata"]
+    validation = loaded["validation"]
+    checksum_actual = loaded["checksums"]
     checks = {
-        "required_files_exist": all((panel_dir / name).exists() for name in [
-            "housing_estimation_panel.csv", "msa_list.csv", "monthly_dates.csv",
-            "transformation_check.csv", "lag_check.csv", "metadata.json",
-        ]),
-        "input_checksum_ok": checksum_ok,
+        "required_files_exist": all((panel_dir / name).exists() for name in REQUIRED_PANEL_FILES),
+        "input_checksum_ok": all(
+            checksum_actual.get(name) == meta.get("checksums", {}).get(name)
+            for name in RECORDED_CHECKSUM_FILES
+        ),
         "validation_passed": bool(validation.get("validation_passed")),
         "no_missing_primary_values": int(meta.get("transformation_diagnostics", {}).get("missing_primary_values", -1)) == 0,
         "no_preliminary_bls_values": int(meta.get("preliminary_bls_observations", -1)) == 0,
@@ -606,8 +691,6 @@ def preflight(panel_dir: Path, output_root: Path, repo_root: Path,
         "resolved_repo_root": str(repo_root),
         "repo_relative_input_path": repo_relative(panel_dir, repo_root),
         "resolved_input_path_info": str(panel_dir.resolve()),
-        "input_checksum": checksum,
-        "input_checksum_recorded": meta.get("checksums", {}).get("housing_estimation_panel.csv"),
         "N": int(meta["N"]),
         "T": int(meta["T"]),
         "usable_dynamic_observations": int(meta["usable_dynamic_observations"]),
@@ -626,9 +709,12 @@ def preflight(panel_dir: Path, output_root: Path, repo_root: Path,
         "ready_for_production": ready,
         "estimator_called": False,
     }
-    audit_dir = output_root / "audit"
-    audit_dir.mkdir(parents=True, exist_ok=True)
-    write_json(audit_dir / "production_preflight.json", report)
+    report["input_checksum"] = checksum_actual["housing_estimation_panel.csv"]
+    report["input_checksum_recorded"] = meta.get("checksums", {}).get("housing_estimation_panel.csv")
+    report["panel_checksums"] = checksum_actual
+    runtime_dir = output_root / "runtime"
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    write_json(runtime_dir / "production_preflight.json", report)
     return report
 
 
@@ -973,7 +1059,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Prepare and smoke-test all-homes housing empirical inputs.")
     ap.add_argument("--repo-root", default=None,
                     help="explicit DLRHCS repository root; default uses DLRHCS_ROOT or script discovery")
-    ap.add_argument("--prepare-only", action="store_true", help="prepare and validate the baseline input panel only")
+    ap.add_argument("--prepare-panel", action="store_true",
+                    help="explicitly regenerate the prepared baseline input panel from the final-only candidate")
+    ap.add_argument("--prepare-only", action="store_true",
+                    help="legacy alias for --prepare-panel; prepare and validate the baseline input panel only")
     ap.add_argument("--preflight", action="store_true", help="validate production readiness without estimation")
     ap.add_argument("--run-riesz-pilots", action="store_true", help="run matched no-production Riesz diagnostic pilots")
     ap.add_argument("--panel-id", default="start_2010",
@@ -1011,13 +1100,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = resolve_repo_path(args.out_dir, repo_root)
     config_path = resolve_repo_path(args.config, repo_root)
 
-    panel_meta = prepare_baseline_panel(candidate_root, panel_dir, repo_root=repo_root)
-    write_second_laptop_checklist(output_root.parent / "housing_data_audit" / "second_laptop_production_checklist.md")
-    print(
-        f"[housing-all-homes] prepared baseline {panel_meta['start_date']}..{panel_meta['end_date']} "
-        f"N={panel_meta['N']} T={panel_meta['T']} usable={panel_meta['usable_dynamic_observations']}",
-        flush=True,
-    )
+    if args.prepare_panel or args.prepare_only:
+        panel_meta = prepare_estimation_panel(candidate_root, panel_dir, repo_root=repo_root)
+        write_second_laptop_checklist(output_root.parent / "housing_data_audit" / "second_laptop_production_checklist.md")
+        print(
+            f"[housing-all-homes] prepared baseline {panel_meta['start_date']}..{panel_meta['end_date']} "
+            f"N={panel_meta['N']} T={panel_meta['T']} usable={panel_meta['usable_dynamic_observations']}",
+            flush=True,
+        )
+        if args.prepare_only and not (args.preflight or args.run_riesz_pilots or args.smoke):
+            return 0
     if args.preflight:
         report = preflight(
             panel_dir, output_root, repo_root, config_path=config_path,
@@ -1038,7 +1130,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         print(f"[housing-all-homes] Riesz pilots complete rows={len(rows)}", flush=True)
         return 0
-    if args.prepare_only and not args.smoke:
+    if args.prepare_panel and not args.smoke:
         return 0
     if args.smoke:
         result = run_estimation(
