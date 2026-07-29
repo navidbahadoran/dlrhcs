@@ -26,8 +26,10 @@ BOOTSTRAP_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BOOTSTRAP_ROOT))
 
 from dlrhcs.design import build_blocks  # noqa: E402
+from dlrhcs.factorridge import fit_factor_ridge  # noqa: E402
+from dlrhcs.folds import make_folds  # noqa: E402
 from dlrhcs.paths import find_repo_root, repo_relative, resolve_repo_path  # noqa: E402
-from dlrhcs.pipeline import Tuning, estimate  # noqa: E402
+from dlrhcs.pipeline import Tuning, _resolve_fold_count, estimate  # noqa: E402
 from dlrhcs.targets import Target  # noqa: E402
 
 SCHEMA_VERSION = "housing_all_homes_v2"
@@ -1221,7 +1223,9 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
             progress.emit("estimator", "estimator started; internal ALS/fold/Riesz progress is not exposed by the estimator API", status="running")
             progress.heartbeat("estimator", "estimator running; no completed internal unit yet", status="running")
         res = estimate(panel["Y"], panel["Z"], targets, tuning, P=1,
-                       rng=np.random.default_rng(seed), profile_timing=True)
+                       rng=np.random.default_rng(seed), profile_timing=True,
+                       first_stage_seed=seed,
+                       first_stage_model_id="housing_all_homes")
         elapsed = time.perf_counter() - t0
         if progress:
             progress.emit("estimator", "estimator completed", status="running", completed_units=1, total_units=1)
@@ -1364,6 +1368,116 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
     return output
 
 
+def _first_stage_fit_diag(fit, fold_id: int, train_count: int, val_count: int) -> Dict[str, object]:
+    return {
+        "fold_id": int(fold_id),
+        "train_count": int(train_count),
+        "validation_count": int(val_count),
+        "warm_start_objective": float(fit.warm_start_objective),
+        "restart_objectives": [float(x) for x in fit.restart_objs],
+        "random_restart_objectives": [float(x) for x in fit.random_restart_objs],
+        "best_objective": float(fit.best_objective),
+        "selected_restart_label": str(getattr(fit, "selected_restart_label", "")),
+        "selected_restart_index": int(getattr(fit, "selected_restart_index", 0)),
+        "n_sweeps": int(fit.n_sweeps),
+        "final_level_sweeps": int(getattr(fit, "final_level_sweeps", fit.n_sweeps)),
+        "total_sweeps_from_initialization": int(getattr(fit, "total_sweeps_from_initialization", fit.n_sweeps)),
+        "convergence_sweep": getattr(fit, "convergence_sweep", None),
+        "stopping_reason": str(getattr(fit, "stopping_reason", "")),
+        "stopped_before_sweep_cap": bool(fit.stopped_before_sweep_cap),
+        "converged": bool(fit.converged),
+        "max_iteration_hit": bool(fit.max_iteration_hit),
+        "monotone": bool(fit.monotone),
+        "final_relative_objective_decrease": float(fit.final_relative_objective_decrease),
+        "restart_diagnostics": jsonable(getattr(fit, "restart_diagnostics", [])),
+    }
+
+
+def run_first_stage_audit(panel_dir: Path, output_root: Path, config_path: Path, *,
+                          repo_root: Optional[Path] = None,
+                          seed: int = 2024,
+                          fixed_ranks: Optional[Tuple[int, ...]] = (1, 1, 1, 2),
+                          select: bool = False,
+                          n_jobs: int = 1,
+                          riesz_maxiter: Optional[int] = None,
+                          riesz_tol: Optional[float] = None,
+                          riesz_ridge: Optional[float] = None,
+                          riesz_use_cached_scale: Optional[bool] = None) -> Dict[str, object]:
+    """Run fold first-stage fits only; no Riesz, one-step, SE, or production output."""
+    repo_root = repo_root or find_repo_root(start=__file__)
+    audit_dir = output_root / "first_stage_audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+    pre = preflight(
+        panel_dir, output_root, repo_root, config_path=config_path,
+        fixed_ranks=fixed_ranks, select=select, n_jobs=n_jobs,
+        riesz_maxiter=riesz_maxiter, riesz_tol=riesz_tol,
+        riesz_ridge=riesz_ridge, riesz_use_cached_scale=riesz_use_cached_scale,
+    )
+    panel = load_estimation_panel(panel_dir)
+    tuning = tuning_from_config(
+        config_path, fixed_ranks=fixed_ranks, select=select, n_jobs=n_jobs,
+        riesz_maxiter=riesz_maxiter, riesz_tol=riesz_tol,
+        riesz_ridge=riesz_ridge, riesz_use_cached_scale=riesz_use_cached_scale,
+    )
+    if tuning.ranks is None:
+        raise SystemExit("--audit-first-stage requires fixed ranks; rank selection would run candidate first stages")
+    Y = panel["Y"]
+    blocks = build_blocks(panel["Z"])
+    Tp, N = Y.shape
+    q = int(tuning.q if tuning.q is not None else 3)
+    J, J_diag = _resolve_fold_count(Tp, N, q, tuning.buffer_r, tuning)
+    rng = np.random.default_rng(seed)
+    folds = make_folds(Tp, N, J, q, r=tuning.buffer_r, P=1, rng=rng,
+                       scheme=tuning.scheme, foldid=None)
+    fit_rows = []
+    t0 = time.perf_counter()
+    for fi, fd in enumerate(folds):
+        fit = fit_factor_ridge(
+            Y, blocks, tuning.ranks, mask=fd.train,
+            ridge=tuning.ridge, n_sweeps=tuning.n_sweeps,
+            tol=tuning.tol, n_restarts=tuning.n_restarts,
+            rng=np.random.default_rng(seed),
+            global_seed=int(seed), fold_id=int(fi), model_id="housing_all_homes",
+        )
+        fit_rows.append(_first_stage_fit_diag(
+            fit, fi, train_count=int(fd.train.sum()), val_count=int(fd.val.sum())))
+    elapsed = time.perf_counter() - t0
+    result = {
+        "schema_version": SCHEMA_VERSION,
+        "mode": "first_stage_audit",
+        "estimator_called": False,
+        "riesz_called": False,
+        "one_step_called": False,
+        "production_output_written": False,
+        "repo_relative_input_path": repo_relative(panel_dir, repo_root),
+        "input_panel_checksum": panel["panel_checksum"],
+        "N": int(N),
+        "Tp": int(Tp),
+        "level_T": int(Tp + 1),
+        "seed": int(seed),
+        "ranks": list(tuning.ranks),
+        "q": q,
+        "J": int(J),
+        "resolved_tuning": jsonable(dataclasses.asdict(tuning)),
+        "fold_rule": jsonable(J_diag),
+        "preflight_ready_for_production": bool(pre.get("ready_for_production")),
+        "preflight_validation": jsonable(pre.get("validation", {})),
+        "restart_seed_formula": (
+            "uint64_leading_sha256(canonical_json(global_seed, fold_id, "
+            "restart_type, restart_index, model_id))"
+        ),
+        "n_sweeps_semantics": (
+            "n_sweeps remains the final target-ridge ALS sweeps for backward "
+            "compatibility; total_sweeps_from_initialization includes annealing "
+            "pre-passes plus final-level sweeps."
+        ),
+        "fit_diagnostics": fit_rows,
+        "runtime_sec": float(elapsed),
+    }
+    write_json(audit_dir / "first_stage_audit.json", result)
+    return result
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Prepare and smoke-test all-homes housing empirical inputs.")
     ap.add_argument("--repo-root", default=None,
@@ -1373,6 +1487,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--prepare-only", action="store_true",
                     help="legacy alias for --prepare-panel; prepare and validate the baseline input panel only")
     ap.add_argument("--preflight", action="store_true", help="validate production readiness without estimation")
+    ap.add_argument("--audit-first-stage", action="store_true",
+                    help="read-only preflight plus first-stage fold fits only; skips Riesz, one-step, SEs, and production output")
     ap.add_argument("--run-riesz-pilots", action="store_true", help="run matched no-production Riesz diagnostic pilots")
     ap.add_argument("--production", action="store_true", help="run the validated full housing production estimator")
     ap.add_argument("--panel-id", default="start_2010",
@@ -1416,6 +1532,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     mode_count = sum(bool(x) for x in [
         prepare_mode,
         args.preflight,
+        args.audit_first_stage,
         args.run_riesz_pilots,
         args.smoke,
         args.production,
@@ -1423,7 +1540,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if mode_count > 1:
         raise SystemExit(
             "choose exactly one mode: --prepare-panel/--prepare-only, "
-            "--preflight, --run-riesz-pilots, --smoke, or --production"
+            "--preflight, --audit-first-stage, --run-riesz-pilots, --smoke, or --production"
         )
 
     if prepare_mode:
@@ -1447,6 +1564,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[housing-all-homes] input: {report['repo_relative_input_path']}", flush=True)
         print(f"[housing-all-homes] preflight ready_for_production={report['ready_for_production']}", flush=True)
         return 0 if report["ready_for_production"] else 1
+    if args.audit_first_stage:
+        result = run_first_stage_audit(
+            panel_dir, output_root, config_path,
+            repo_root=repo_root, seed=args.seed, fixed_ranks=args.fixed_ranks,
+            select=args.select, n_jobs=args.n_jobs,
+            riesz_maxiter=args.riesz_maxiter, riesz_tol=args.riesz_tol,
+            riesz_ridge=args.riesz_ridge,
+            riesz_use_cached_scale=args.riesz_use_cached_scale,
+        )
+        print(
+            f"[housing-all-homes] first-stage audit complete N={result['N']} "
+            f"Tp={result['Tp']} J={result['J']} folds={len(result['fit_diagnostics'])}",
+            flush=True,
+        )
+        print(
+            f"[housing-all-homes] output: "
+            f"{repo_relative(output_root / 'first_stage_audit' / 'first_stage_audit.json', repo_root)}",
+            flush=True,
+        )
+        return 0
     if args.run_riesz_pilots:
         rows = run_riesz_pilots(
             panel_dir, output_root / "pilots", config_path, repo_root,
@@ -1558,7 +1695,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     else:
         print(
             "[housing-all-homes] no mode selected; no estimation or panel preparation was run. "
-            "Use --preflight to validate, --smoke for the deterministic smoke test, or --production for the full run.",
+            "Use --preflight to validate, --audit-first-stage for restart diagnostics, "
+            "--smoke for the deterministic smoke test, or --production for the full run.",
             flush=True,
         )
     return 0

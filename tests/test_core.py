@@ -102,6 +102,85 @@ def test_spatial_buffer_no_wrap_and_seed_invariant_dgp_truth():
     assert r0["_retained_nonvalidation"] != r1["_retained_nonvalidation"]
 
 
+def _restart_diag_by_index(fit):
+    return {int(row["restart_index"]): row for row in fit.restart_diagnostics}
+
+
+def test_first_stage_restart_initialization_stable_across_sweep_caps_and_paths():
+    p = _panel(Tp=12, N=10, seed=44)
+    blocks = build_blocks(p.Z)
+    kwargs = dict(
+        ranks=(1, 1, 1),
+        ridge=0.05,
+        tol=1e-14,
+        n_restarts=3,
+        global_seed=909,
+        fold_id=2,
+        model_id="housing_all_homes",
+        n_anneal=1,
+    )
+    fit400 = fit_factor_ridge(p.Y, blocks, n_sweeps=400, **kwargs)
+    fit800 = fit_factor_ridge(p.Y, blocks, n_sweeps=800, **kwargs)
+    d400 = _restart_diag_by_index(fit400)
+    d800 = _restart_diag_by_index(fit800)
+    assert d400.keys() == d800.keys()
+    random_hashes = []
+    for idx in d400:
+        assert d400[idx]["initialization_seed"] == d800[idx]["initialization_seed"]
+        assert d400[idx]["initialization_hash"] == d800[idx]["initialization_hash"]
+        assert d400[idx]["restart_label"] == d800[idx]["restart_label"]
+        tr400 = d400[idx]["objective_trace_checkpoints"]
+        tr800 = d800[idx]["objective_trace_checkpoints"]
+        for key, val in tr400.items():
+            if int(key) <= 400 and key in tr800:
+                assert abs(float(val) - float(tr800[key])) <= 1e-8 * (1.0 + abs(float(val)))
+        if d800[idx]["convergence_sweep"] is not None and int(d800[idx]["convergence_sweep"]) <= 400:
+            assert d400[idx]["convergence_sweep"] == d800[idx]["convergence_sweep"]
+            assert d400[idx]["stopping_reason"] == d800[idx]["stopping_reason"]
+        if idx > 0:
+            random_hashes.append(d400[idx]["initialization_hash"])
+    assert len(set(random_hashes)) == len(random_hashes)
+
+    # Output/repository paths are deliberately absent from the seed formula.
+    fit_path_a = fit_factor_ridge(p.Y, blocks, n_sweeps=25, **kwargs)
+    fit_path_b = fit_factor_ridge(p.Y, blocks, n_sweeps=25, **dict(kwargs, model_id="housing_all_homes"))
+    assert [r["initialization_hash"] for r in fit_path_a.restart_diagnostics] == [
+        r["initialization_hash"] for r in fit_path_b.restart_diagnostics
+    ]
+
+
+def test_first_stage_restart_diagnostics_repeated_and_seed_sensitive():
+    p = _panel(Tp=10, N=8, seed=12)
+    blocks = build_blocks(p.Z)
+    kwargs = dict(
+        ranks=(1, 1, 1),
+        ridge=0.02,
+        tol=1e-12,
+        n_restarts=3,
+        n_sweeps=30,
+        fold_id=1,
+        model_id="housing_all_homes",
+        n_anneal=1,
+    )
+    a = fit_factor_ridge(p.Y, blocks, global_seed=111, **kwargs)
+    b = fit_factor_ridge(p.Y, blocks, global_seed=111, **kwargs)
+    c = fit_factor_ridge(p.Y, blocks, global_seed=112, **kwargs)
+    assert a.restart_diagnostics == b.restart_diagnostics
+    a_hashes = [r["initialization_hash"] for r in a.restart_diagnostics[1:]]
+    c_hashes = [r["initialization_hash"] for r in c.restart_diagnostics[1:]]
+    assert a_hashes != c_hashes
+    for row in a.restart_diagnostics:
+        for field in [
+            "initialization_seed", "initialization_hash", "restart_label",
+            "restart_index", "initial_objective", "final_objective",
+            "total_sweeps_from_initialization", "convergence_sweep",
+            "stopping_reason", "converged", "max_iteration_hit",
+        ]:
+            assert field in row
+    assert a.n_sweeps == a.final_level_sweeps
+    assert a.total_sweeps_from_initialization >= a.final_level_sweeps
+
+
 def test_run_mc_batches_riesz_ridge_override_and_resume_signature():
     assert Tuning().riesz_ridge == 1e-8
     assert run_mc_batches._parse_positive_float("1e-6") == 1e-6
@@ -980,7 +1059,7 @@ def _restore_housing_expected(old_expected):
 
 
 def _fake_housing_estimate_factory(calls, *, converged=True, rel_resid=1e-6):
-    def fake_estimate(Y, Z, targets, tuning, P=1, rng=None, profile_timing=False):
+    def fake_estimate(Y, Z, targets, tuning, P=1, rng=None, profile_timing=False, **kwargs):
         calls["estimate"] = calls.get("estimate", 0) + 1
         estimates = {t.name: 0.1 + i for i, t in enumerate(targets)}
         se = {t.name: 0.01 + i * 0.001 for i, t in enumerate(targets)}
@@ -1293,6 +1372,41 @@ def test_housing_all_homes_preflight_preserves_immutable_panel_and_never_prepare
         assert before == after
         report = json.loads((repo / "outputs" / "empirical" / "housing_all_homes" / "runtime" / "production_preflight.json").read_text(encoding="utf-8"))
         assert report["estimator_called"] is False
+
+
+def test_housing_all_homes_first_stage_audit_only_and_preserves_panel():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = housing_all_homes.Path(tmp) / "repo"
+        _, panel_dir, config, output = _make_housing_fixture(repo, n=3, t=5)
+        files = [panel_dir / name for name in housing_all_homes.REQUIRED_PANEL_FILES]
+        before = _file_state(files)
+        old_expected = _with_housing_expected(3, 5, 12)
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("first-stage audit must not call full estimate/Riesz/one-step")
+            )
+            result = housing_all_homes.run_first_stage_audit(
+                panel_dir, output, config,
+                repo_root=repo, fixed_ranks=(1, 1, 1, 2), seed=2024,
+            )
+        finally:
+            housing_all_homes.estimate = original_estimate
+            _restore_housing_expected(old_expected)
+        after = _file_state(files)
+        assert before == after
+        result_path = output / "first_stage_audit" / "first_stage_audit.json"
+        disk_result = json.loads(result_path.read_text(encoding="utf-8"))
+        assert result["estimator_called"] is False
+        assert result["riesz_called"] is False
+        assert result["one_step_called"] is False
+        assert result["production_output_written"] is False
+        assert len(result["fit_diagnostics"]) == result["J"]
+        assert disk_result["input_panel_checksum"] == result["input_panel_checksum"]
+        first = result["fit_diagnostics"][0]["restart_diagnostics"]
+        assert first[0]["restart_label"] == "warm_start"
+        assert first[0]["initialization_hash"]
+        assert not (output / "production" / "housing_all_homes_results.json").exists()
 
 
 def test_housing_all_homes_missing_or_checksum_mismatch_fails_without_rebuild():

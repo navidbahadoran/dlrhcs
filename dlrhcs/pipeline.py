@@ -112,6 +112,13 @@ def _fit_diagnostics(fit):
         relative_restart_improvement=float(fit.relative_restart_improvement),
         restart_improvement_gt_1e_6=bool(fit.restart_improvement_gt_1e_6),
         restart_improvement_gt_1e_4=bool(fit.restart_improvement_gt_1e_4),
+        restart_diagnostics=getattr(fit, "restart_diagnostics", []),
+        selected_restart_label=getattr(fit, "selected_restart_label", ""),
+        selected_restart_index=int(getattr(fit, "selected_restart_index", 0)),
+        total_sweeps_from_initialization=int(getattr(fit, "total_sweeps_from_initialization", fit.n_sweeps)),
+        final_level_sweeps=int(getattr(fit, "final_level_sweeps", fit.n_sweeps)),
+        convergence_sweep=getattr(fit, "convergence_sweep", None),
+        stopping_reason=getattr(fit, "stopping_reason", ""),
     )
 
 
@@ -166,7 +173,9 @@ def _summarize_fit_diagnostics(fits):
 def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
              P=1, rng=None, foldid=None,
              oracle=False, true_U=None, true_V=None,
-             profile_timing: bool = False) -> EstimateResult:
+             profile_timing: bool = False,
+             first_stage_seed: Optional[int] = None,
+             first_stage_model_id: str = "pipeline") -> EstimateResult:
     timing = {} if profile_timing else None
     if rng is None:
         rng = np.random.default_rng(0)
@@ -231,15 +240,26 @@ def estimate(Y, Z_list, targets: Sequence[Target], tuning: Tuning,
 
         def _fit_fold(fi):
             rng_f = np.random.default_rng(np.random.SeedSequence([seed0, 7919, fi]))
+            stable_kwargs = {}
+            if first_stage_seed is not None:
+                stable_kwargs = dict(global_seed=int(first_stage_seed),
+                                     fold_id=int(fi),
+                                     model_id=str(first_stage_model_id))
             return fit_factor_ridge(Y, blocks, ranks, mask=folds[fi].train,
-                                    rng=rng_f, **fk)
+                                    rng=rng_f, **fk, **stable_kwargs)
         fits = _pmap(_fit_fold, range(len(folds)), tuning.n_jobs)
         foldfits = [_make_foldfit(folds[fi], fits[fi]) for fi in range(len(folds))]
         mono_ok = all(f.monotone for f in fits)
     else:
         foldfits, fits, mono_ok = [], [], True
-        for fd in folds:
-            fit = fit_factor_ridge(Y, blocks, ranks, mask=fd.train, **fit_kwargs)
+        for fi, fd in enumerate(folds):
+            stable_kwargs = {}
+            if first_stage_seed is not None:
+                stable_kwargs = dict(global_seed=int(first_stage_seed),
+                                     fold_id=int(fi),
+                                     model_id=str(first_stage_model_id))
+            fit = fit_factor_ridge(Y, blocks, ranks, mask=fd.train, **fit_kwargs,
+                                   **stable_kwargs)
             fits.append(fit)
             mono_ok = mono_ok and fit.monotone
             foldfits.append(_make_foldfit(fd, fit))

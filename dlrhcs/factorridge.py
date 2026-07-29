@@ -18,7 +18,9 @@ checkpoint.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+import hashlib
+import json
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -70,6 +72,45 @@ class FitResult:
     final_relative_objective_decrease: float = field(default=0.0)
     stationarity_residual: float = field(default=0.0)
     obj_rel_improve: float = field(default=0.0)
+    restart_diagnostics: List[Dict[str, object]] = field(default_factory=list)
+    selected_restart_label: str = field(default="")
+    selected_restart_index: int = field(default=0)
+    total_sweeps_from_initialization: int = field(default=0)
+    convergence_sweep: Optional[int] = field(default=None)
+    stopping_reason: str = field(default="")
+    final_level_sweeps: int = field(default=0)
+
+
+_DEFAULT_TRACE_CHECKPOINTS = (0, 1, 10, 25, 50, 75, 100, 125, 150, 200, 300, 400, 600, 800)
+
+
+def stable_restart_seed(global_seed, fold_id, restart_type, restart_index, model_id="factor_ridge"):
+    """Stable restart seed independent of sweep cap, output path, and execution order."""
+    payload = {
+        "global_seed": int(global_seed),
+        "fold_id": int(fold_id),
+        "model_id": str(model_id),
+        "restart_index": int(restart_index),
+        "restart_type": str(restart_type),
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return int.from_bytes(hashlib.sha256(raw).digest()[:8], "little", signed=False)
+
+
+def _canonical_array_bytes(arr):
+    a = np.ascontiguousarray(np.asarray(arr, dtype="<f8"))
+    return str(a.shape).encode("ascii") + b"\0" + a.tobytes(order="C")
+
+
+def initialization_hash(F, Lam):
+    """SHA-256 hash of numerical initialization arrays in canonical dtype/order."""
+    h = hashlib.sha256()
+    for label, mats in (("F", F), ("Lam", Lam)):
+        h.update(label.encode("ascii"))
+        h.update(str(len(mats)).encode("ascii"))
+        for mat in mats:
+            h.update(_canonical_array_bytes(mat))
+    return h.hexdigest()
 
 
 def _softimpute_block(obs, mask, r, iters=4):
@@ -131,7 +172,8 @@ def _surfaces_from_factors(F, Lam):
     return [Fb @ Lb.T for Fb, Lb in zip(F, Lam)]
 
 
-def _als_loop(Y, blocks, ranks, mask, ridge, n_sweeps, tol, F0, Lam0):
+def _als_loop(Y, blocks, ranks, mask, ridge, n_sweeps, tol, F0, Lam0,
+              *, sweep_offset=0, trace_checkpoints: Optional[Sequence[int]] = None):
     Tp, N = Y.shape
     slices, Rtot = _col_slices(ranks)
     sc = _scaleZ(blocks, ranks, Rtot)
@@ -145,6 +187,8 @@ def _als_loop(Y, blocks, ranks, mask, ridge, n_sweeps, tol, F0, Lam0):
         return [Fm[:, sl] @ Lm[:, sl].T for sl in slices]
 
     obj_path = []
+    trace = {}
+    checkpoint_set = set(int(x) for x in trace_checkpoints) if trace_checkpoints else set()
     prev = np.inf
     sweeps_done = 0
     for sweep in range(n_sweeps):
@@ -165,12 +209,15 @@ def _als_loop(Y, blocks, ranks, mask, ridge, n_sweeps, tol, F0, Lam0):
         cur = _objective(Y, blocks, surfaces, mask, ridge, Fb, Lb)
         obj_path.append(cur)
         sweeps_done = sweep + 1
+        absolute_sweep = int(sweep_offset + sweeps_done)
+        if absolute_sweep in checkpoint_set:
+            trace[absolute_sweep] = float(cur)
         if sweep > 0 and (prev - cur) <= tol * max(1.0, abs(prev)):
             break
         prev = cur
     Fb = [Fmat[:, sl].copy() for sl in slices]
     Lb = [Lmat[:, sl].copy() for sl in slices]
-    return surfaces_from(Fmat, Lmat), Fb, Lb, np.asarray(obj_path), sweeps_done
+    return surfaces_from(Fmat, Lmat), Fb, Lb, np.asarray(obj_path), sweeps_done, trace
 
 
 def _ridge_schedule(ridge, n_anneal):
@@ -180,22 +227,29 @@ def _ridge_schedule(ridge, n_anneal):
     return list(np.geomspace(max(1.0, ridge * 50.0), ridge, n_anneal))
 
 
-def _annealed_als(Y, blocks, ranks, mask, ridge, n_sweeps, tol, F0, Lam0, n_anneal):
+def _annealed_als(Y, blocks, ranks, mask, ridge, n_sweeps, tol, F0, Lam0, n_anneal,
+                  *, trace_checkpoints: Optional[Sequence[int]] = None):
     """Run ALS over a decreasing ridge schedule; the final level uses ``ridge``."""
     schedule = _ridge_schedule(ridge, n_anneal)
     F, Lam = F0, Lam0
     final = None
+    total_sweeps = 0
+    trace = {}
     for level, rg in enumerate(schedule):
         nsw = n_sweeps if level == len(schedule) - 1 else max(15, n_sweeps // 3)
-        surfaces, F, Lam, path, ns = _als_loop(
-            Y, blocks, ranks, mask, rg, nsw, tol, F, Lam)
-        final = (surfaces, F, Lam, path, ns)
+        surfaces, F, Lam, path, ns, level_trace = _als_loop(
+            Y, blocks, ranks, mask, rg, nsw, tol, F, Lam,
+            sweep_offset=total_sweeps, trace_checkpoints=trace_checkpoints)
+        total_sweeps += int(ns)
+        trace.update(level_trace)
+        final = (surfaces, F, Lam, path, ns, total_sweeps, trace)
     return final
 
 
 def fit_factor_ridge(Y, blocks, ranks, mask=None, ridge=0.02, n_sweeps=80,
                      tol=1e-8, n_restarts=4, rng=None, warm=True, perturb=0.1,
-                     n_anneal=8):
+                     n_anneal=8, global_seed=None, fold_id=None,
+                     model_id="factor_ridge", trace_checkpoints: Optional[Sequence[int]] = None):
     """Fit the alternating factor-ridge model; keep the lowest-objective restart.
 
     ranks    : per-block ranks (length B = M+1, last is the H block).
@@ -215,22 +269,63 @@ def fit_factor_ridge(Y, blocks, ranks, mask=None, ridge=0.02, n_sweeps=80,
         Lam0 = [rng.standard_normal((N, r)) * 0.1 for r in ranks]
     warm_obj = _objective(Y, blocks, _surfaces_from_factors(F0, Lam0), mask,
                           ridge, F0, Lam0)
+    trace_checkpoints = tuple(_DEFAULT_TRACE_CHECKPOINTS if trace_checkpoints is None else trace_checkpoints)
     best = None
     restart_objs = []
+    restart_diags = []
     for restart in range(max(1, n_restarts)):
+        restart_type = "warm_start" if restart == 0 else "random_restart"
+        restart_label = "warm_start" if restart == 0 else f"random_{restart}"
+        init_seed = None
         if restart == 0:
             Fi, Li = [f.copy() for f in F0], [l.copy() for l in Lam0]
+            if global_seed is not None and fold_id is not None:
+                init_seed = stable_restart_seed(global_seed, fold_id, restart_type, restart, model_id)
         else:
-            Fi = [f + perturb * rng.standard_normal(f.shape) for f in F0]
-            Li = [l + perturb * rng.standard_normal(l.shape) for l in Lam0]
-        surfaces, Fb, Lb, path, ns = _annealed_als(
-            Y, blocks, ranks, mask, ridge, n_sweeps, tol, Fi, Li, n_anneal)
+            if global_seed is not None and fold_id is not None:
+                init_seed = stable_restart_seed(global_seed, fold_id, restart_type, restart, model_id)
+                rng_i = np.random.default_rng(np.random.SeedSequence(init_seed))
+            else:
+                rng_i = rng
+            Fi = [f + perturb * rng_i.standard_normal(f.shape) for f in F0]
+            Li = [l + perturb * rng_i.standard_normal(l.shape) for l in Lam0]
+        init_hash = initialization_hash(Fi, Li)
+        init_obj = _objective(Y, blocks, _surfaces_from_factors(Fi, Li), mask,
+                              ridge, Fi, Li)
+        trace = {0: float(init_obj)} if 0 in set(trace_checkpoints) else {}
+        surfaces, Fb, Lb, path, ns, total_ns, anneal_trace = _annealed_als(
+            Y, blocks, ranks, mask, ridge, n_sweeps, tol, Fi, Li, n_anneal,
+            trace_checkpoints=trace_checkpoints)
+        trace.update(anneal_trace)
         obj = float(path[-1]) if len(path) else np.inf
         restart_objs.append(obj)
         monotone = bool(np.all(np.diff(path) <= 1e-9 * (1 + np.abs(path[:-1]))))
+        max_hit = bool(ns >= n_sweeps)
+        stopped_before_cap = bool(not max_hit)
+        convergence_sweep = int(total_ns) if stopped_before_cap else None
+        stopping_reason = "relative_objective_tolerance" if stopped_before_cap else "sweep_cap"
+        diag = dict(
+            initialization_seed=int(init_seed) if init_seed is not None else None,
+            initialization_hash=init_hash,
+            restart_label=restart_label,
+            restart_index=int(restart),
+            restart_type=restart_type,
+            initial_objective=float(init_obj),
+            final_objective=float(obj),
+            total_sweeps_from_initialization=int(total_ns),
+            final_level_sweeps=int(ns),
+            convergence_sweep=convergence_sweep,
+            stopping_reason=stopping_reason,
+            converged=stopped_before_cap,
+            stopped_before_sweep_cap=stopped_before_cap,
+            max_iteration_hit=max_hit,
+            objective_trace_checkpoints={str(int(k)): float(v) for k, v in sorted(trace.items())},
+            n_anneal=int(n_anneal),
+        )
+        restart_diags.append(diag)
         if best is None or obj < best[0]:
-            best = (obj, surfaces, Fb, Lb, path, ns, monotone)
-    obj, surfaces, Fb, Lb, path, ns, monotone = best
+            best = (obj, surfaces, Fb, Lb, path, ns, monotone, restart, total_ns, diag)
+    obj, surfaces, Fb, Lb, path, ns, monotone, best_restart, total_ns, best_diag = best
     # Final-sweep relative objective decrease: a numerical-stability proxy.
     # Hitting the sweep cap is recorded separately and is not, by itself, a
     # convergence failure.
@@ -258,4 +353,11 @@ def fit_factor_ridge(Y, blocks, ranks, mask=None, ridge=0.02, n_sweeps=80,
                      restart_improvement_gt_1e_4=bool(restart_improve > 1e-4),
                      final_relative_objective_decrease=rel_improve,
                      stationarity_residual=rel_improve,
-                     obj_rel_improve=rel_improve)
+                     obj_rel_improve=rel_improve,
+                     restart_diagnostics=restart_diags,
+                     selected_restart_label=str(best_diag.get("restart_label", "")),
+                     selected_restart_index=int(best_restart),
+                     total_sweeps_from_initialization=int(total_ns),
+                     convergence_sweep=best_diag.get("convergence_sweep"),
+                     stopping_reason=str(best_diag.get("stopping_reason", "")),
+                     final_level_sweeps=int(ns))
