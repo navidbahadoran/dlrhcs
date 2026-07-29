@@ -1,0 +1,2431 @@
+  Reading input spec file from D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_17020_200401_202606.spc
+
+1
+
+               U. S. Department of Commerce, U. S. Census Bureau
+
+              X-13ARIMA-SEATS monthly seasonal adjustment Method,
+                          Release Version 1.1 Build 62
+
+
+           This software application provides an enhanced version of
+             Statistics Canada's X-11-ARIMA extension (Dagum, 1980)
+                 of the X-11 variant of the Census Method II of
+                      Shiskin, Young and Musgrave (1967).
+
+            It also provides an ARIMA model-based method following
+       Hillmer and Tiao (1982) and Burman (1980) that is very similar
+       to the update of the method of SEATS (Gomez and Maravall, 1996)
+                produced at the Bank of Spain by G. Caporello and
+               A. Maravall for TSW (Caporello and Maravall, 2004).
+          The present application includes additional enhancements.
+
+         X-13ARIMA-SEATS includes an automatic ARIMA model selection procedure
+          based largely on the procedure of Gomez and Maravall (1998)
+            as implemented in TRAMO (1996) and subsequent revisions.
+
+              Primary Programmers: Brian Monsell, Mark Otto and,
+                 for the ARIMA model-based signal extraction,
+                      Gianluca Caporello and Victor Gomez
+
+
+     Series Title- bps_permits 17020
+     Series Name- bps_permits_addi
+     Jul 29, 2026  08.24.19 
+
+        -Period covered-  1st month,2004 to  6th month,2026
+        -Type of run - additive seasonal adjustment
+
+        -Sigma limits for graduating extreme values are  1.5 and  2.5 .
+        -3x3 moving average used in section 1 of each iteration, 
+         3x5 moving average in section 2 of iterations B and C,
+         moving average for final seasonal factors chosen by Global MSR.
+        -Holiday adjustment factors applied directly to the final seasonally adjusted series
+        -Spectral plots generated for selected series
+        -Spectral plots generated for series starting in 2018.Jul
+
+ FILE SAVE REQUESTS (* indicates file exists and will be overwritten)
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_17020_200401_202606.d10  final seasonal factors
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_17020_200401_202606.d11  final seasonally adjusted data
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_17020_200401_202606.out  program output file
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_17020_200401_202606.err  program error file
+        bps_permits 17020            PAGE   1, SERIES bps_permits_addi
+
+     Contents of spc file D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_17020_200401_202606.spc
+
+ Line #
+ ------
+      1: series {
+      2:   title = "bps_permits 17020"
+      3:   start = 2004.1
+      4:   period = 12
+      5:   data = (
+      6: 129
+      7: 87
+      8: 161
+      9: 138
+     10: 209
+     11: 147
+     12: 180
+     13: 124
+     14: 145
+     15: 128
+     16: 249
+     17: 106
+     18: 82
+     19: 76
+     20: 154
+     21: 124
+     22: 105
+     23: 148
+     24: 111
+     25: 134
+     26: 99
+     27: 165
+     28: 99
+     29: 216
+     30: 73
+     31: 100
+     32: 81
+     33: 135
+     34: 110
+     35: 73
+     36: 89
+     37: 105
+     38: 147
+     39: 76
+     40: 62
+     41: 113
+     42: 65
+     43: 109
+     44: 74
+     45: 83
+     46: 92
+     47: 87
+     48: 63
+     49: 71
+     50: 53
+     51: 50
+     52: 52
+     53: 29
+     54: 57
+     55: 49
+     56: 42
+     57: 40
+     58: 34
+     59: 57
+     60: 53
+     61: 41
+     62: 46
+     63: 47
+     64: 42
+     65: 36
+     66: 27
+     67: 28
+     68: 25
+     69: 36
+     70: 15
+     71: 25
+     72: 32
+     73: 41
+     74: 20
+     75: 25
+     76: 14
+     77: 70
+     78: 20
+     79: 45
+     80: 51
+     81: 29
+     82: 20
+     83: 40
+     84: 104
+     85: 8
+     86: 7
+     87: 12
+     88: 17
+     89: 22
+     90: 17
+     91: 13
+     92: 23
+     93: 20
+     94: 57
+     95: 67
+     96: 13
+     97: 14
+     98: 10
+     99: 53
+    100: 24
+    101: 46
+    102: 10
+    103: 19
+    104: 16
+    105: 23
+    106: 75
+    107: 11
+    108: 57
+    109: 16
+    110: 17
+    111: 19
+    112: 14
+    113: 16
+    114: 102
+    115: 28
+    116: 36
+    117: 42
+    118: 50
+    119: 51
+    120: 37
+    121: 30
+    122: 20
+    123: 38
+    124: 15
+    125: 26
+    126: 36
+    127: 35
+    128: 31
+    129: 35
+    130: 38
+    131: 14
+    132: 198
+    133: 34
+    134: 17
+    135: 20
+    136: 12
+    137: 32
+    138: 12
+    139: 13
+    140: 168
+    141: 32
+    142: 16
+    143: 37
+    144: 34
+    145: 57
+    146: 30
+    147: 19
+    148: 95
+    149: 23
+    150: 22
+    151: 37
+    152: 48
+    153: 13
+    154: 21
+    155: 72
+    156: 31
+    157: 42
+    158: 46
+    159: 33
+    160: 113
+    161: 71
+    162: 65
+    163: 37
+    164: 199
+    165: 10
+    166: 22
+    167: 81
+    168: 16
+    169: 24
+    170: 73
+    171: 23
+    172: 20
+    173: 69
+    174: 27
+    175: 43
+    176: 24
+    177: 35
+    178: 33
+    179: 22
+    180: 21
+    181: 71
+    182: 71
+    183: 33
+    184: 32
+    185: 47
+    186: 105
+    187: 66
+    188: 78
+    189: 45
+    190: 35
+    191: 22
+    192: 86
+    193: 13
+    194: 34
+    195: 19
+    196: 15
+    197: 3
+    198: 91
+    199: 49
+    200: 10
+    201: 24
+    202: 23
+    203: 43
+    204: 24
+    205: 18
+    206: 44
+    207: 29
+    208: 18
+    209: 185
+    210: 44
+    211: 134
+    212: 67
+    213: 9
+    214: 59
+    215: 221
+    216: 154
+    217: 61
+    218: 18
+    219: 153
+    220: 92
+    221: 16
+    222: 285
+    223: 152
+    224: 261
+    225: 226
+    226: 94
+    227: 377
+    228: 68
+    229: 172
+    230: 149
+    231: 58
+    232: 50
+    233: 54
+    234: 54
+    235: 45
+    236: 95
+    237: 61
+    238: 65
+    239: 186
+    240: 26
+    241: 71
+    242: 78
+    243: 78
+    244: 102
+    245: 72
+    246: 115
+    247: 140
+    248: 63
+    249: 160
+    250: 61
+    251: 53
+    252: 65
+    253: 65
+    254: 62
+    255: 48
+    256: 57
+    257: 57
+    258: 34
+    259: 52
+    260: 75
+    261: 174
+    262: 125
+    263: 84
+    264: 69
+    265: 64
+    266: 69
+    267: 71
+    268: 115
+    269: 65
+    270: 129
+    271: 74
+    272: 75
+    273: 73
+    274: 66
+    275: 75
+    276:   )
+    277: }
+    278: transform { function = none }
+    279: regression { aictest = (td easter) }
+    280: automdl {}
+    281: x11 { mode = add save = (d10 d11) }
+        bps_permits 17020            PAGE   2, SERIES bps_permits_addi
+
+ A 1  Time series data (for the span analyzed)
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         129.      87.     161.     138.     209.     147.
+               180.     124.     145.     128.     249.     106.         1803.
+ 
+  2005          82.      76.     154.     124.     105.     148.
+               111.     134.      99.     165.      99.     216.         1513.
+ 
+  2006          73.     100.      81.     135.     110.      73.
+                89.     105.     147.      76.      62.     113.         1164.
+ 
+  2007          65.     109.      74.      83.      92.      87.
+                63.      71.      53.      50.      52.      29.          828.
+ 
+  2008          57.      49.      42.      40.      34.      57.
+                53.      41.      46.      47.      42.      36.          544.
+ 
+  2009          27.      28.      25.      36.      15.      25.
+                32.      41.      20.      25.      14.      70.          358.
+ 
+  2010          20.      45.      51.      29.      20.      40.
+               104.       8.       7.      12.      17.      22.          375.
+ 
+  2011          17.      13.      23.      20.      57.      67.
+                13.      14.      10.      53.      24.      46.          357.
+ 
+  2012          10.      19.      16.      23.      75.      11.
+                57.      16.      17.      19.      14.      16.          293.
+ 
+  2013         102.      28.      36.      42.      50.      51.
+                37.      30.      20.      38.      15.      26.          475.
+ 
+  2014          36.      35.      31.      35.      38.      14.
+               198.      34.      17.      20.      12.      32.          502.
+ 
+  2015          12.      13.     168.      32.      16.      37.
+                34.      57.      30.      19.      95.      23.          536.
+ 
+  2016          22.      37.      48.      13.      21.      72.
+                31.      42.      46.      33.     113.      71.          549.
+ 
+  2017          65.      37.     199.      10.      22.      81.
+                16.      24.      73.      23.      20.      69.          639.
+ 
+  2018          27.      43.      24.      35.      33.      22.
+                21.      71.      71.      33.      32.      47.          459.
+ 
+  2019         105.      66.      78.      45.      35.      22.
+                86.      13.      34.      19.      15.       3.          521.
+ 
+  2020          91.      49.      10.      24.      23.      43.
+                24.      18.      44.      29.      18.     185.          558.
+ 
+  2021          44.     134.      67.       9.      59.     221.
+               154.      61.      18.     153.      92.      16.         1028.
+ 
+  2022         285.     152.     261.     226.      94.     377.
+                68.     172.     149.      58.      50.      54.         1946.
+ 
+  2023          54.      45.      95.      61.      65.     186.
+                26.      71.      78.      78.     102.      72.          933.
+ 
+  2024         115.     140.      63.     160.      61.      53.
+                65.      65.      62.      48.      57.      57.          946.
+ 
+  2025          34.      52.      75.     174.     125.      84.
+                69.      64.      69.      71.     115.      65.          997.
+ 
+  2026         129.      74.      75.      73.      66.      75.
+                                                                          492.
+ 
+  AVGE          70.      62.      81.      68.      62.      87.
+                70.      58.      57.      54.      60.      62.
+
+  Table Total-       17816.   Mean-        66.   Std. Dev.-        55.
+                              Min -         3.        Max -       377.
+        bps_permits 17020            PAGE   3, SERIES bps_permits_addi
+                        Automatic ARIMA Model Selection
+
+                    Procedure based closely on TRAMO method 
+                         of Gomez and Maravall (2000)
+              "Automatic Modeling Methods for Univariate Series",
+                            A Course in Time Series
+                  (Edited by D. Pena, G. C. Tiao, R. S. Tsay),
+                         New York : J. Wiley and Sons
+
+
+     Maximum order for regular ARMA parameters :   2
+     Maximum order for seasonal ARMA parameters :   1
+     Maximum order for regular differencing :   2
+     Maximum order for seasonal differencing :   1
+
+   Results of Unit Root Test for identifying orders of differencing:
+     Regular difference order :   0
+     Seasonal difference order :   0
+
+  Automatic model choice : (1 0 1)
+
+
+  Final Checks for Identified Model
+
+
+  Checking for Unit Roots.
+   Regular unit root found.
+   ( 0, 1, 1) ( 0, 0, 0)
+  Constant term removed from model
+
+  Checking for nonseasonal overdifferencing.
+   Nonseasonal MA not within  0.001 of 1.0 - model passes test.
+
+  Checking for insignificant ARMA coefficients.
+
+  Final automatic model choice : (0 1 1)
+   End of automatic model selection procedure.
+
+ Average absolute percentage error in within-sample forecasts:
+  Last year:  30.41      Last-1 year:  55.17     Last-2 year:  54.69
+  Last three years:   46.76
+
+ Estimation converged in    2 ARMA iterations,   18 function evaluations.
+
+ Regression Model
+ ------------------------------------------------------------------------------
+                             Parameter        Standard
+ Variable                     Estimate           Error      t-value
+ ------------------------------------------------------------------------------
+ Leap Year                      5.7192        20.18178         0.28
+
+ 1-Coefficient Trading Day
+   Weekday                      2.0294         0.93059         2.18
+ **Sat/Sun (derived)           -5.0736         2.32648        -2.18
+ ------------------------------------------------------------------------------
+ **For the one coefficient trading-day effect, the derived
+   parameter estimate is obtained indirectly as minus -2.5 times
+   the directly estimated parameter that defines the effect.
+
+
+ Chi-squared Tests for Groups of Regressors
+ ------------------------------------------------------------------------------
+ Regression Effect                  df      Chi-Square      P-Value
+ ------------------------------------------------------------------------------
+ Combined Trading Day and Leap Year Regressors
+                                     2            4.83         0.09
+
+
+ F Tests for Trading Day Regressors 
+ -----------------------------------------------------------------------
+ Regression Effect                     df         F-statistic    P-Value
+ -----------------------------------------------------------------------
+ 1-Coefficient Trading Day           1, 267            4.72         0.03
+
+
+ ARIMA Model:  (0 1 1)
+   Nonseasonal differences: 1
+                                              Standard
+ Parameter                    Estimate          Errors
+ -----------------------------------------------------
+ Nonseasonal MA                                    
+   Lag  1                       0.8167         0.03538
+
+ Variance                       0.19880E+04
+ SE of Var                      0.17142E+03
+ -----------------------------------------------------
+
+ Likelihood Statistics
+ ------------------------------------------------------------------
+ Number of observations (nobs)                                  270
+ Effective number of observations (nefobs)                      269
+ Number of parameters estimated (np)                              4
+ Log likelihood (L)                                      -1403.7557
+ AIC                                                      2815.5113 
+ AICC (F-corrected-AIC)                                   2815.6628 
+ Hannan Quinn                                             2821.2859 
+ BIC                                                      2829.8902 
+ ------------------------------------------------------------------
+
+ QS Statistic for regARIMA Model Residuals (full series):             3.75
+                                                       (P-Value =     0.1533)
+
+ QS Statistic for regARIMA Model Residuals (starting 2018.Jul):       1.54
+                                                       (P-Value =     0.4623)
+
+
+  At least one visually significant residual seasonal peaks has been
+  found in the spectral plot of the following series starting in 2018.Jul:
+
+          regARIMA model residuals (1 Seasonal peak(s))
+
+      10*LOG(SPECTRUM) of the regARIMA model residuals
+      Spectrum estimated from 2018.Jul to 2026.Jun.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      40.60I                                                 *           I     40.60
+           I                                                 *           I
+           I                                                 *           I
+           I                                                 *           I
+      39.61I                                                **           I     39.61
+           I      *                                         **           I
+           I      *                                         **           I
+           I   *  *   S                                     **           I
+      38.62I   *  *   S                                     **           I     38.62
+           I   *  *   S                                  *  **           I
+           I   *  *   S                                  *  **           I
+           I   *  **  S                                  *  **           I
+      37.62I   *  **  S                        *         *  **S          I     37.62
+           I   *  **  S                        *        ** ***S          I
+           I   *  **  S                        *        ******S          I
+           I   *  **  S                   S    *        ******S          I
+      36.63I  **  **  S          *        S    *        ******S          I     36.63
+           I  **  **  S     *    *        S    *        ******S          I
+           I  **  **  S     *   S*        S*   *        ******S         SI
+           I  **  **  S     *   S*        S*   *        ******S         SI
+      35.64I  ** *** *S     *   S*        S*   *        ******S*        SI     35.64
+           I  ** *** *S     *   S*        S*   *    S*  ******S*        SI
+           I  ****** *S     *   S*        S*   *    S*  ******S*        SI
+           I  ********S     *   S*        S*   *    S*  ******S*T*      SI
+      34.64I  ********S     *   S*        S*   *    S*  ******S*T**     SI     34.64
+           I  ********S     *   S*        S*   *    S* *******S*T**    *SI
+           I  ********S     *   S*        S*   *    S*T*******S*T**    *SI
+           I  ********S*    *   S*       *S*  **    S*T*******S*T**    *SI
+      33.65I  ********S*   ***  S*       *S*  ***   S*T*******S*T**    *SI     33.65
+           I  ********S*   ***  S*       *S*  ***   S*T*******S*T**    *SI
+           I  ********S*   ***  S*      **S*  ***   S*T*******S*T***   *SI
+           I  ********S*   *** *S*      **S*  ***   S*T*******S*T***   *SI
+      32.66I  ********S*   *** *S*     ***S** ***   S*T*******S*T***   *SI     32.66
+           I  ********S*   *** *S*     ***S** ***   S*T*******S*T***   *SI
+           I  ********S*   *****S*     ***S** ***  *S*T*******S*T***  **SI
+           I  ********S*   *****S*     ***S** ***  *S*T*******S*T**** **SI
+      31.66I *********S*   *****S**    ***S******  *S*T*******S*T**** **SI     31.66
+           I *********S*   *****S**    ***S******  *S*T*******S*T**** **SI
+           I *********S*   *****S**    ***S******  *S*T*******S*T*******SI
+           I *********S*   *****S**    ***S******  *S*T*******S*T*******SI
+      30.67I *********S*   *****S**   ****S******  *S*T*******S*T*******SI     30.67
+           I *********S*   *****S**   ****S******* *S*T*******S*T*******SI
+           I**********S*   *****S**   ****S*********S*T*******S*T*******SI
+           I**********S** ******S**   ****S*********S*T*******S*T*******SI
+      29.68I**********S** ******S**   ****S*********S*T*******S*T*******SI     29.68
+           I**********S** ******S**   ****S*********S*T*******S*T*******SI
+           I**********S** ******S**   ****S*********S*T*******S*T*******SI
+           I**********S** ******S**   ****S*********S*T*******S*T*******SI
+      28.69I**********S*********S***  ****S*********S*T*******S*T*******SI     28.69
+           I**********S*********S*** *****S*********S*T*******S*T*******SI
+           I**********S*********S*** *****S*********S*T*******S*T*******SI
+           I**********S*********S*** *****S*********S*T*******S*T*******SI
+      27.69I**********S*********S*********S*********S*T*******S*T*******SI     27.69
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+
+
+ FORECASTING
+  Origin  2026.Jun
+  Number        12
+
+  Forecasts and Standard Errors
+   ------------------------------
+                         Standard
+       Date   Forecast      Error
+   ------------------------------
+   2026.Jul      84.97     44.678
+   2026.Aug      70.77     45.482
+   2026.Sep      82.94     46.101
+   2026.Oct      77.87     46.784
+   2026.Nov      75.84     47.510
+   2026.Dec      84.97     48.270
+   2027.Jan      70.77     49.015
+   2027.Feb      77.46     49.766
+   2027.Mar      84.97     50.303
+   2027.Apr      82.94     50.919
+   2027.May      70.77     51.668
+   2027.Jun      82.94     52.214
+   ------------------------------
+
+  Confidence intervals with coverage probability ( 0.95000
+   ---------------------------------------
+       Date      Lower  Forecast     Upper
+   ---------------------------------------
+   2026.Jul      -2.59     84.97    172.54
+   2026.Aug     -18.38     70.77    159.91
+   2026.Sep      -7.41     82.94    173.30
+   2026.Oct     -13.82     77.87    169.56
+   2026.Nov     -17.28     75.84    168.96
+   2026.Dec      -9.63     84.97    179.58
+   2027.Jan     -25.30     70.77    166.84
+   2027.Feb     -20.08     77.46    174.99
+   2027.Mar     -13.62     84.97    183.56
+   2027.Apr     -16.86     82.94    182.74
+   2027.May     -30.50     70.77    172.03
+   2027.Jun     -19.39     82.94    185.28
+   ---------------------------------------
+        bps_permits 17020            PAGE   4, SERIES bps_permits_addi
+
+ A 6  RegARIMA trading day component
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004          -1.      -1.       6.       4.      -8.       4.
+                -1.      -1.       4.      -8.       4.       6.            1.
+ 
+  2005          -8.      -1.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.           -1.
+ 
+  2006          -1.      -1.       6.     -10.       6.       4.
+                -8.       6.      -3.      -1.       4.      -8.           -1.
+ 
+  2007           6.      -1.      -1.      -3.       6.      -3.
+                -1.       6.     -10.       6.       4.      -8.            0.
+ 
+  2008           6.       6.      -8.       4.      -1.      -3.
+                 6.      -8.       4.       6.     -10.       6.            1.
+ 
+  2009          -1.      -1.      -1.       4.      -8.       4.
+                 6.      -8.       4.      -1.      -3.       6.            0.
+ 
+  2010          -8.      -1.       6.       4.      -8.       4.
+                -1.      -1.       4.      -8.       4.       6.            0.
+ 
+  2011          -8.      -1.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.           -1.
+ 
+  2012          -1.       6.      -1.      -3.       6.      -3.
+                -1.       6.     -10.       6.       4.      -8.            0.
+ 
+  2013           6.      -1.      -8.       4.       6.     -10.
+                 6.      -1.      -3.       6.      -3.      -1.            0.
+ 
+  2014           6.      -1.      -8.       4.      -1.      -3.
+                 6.      -8.       4.       6.     -10.       6.            0.
+ 
+  2015          -1.      -1.      -1.       4.      -8.       4.
+                 6.      -8.       4.      -1.      -3.       6.            0.
+ 
+  2016          -8.       6.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.            0.
+ 
+  2017          -1.      -1.       6.     -10.       6.       4.
+                -8.       6.      -3.      -1.       4.      -8.           -1.
+ 
+  2018           6.      -1.      -1.      -3.       6.      -3.
+                -1.       6.     -10.       6.       4.      -8.            0.
+ 
+  2019           6.      -1.      -8.       4.       6.     -10.
+                 6.      -1.      -3.       6.      -3.      -1.            0.
+ 
+  2020           6.      -1.      -1.       4.      -8.       4.
+                 6.      -8.       4.      -1.      -3.       6.            1.
+ 
+  2021          -8.      -1.       6.       4.      -8.       4.
+                -1.      -1.       4.      -8.       4.       6.            0.
+ 
+  2022          -8.      -1.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.           -1.
+ 
+  2023          -1.      -1.       6.     -10.       6.       4.
+                -8.       6.      -3.      -1.       4.      -8.           -1.
+ 
+  2024           6.       6.      -8.       4.       6.     -10.
+                 6.      -1.      -3.       6.      -3.      -1.            1.
+ 
+  2025           6.      -1.      -8.       4.      -1.      -3.
+                 6.      -8.       4.       6.     -10.       6.            0.
+ 
+  2026          -1.      -1.      -1.       4.      -8.       4.
+                                                                           -1.
+ 
+  AVGE          -0.      -0.       0.       0.      -0.       0.
+                -0.       0.       0.      -0.       0.      -0.
+
+  Table Total-          -1.   Mean-        -0.   Std. Dev.-         5.
+                              Min -       -10.        Max -         6.
+
+ A 6.A  RegARIMA trading day component forecasts
+  From  2026.Jul to 2027.Jun
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2026                                                          
+                 6.      -8.       4.      -1.      -3.       6.            1.
+ 
+  2027          -8.      -1.       6.       4.      -8.       4.
+                                                                           -1.
+ 
+        bps_permits 17020            PAGE   5, SERIES bps_permits_addi
+  
+ B 1  Original series (prior adjusted)
+      (adjusted for regARIMA factors)
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         130.      88.     155.     134.     217.     143.
+               181.     125.     141.     136.     245.     100.         1795.
+ 
+  2005          90.      77.     148.     127.     106.     144.
+               119.     128.      95.     173.      95.     217.         1520.
+ 
+  2006          74.     101.      75.     145.     104.      69.
+                97.      99.     150.      77.      58.     121.         1171.
+ 
+  2007          59.     110.      75.      86.      86.      90.
+                64.      65.      63.      44.      48.      37.          827.
+ 
+  2008          51.      43.      50.      36.      35.      60.
+                47.      49.      42.      41.      52.      30.          536.
+ 
+  2009          28.      29.      26.      32.      23.      21.
+                26.      49.      16.      26.      17.      64.          357.
+ 
+  2010          28.      46.      45.      25.      28.      36.
+               105.       9.       3.      20.      13.      16.          374.
+ 
+  2011          25.      14.      17.      23.      58.      63.
+                21.       8.       6.      61.      20.      47.          364.
+ 
+  2012          11.      13.      17.      26.      69.      14.
+                58.      10.      27.      13.      10.      24.          292.
+ 
+  2013          96.      29.      44.      38.      44.      61.
+                31.      31.      23.      32.      18.      27.          474.
+ 
+  2014          30.      36.      39.      31.      39.      17.
+               192.      42.      13.      14.      22.      26.          501.
+ 
+  2015          13.      14.     169.      28.      24.      33.
+                28.      65.      26.      20.      98.      17.          535.
+ 
+  2016          30.      31.      42.      16.      22.      68.
+                39.      36.      42.      41.     109.      72.          548.
+ 
+  2017          66.      38.     193.      20.      16.      77.
+                24.      18.      76.      24.      16.      77.          646.
+ 
+  2018          21.      44.      25.      38.      27.      25.
+                22.      65.      81.      27.      28.      55.          458.
+ 
+  2019          99.      67.      86.      41.      29.      32.
+                80.      14.      37.      13.      18.       4.          520.
+ 
+  2020          85.      50.      11.      20.      31.      39.
+                18.      26.      40.      30.      21.     179.          550.
+ 
+  2021          52.     135.      61.       5.      67.     217.
+               155.      62.      14.     161.      88.      10.         1027.
+ 
+  2022         293.     153.     255.     229.      95.     373.
+                76.     166.     145.      66.      46.      55.         1953.
+ 
+  2023          55.      46.      89.      71.      59.     182.
+                34.      65.      81.      79.      98.      80.          940.
+ 
+  2024         109.     134.      71.     156.      55.      63.
+                59.      66.      65.      42.      60.      58.          938.
+ 
+  2025          28.      53.      83.     170.     126.      87.
+                63.      72.      65.      65.     125.      59.          996.
+ 
+  2026         130.      75.      76.      69.      74.      71.
+                                                                          495.
+ 
+  AVGE          70.      62.      81.      68.      62.      86.
+                70.      58.      57.      55.      59.      63.
+
+  Table Total-       17817.   Mean-        66.   Std. Dev.-        55.
+                              Min -         3.        Max -       373.
+
+ B 1.A  Forecasts of (prior adjusted) original series
+  From  2026.Jul to 2027.Jun
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2026                                                          
+                79.      79.      79.      79.      79.      79.          473.
+ 
+  2027          79.      79.      79.      79.      79.      79.
+                                                                          473.
+ 
+        bps_permits 17020            PAGE   6, SERIES bps_permits_addi
+
+ C 17  Final weights for irregular component
+  From  2004.Jan to 2026.Jun
+  Observations        270
+  Lower sigma limit    1.50
+  Upper sigma limit    2.50
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2004         100.     100.     100.     100.       0.     100.
+               100.     100.     100.     100.       0.       0.         2139.
+ 
+  2005         100.     100.     100.     100.     100.     100.
+               100.     100.     100.      22.     100.       0.         2139.
+ 
+  2006         100.     100.     100.      67.     100.     100.
+               100.     100.       0.     100.     100.     100.         2139.
+ 
+  2007         100.      90.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.         1780.
+ 
+  2008         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.         1533.
+ 
+  2009         100.     100.     100.     100.     100.     100.
+               100.      18.     100.     100.     100.      64.         1228.
+ 
+  2010         100.     100.     100.     100.     100.     100.
+                 0.     100.     100.     100.     100.     100.         1295.
+ 
+  2011         100.     100.     100.     100.     100.      94.
+               100.     100.     100.      27.     100.     100.         1504.
+ 
+  2012         100.     100.     100.     100.      41.      96.
+               100.     100.     100.     100.     100.     100.         1551.
+ 
+  2013           0.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.         1865.
+ 
+  2014         100.     100.     100.     100.     100.      29.
+                 0.     100.     100.     100.     100.     100.         1898.
+ 
+  2015         100.     100.       0.     100.     100.     100.
+               100.     100.     100.     100.       0.     100.         2046.
+ 
+  2016         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.       0.     100.         2000.
+ 
+  2017         100.     100.       0.     100.     100.     100.
+               100.     100.     100.     100.     100.      26.         2081.
+ 
+  2018         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.         1961.
+ 
+  2019         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.         3024.
+ 
+  2020         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.       0.         3435.
+ 
+  2021         100.     100.     100.      17.     100.      54.
+                83.     100.       0.      99.     100.       0.         3487.
+ 
+  2022           0.     100.      81.     100.      34.       0.
+                42.     100.     100.     100.     100.     100.         3551.
+ 
+  2023         100.     100.     100.     100.     100.      87.
+               100.     100.     100.     100.     100.     100.         3633.
+ 
+  2024         100.     100.     100.     100.     100.      80.
+               100.     100.     100.     100.     100.     100.         2839.
+ 
+  2025          82.     100.     100.      72.     100.     100.
+               100.     100.     100.     100.     100.     100.         2731.
+ 
+  2026          83.     100.     100.      90.     100.     100.
+                                                                         2731.
+ 
+        bps_permits 17020            PAGE   7, SERIES bps_permits_addi
+
+ D 8  Final unmodified SI ratios
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004         -10.     -53.      14.      -6.      77.       3.
+                42.     -13.       5.       3.     115.     -27.           12.
+ 
+  2005         -34.     -44.      28.       8.     -12.      26.
+                 2.      11.     -21.      59.     -17.     108.            9.
+ 
+  2006         -32.      -1.     -24.      49.      11.     -22.
+                 8.      11.      63.     -10.     -30.      33.            5.
+ 
+  2007         -29.      24.     -10.       4.       7.      16.
+                -6.       0.       3.     -11.      -3.     -11.           -1.
+ 
+  2008           5.      -1.       7.      -8.      -9.      15.
+                 2.       4.      -2.      -2.      12.      -7.            1.
+ 
+  2009          -6.      -1.      -1.       7.      -0.      -2.
+                 2.      24.     -12.      -4.     -15.      30.            2.
+ 
+  2010          -7.      12.      11.      -7.      -1.      10.
+                82.     -12.     -16.       2.      -6.      -4.            5.
+ 
+  2011           4.      -8.      -7.      -3.      31.      35.
+                -8.     -21.     -23.      33.      -7.      21.            4.
+ 
+  2012         -14.     -11.      -7.       2.      45.     -10.
+                34.     -15.       1.     -14.     -19.      -6.           -1.
+ 
+  2013          65.      -3.      11.       4.       9.      27.
+                -4.      -3.     -11.      -1.     -15.      -6.            6.
+ 
+  2014          -4.       2.       5.      -3.       5.     -16.
+               160.      12.     -16.     -13.      -4.       1.           11.
+ 
+  2015         -12.     -11.     143.       1.      -4.       3.
+                -3.      34.      -5.     -11.      68.     -13.           16.
+ 
+  2016           0.       1.      11.     -16.     -13.      30.
+                -2.      -9.      -6.      -9.      58.      20.            5.
+ 
+  2017          14.     -12.     144.     -27.     -29.      35.
+               -15.     -19.      41.      -9.     -16.      47.           13.
+ 
+  2018          -8.      15.      -5.       6.      -7.     -13.
+               -20.      19.      31.     -27.     -29.      -4.           -4.
+ 
+  2019          40.       9.      30.     -12.     -21.     -14.
+                37.     -25.       1.     -21.     -14.     -26.           -1.
+ 
+  2020          57.      23.     -14.      -5.       6.      13.
+               -11.      -6.       3.     -12.     -28.     123.           13.
+ 
+  2021         -11.      65.     -17.     -81.     -27.     115.
+                44.     -58.    -117.      20.     -63.    -151.          -23.
+ 
+  2022         124.     -22.      77.      51.     -79.     206.
+               -78.      26.      21.     -41.     -46.     -24.           18.
+ 
+  2023         -15.     -17.      28.      10.      -6.     111.
+               -44.     -20.     -11.     -18.      -2.     -21.           -0.
+ 
+  2024           9.      37.     -21.      69.     -26.     -12.
+               -10.       1.       3.     -20.      -3.      -8.            2.
+ 
+  2025         -42.     -20.       6.      89.      41.      -1.
+               -28.     -19.     -26.     -24.      39.     -24.           -1.
+ 
+  2026          49.      -3.      -1.      -7.      -2.      -6.
+                                                                            5.
+ 
+  AVGE           6.      -1.      18.       5.      -0.      24.
+                 8.      -4.      -4.      -6.      -1.       2.
+
+  Table Total-        1115.   Mean-         4.   Std. Dev.-        39.
+                              Min -      -151.        Max -       206.
+        bps_permits 17020            PAGE   8, SERIES bps_permits_addi
+
+ D 8.B  Final unmodified SI ratios, with labels for outliers and extreme values
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ ---------------------------------------------------------------------
+               Jan       Feb       Mar       Apr       May       Jun  
+               Jul       Aug       Sep       Oct       Nov       Dec  
+ ---------------------------------------------------------------------
+  2004        -10.      -53.       14.       -6.       77.*       3.  
+               42.      -13.        5.        3.      115.*     -27.* 
+ 
+  2005        -34.      -44.       28.        8.      -12.       26.  
+                2.       11.      -21.       59.*     -17.      108.* 
+ 
+  2006        -32.       -1.      -24.       49.*      11.      -22.  
+                8.       11.       63.*     -10.      -30.       33.  
+ 
+  2007        -29.       24.*     -10.        4.        7.       16.  
+               -6.        0.        3.      -11.       -3.      -11.  
+ 
+  2008          5.       -1.        7.       -8.       -9.       15.  
+                2.        4.       -2.       -2.       12.       -7.  
+ 
+  2009         -6.       -1.       -1.        7.       -0.       -2.  
+                2.       24.*     -12.       -4.      -15.       30.* 
+ 
+  2010         -7.       12.       11.       -7.       -1.       10.  
+               82.*     -12.      -16.        2.       -6.       -4.  
+ 
+  2011          4.       -8.       -7.       -3.       31.       35.* 
+               -8.      -21.      -23.       33.*      -7.       21.  
+ 
+  2012        -14.      -11.       -7.        2.       45.*     -10.* 
+               34.      -15.        1.      -14.      -19.       -6.  
+ 
+  2013         65.*      -3.       11.        4.        9.       27.  
+               -4.       -3.      -11.       -1.      -15.       -6.  
+ 
+  2014         -4.        2.        5.       -3.        5.      -16.* 
+              160.*      12.      -16.      -13.       -4.        1.  
+ 
+  2015        -12.      -11.      143.*       1.       -4.        3.  
+               -3.       34.       -5.      -11.       68.*     -13.  
+ 
+  2016          0.        1.       11.      -16.      -13.       30.  
+               -2.       -9.       -6.       -9.       58.*      20.  
+ 
+  2017         14.      -12.      144.*     -27.      -29.       35.  
+              -15.      -19.       41.       -9.      -16.       47.* 
+ 
+  2018         -8.       15.       -5.        6.       -7.      -13.  
+              -20.       19.       31.      -27.      -29.       -4.  
+ 
+  2019         40.        9.       30.      -12.      -21.      -14.  
+               37.      -25.        1.      -21.      -14.      -26.  
+ 
+  2020         57.       23.      -14.       -5.        6.       13.  
+              -11.       -6.        3.      -12.      -28.      123.* 
+ 
+  2021        -11.       65.      -17.      -81.*     -27.      115.* 
+               44.*     -58.     -117.*      20.*     -63.     -151.* 
+ 
+  2022        124.*     -22.       77.*      51.      -79.*     206.* 
+              -78.*      26.       21.      -41.      -46.      -24.  
+ 
+  2023        -15.      -17.       28.       10.       -6.      111.* 
+              -44.      -20.      -11.      -18.       -2.      -21.  
+ 
+  2024          9.       37.      -21.       69.      -26.      -12.* 
+              -10.        1.        3.      -20.       -3.       -8.  
+ 
+  2025        -42.*     -20.        6.       89.*      41.       -1.  
+              -28.      -19.      -26.      -24.       39.      -24.  
+ 
+  2026         49.*      -3.       -1.       -7.*      -2.       -6.  
+                                                                      
+ 
+
+  Key to symbols:
+    *  : extreme value as determined by X-11 extreme value procedure
+ 
+        bps_permits 17020            PAGE   9, SERIES bps_permits_addi
+
+ D 9  Final replacement values for SI ratios
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+  2004     ******** ******** ******** ********      14. ********
+           ******** ******** ******** ********     -13.      26.
+ 
+  2005     ******** ******** ******** ******** ******** ********
+           ******** ******** ********      21. ********      25.
+ 
+  2006     ******** ******** ********      36. ******** ********
+           ******** ********       2. ******** ******** ********
+ 
+  2007     ********      21. ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2008     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2009     ******** ******** ******** ******** ******** ********
+           ********       0. ******** ******** ********      22.
+ 
+  2010     ******** ******** ******** ******** ******** ********
+                10. ******** ******** ******** ******** ********
+ 
+  2011     ******** ******** ******** ******** ********      33.
+           ******** ******** ********       9. ******** ********
+ 
+  2012     ******** ******** ******** ********      26.      -9.
+           ******** ******** ******** ******** ******** ********
+ 
+  2013          -2. ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2014     ******** ******** ******** ******** ********      14.
+                15. ******** ******** ******** ******** ********
+ 
+  2015     ******** ********      17. ******** ******** ********
+           ******** ******** ******** ********      -2. ********
+ 
+  2016     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ********       2. ********
+ 
+  2017     ******** ********      24. ******** ******** ********
+           ******** ******** ******** ******** ********      12.
+ 
+  2018     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2019     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2020     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ********     -11.
+ 
+  2021     ******** ******** ********     -13. ********      84.
+                35. ********     -16.      20. ********     -24.
+ 
+  2022           2. ********      65. ********     -29.      68.
+               -36. ******** ******** ******** ******** ********
+ 
+  2023     ******** ******** ******** ******** ********     104.
+           ******** ******** ******** ******** ******** ********
+ 
+  2024     ******** ******** ******** ******** ********      -2.
+           ******** ******** ******** ******** ******** ********
+ 
+  2025         -34. ******** ********      75. ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2026          42. ******** ********      -3. ******** ********
+                                                                
+ 
+
+ D 9.A  Moving seasonality ratio
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+ ---------------------------------------------------------------
+   I         21.541   21.097   22.392   21.517   18.453   27.802
+   S          3.197    4.128    3.306    3.785    2.850    4.866
+ RATIO        6.738    5.111    6.773    5.684    6.475    5.713
+
+
+
+ ---------------------------------------------------------------
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+   I         24.205   24.458   16.967   14.019   14.686   15.119
+   S          3.295    2.810    2.832    2.036    3.450    2.672
+ RATIO        7.345    8.704    5.990    6.885    4.257    5.659
+
+
+
+        bps_permits 17020            PAGE  10, SERIES bps_permits_addi
+
+ D 10  Final seasonal factors
+  From  2004.Jan to 2026.Jun
+  Observations        270
+  Seasonal filter    3 x 5 moving average
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004         -26.     -24.       4.      12.       5.       5.
+                14.       3.      -3.       2.     -17.      23.           -0.
+ 
+  2005         -24.     -20.       3.      10.       4.       6.
+                12.       3.      -3.       1.     -15.      19.           -0.
+ 
+  2006         -22.     -13.       2.       9.       2.       7.
+                 8.       3.      -4.      -1.     -12.      15.           -0.
+ 
+  2007         -18.      -5.      -0.       8.       1.       6.
+                 5.       3.      -5.      -2.     -10.      10.           -0.
+ 
+  2008         -13.       2.      -1.       5.       2.       8.
+                 2.       0.      -7.      -3.      -8.       8.           -0.
+ 
+  2009          -8.       3.      -1.       1.       6.       9.
+                 4.      -4.      -8.      -3.      -6.       5.           -0.
+ 
+  2010          -5.      -0.       1.      -1.       9.      12.
+                 5.      -8.     -11.      -1.      -8.       5.           -0.
+ 
+  2011          -4.      -2.       1.      -1.      12.      12.
+                 8.      -9.     -11.      -2.     -10.       4.           -0.
+ 
+  2012          -5.      -4.       2.      -0.      13.      13.
+                 8.      -5.     -12.      -4.     -10.       2.           -0.
+ 
+  2013          -5.      -4.       4.      -1.      11.      14.
+                 8.      -1.     -10.      -7.      -9.       0.           -0.
+ 
+  2014          -4.      -5.       8.      -4.       4.      16.
+                 4.       2.      -6.      -9.      -8.       1.            0.
+ 
+  2015          -2.      -3.      11.      -6.      -4.      16.
+                 0.       4.       0.     -11.      -8.       2.           -0.
+ 
+  2016           2.      -1.      13.      -9.     -10.      15.
+                -2.       3.       7.     -13.     -10.       1.           -0.
+ 
+  2017           9.       2.      12.      -9.     -12.      11.
+                -2.      -1.      11.     -15.     -13.      -0.           -1.
+ 
+  2018          15.       9.       9.     -10.     -14.      14.
+                 2.      -8.      13.     -14.     -20.      -5.           -1.
+ 
+  2019          17.      14.       8.      -6.     -15.      20.
+                 2.     -11.      12.     -14.     -27.     -10.           -1.
+ 
+  2020          15.      16.      11.       0.     -16.      34.
+                 2.     -14.       7.     -13.     -32.     -17.           -1.
+ 
+  2021          12.      15.      12.      11.     -16.      44.
+                -5.     -12.       4.     -15.     -32.     -19.            0.
+ 
+  2022           4.      12.      13.      23.     -14.      51.
+               -11.     -14.      -1.     -15.     -25.     -20.            0.
+ 
+  2023           0.       7.      12.      34.     -10.      45.
+               -18.     -10.      -3.     -17.     -16.     -18.            1.
+ 
+  2024          -2.       2.      11.      38.      -3.      35.
+               -20.     -10.      -6.     -18.      -4.     -17.            0.
+ 
+  2025           3.       0.       6.      37.       2.      18.
+               -20.      -7.      -7.     -18.       5.     -14.            0.
+ 
+  2026           3.       1.       1.      34.       8.       8.
+                                                                            9.
+ 
+  AVGE          -3.       0.       6.       8.      -1.      18.
+                 0.      -4.      -2.      -9.     -13.      -1.
+
+  Table Total-          11.   Mean-         0.   Std. Dev.-        13.
+                              Min -       -32.        Max -        51.
+
+ D 10.A  Final seasonal component forecasts
+  From  2026.Jul to 2027.Jun
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2026                                                          
+               -17.      -8.      -9.     -16.       9.     -13.           -9.
+ 
+  2027           4.       0.      -0.      33.      10.       2.
+                                                                            8.
+ 
+        bps_permits 17020            PAGE  11, SERIES bps_permits_addi
+  
+ D 11  Final seasonally adjusted data
+       (also adjusted for trading day)
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         156.     112.     151.     122.     212.     138.
+               167.     122.     144.     134.     262.      77.         1797.
+ 
+  2005         114.      98.     145.     117.     102.     138.
+               107.     125.      98.     172.     110.     198.         1523.
+ 
+  2006          96.     115.      73.     136.     101.      62.
+                89.      96.     154.      78.      70.     107.         1176.
+ 
+  2007          76.     115.      75.      78.      85.      84.
+                59.      62.      68.      46.      58.      27.          833.
+ 
+  2008          64.      41.      51.      31.      33.      52.
+                45.      49.      49.      44.      60.      22.          540.
+ 
+  2009          36.      27.      27.      30.      17.      12.
+                22.      54.      24.      29.      23.      59.          360.
+ 
+  2010          33.      47.      44.      25.      19.      24.
+               100.      17.      13.      22.      21.      11.          376.
+ 
+  2011          30.      17.      16.      24.      46.      51.
+                13.      17.      17.      63.      30.      43.          365.
+ 
+  2012          16.      16.      15.      26.      55.       1.
+                50.      15.      39.      17.      20.      22.          293.
+ 
+  2013         101.      33.      40.      39.      33.      47.
+                23.      32.      33.      39.      27.      27.          475.
+ 
+  2014          34.      41.      31.      35.      35.       1.
+               188.      40.      19.      23.      30.      25.          500.
+ 
+  2015          15.      17.     158.      34.      28.      17.
+                28.      61.      26.      31.     106.      15.          536.
+ 
+  2016          28.      32.      28.      25.      32.      53.
+                42.      33.      35.      54.     119.      71.          552.
+ 
+  2017          57.      36.     181.      29.      28.      66.
+                26.      18.      65.      39.      29.      77.          652.
+ 
+  2018           6.      35.      16.      48.      41.      11.
+                20.      73.      68.      41.      48.      60.          468.
+ 
+  2019          81.      53.      78.      46.      43.      12.
+                78.      25.      25.      27.      45.      14.          529.
+ 
+  2020          70.      34.       0.      20.      47.       5.
+                16.      40.      33.      43.      53.     196.          557.
+ 
+  2021          40.     120.      49.      -6.      83.     173.
+               160.      74.      10.     176.     120.      29.         1027.
+ 
+  2022         289.     141.     242.     207.     109.     322.
+                87.     180.     146.      81.      71.      75.         1950.
+ 
+  2023          55.      39.      77.      37.      69.     137.
+                52.      74.      84.      96.     114.      98.          933.
+ 
+  2024         111.     132.      60.     118.      58.      29.
+                79.      76.      71.      60.      64.      75.          933.
+ 
+  2025          25.      53.      77.     133.     124.      69.
+                83.      79.      72.      83.     120.      73.          991.
+ 
+  2026         127.      74.      75.      35.      67.      63.
+                                                                          440.
+ 
+  AVGE          72.      62.      74.      60.      64.      68.
+                70.      62.      59.      63.      73.      64.
+
+  Table Total-       17806.   Mean-        66.   Std. Dev.-        52.
+                              Min -        -6.        Max -       322.
+        bps_permits 17020            PAGE  12, SERIES bps_permits_addi
+
+ D 12  Final trend cycle
+  From  2004.Jan to 2026.Jun
+  Observations        270
+  Trend filter    23-term Henderson moving average
+  I/C ratio        5.50
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         140.     141.     141.     141.     141.     140.
+               140.     138.     136.     134.     131.     128.         1649.
+ 
+  2005         124.     122.     120.     119.     118.     118.
+               117.     117.     116.     114.     112.     109.         1407.
+ 
+  2006         106.     103.      99.      96.      93.      90.
+                89.      88.      87.      87.      88.      88.         1114.
+ 
+  2007          88.      87.      85.      82.      79.      74.
+                70.      65.      60.      55.      51.      48.          843.
+ 
+  2008          46.      44.      43.      43.      44.      45.
+                45.      45.      44.      43.      41.      38.          521.
+ 
+  2009          34.      30.      27.      24.      23.      22.
+                23.      25.      28.      30.      33.      35.          335.
+ 
+  2010          35.      35.      34.      32.      29.      26.
+                23.      20.      19.      18.      19.      20.          309.
+ 
+  2011          21.      23.      24.      26.      27.      28.
+                29.      29.      28.      27.      26.      25.          315.
+ 
+  2012          25.      24.      24.      24.      24.      24.
+                24.      25.      26.      27.      28.      29.          304.
+ 
+  2013          31.      32.      34.      35.      35.      35.
+                35.      34.      33.      33.      33.      33.          403.
+ 
+  2014          33.      34.      34.      35.      34.      34.
+                32.      31.      29.      27.      26.      25.          374.
+ 
+  2015          24.      25.      26.      27.      29.      30.
+                31.      32.      31.      31.      30.      30.          346.
+ 
+  2016          29.      29.      30.      32.      34.      38.
+                41.      45.      48.      51.      52.      52.          482.
+ 
+  2017          52.      50.      48.      46.      44.      41.
+                39.      37.      36.      34.      33.      31.          492.
+ 
+  2018          30.      29.      29.      31.      33.      37.
+                41.      46.      51.      55.      58.      60.          500.
+ 
+  2019          60.      59.      56.      53.      49.      45.
+                41.      38.      36.      34.      33.      31.          534.
+ 
+  2020          29.      28.      26.      25.      25.      26.
+                28.      31.      35.      41.      48.      55.          397.
+ 
+  2021          63.      71.      79.      87.      95.     103.
+               111.     120.     130.     140.     150.     159.         1306.
+ 
+  2022         168.     175.     179.     180.     177.     169.
+               156.     141.     123.     106.      91.      78.         1742.
+ 
+  2023          68.      63.      61.      62.      66.      72.
+                79.      86.      92.      97.     100.     101.          945.
+ 
+  2024          99.      96.      92.      87.      81.      75.
+                69.      65.      62.      62.      63.      66.          918.
+ 
+  2025          70.      74.      77.      81.      84.      87.
+                90.      91.      91.      89.      87.      84.         1006.
+ 
+  2026          81.      79.      77.      76.      76.      76.
+                                                                          465.
+ 
+  AVGE          63.      63.      63.      63.      63.      62.
+                62.      61.      61.      61.      60.      60.
+
+  Table Total-       16705.   Mean-        62.   Std. Dev.-        39.
+                              Min -        18.        Max -       180.
+        bps_permits 17020            PAGE  13, SERIES bps_permits_addi
+
+ D 13  Final irregular component
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2004          16.     -28.      10.     -18.      71.      -2.
+                27.     -16.       8.       0.     131.     -50.           48.
+ 
+  2005         -11.     -24.      25.      -2.     -16.      20.
+               -11.       8.     -18.      58.      -2.      89.           34.
+ 
+  2006         -11.      12.     -26.      40.       9.     -29.
+                 1.       8.      67.     -10.     -17.      19.           27.
+ 
+  2007         -11.      29.     -10.      -4.       6.       9.
+               -11.      -3.       8.      -9.       7.     -21.           13.
+ 
+  2008          19.      -3.       8.     -13.     -11.       7.
+                 0.       4.       5.       1.      19.     -15.           11.
+ 
+  2009           2.      -4.      -0.       6.      -5.     -11.
+                -1.      28.      -3.      -2.      -9.      24.           12.
+ 
+  2010          -2.      12.      10.      -6.     -10.      -2.
+                77.      -3.      -5.       3.       2.      -9.           23.
+ 
+  2011           8.      -6.      -9.      -2.      19.      22.
+               -16.     -12.     -11.      36.       3.      18.           16.
+ 
+  2012          -9.      -8.      -9.       2.      31.     -23.
+                26.      -9.      13.     -10.      -8.      -8.           16.
+ 
+  2013          70.       1.       6.       5.      -2.      12.
+               -12.      -2.       0.       6.      -6.      -6.           21.
+ 
+  2014           0.       7.      -4.      -0.       1.     -33.
+               155.       9.     -10.      -5.       5.       1.           46.
+ 
+  2015          -9.      -7.     133.       7.      -1.     -14.
+                -4.      29.      -6.       0.      76.     -15.           45.
+ 
+  2016          -1.       3.      -2.      -7.      -2.      15.
+                 0.     -12.     -13.       3.      66.      18.           21.
+ 
+  2017           6.     -14.     133.     -17.     -16.      24.
+               -13.     -19.      29.       5.      -4.      46.           43.
+ 
+  2018         -24.       6.     -14.      18.       8.     -25.
+               -21.      27.      17.     -15.     -11.       0.           17.
+ 
+  2019          21.      -6.      22.      -6.      -5.     -33.
+                36.     -14.     -11.      -7.      13.     -17.           19.
+ 
+  2020          40.       6.     -26.      -5.      22.     -20.
+               -12.       9.      -3.       2.       5.     141.           44.
+ 
+  2021         -23.      50.     -30.     -93.     -12.      70.
+                49.     -47.    -119.      36.     -30.    -130.           68.
+ 
+  2022         121.     -34.      63.      27.     -68.     153.
+               -69.      39.      23.     -25.     -19.      -2.           69.
+ 
+  2023         -13.     -23.      16.     -24.       3.      65.
+               -27.     -12.      -9.      -1.      14.      -2.           24.
+ 
+  2024          12.      36.     -32.      31.     -23.     -46.
+                10.      11.       9.      -2.       1.       8.           23.
+ 
+  2025         -45.     -21.      -0.      52.      40.     -19.
+                -7.     -12.     -19.      -7.      34.     -11.           27.
+ 
+  2026          45.      -5.      -2.     -41.      -9.     -13.
+                                                                           26.
+ 
+  S.D.          35.      20.      44.      28.      25.      43.
+                44.      19.      32.      18.      38.      49.
+
+  Table Total-        1101.   Mean-         4.   Std. Dev.-        34.
+                              Min -      -130.        Max -       155.
+        bps_permits 17020            PAGE  14, SERIES bps_permits_addi
+  
+ D 16  Combined adjustment factors
+       (includes seasonal, trading day factors)
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004         -27.     -25.      10.      16.      -3.       9.
+                13.       2.       1.      -6.     -13.      29.            1.
+ 
+  2005         -32.     -22.       9.       7.       3.      10.
+                 4.       9.       1.      -7.     -11.      18.           -1.
+ 
+  2006         -23.     -15.       8.      -1.       9.      11.
+                -0.       9.      -7.      -2.      -8.       6.           -1.
+ 
+  2007         -11.      -6.      -1.       5.       7.       3.
+                 4.       9.     -15.       4.      -6.       2.           -0.
+ 
+  2008          -7.       8.      -9.       9.       1.       5.
+                 8.      -8.      -3.       3.     -18.      14.            0.
+ 
+  2009          -9.       1.      -2.       6.      -2.      13.
+                10.     -13.      -4.      -4.      -9.      11.           -0.
+ 
+  2010         -13.      -2.       7.       4.       1.      16.
+                 4.      -9.      -6.     -10.      -4.      11.           -0.
+ 
+  2011         -13.      -4.       7.      -4.      11.      16.
+                 0.      -3.      -7.     -10.      -6.       3.           -1.
+ 
+  2012          -6.       3.       1.      -3.      20.      10.
+                 7.       1.     -22.       2.      -6.      -6.            0.
+ 
+  2013           1.      -5.      -4.       3.      17.       4.
+                14.      -2.     -13.      -1.     -12.      -1.            0.
+ 
+  2014           2.      -6.       0.       0.       3.      13.
+                10.      -6.      -2.      -3.     -18.       7.            0.
+ 
+  2015          -3.      -4.      10.      -2.     -12.      20.
+                 6.      -4.       4.     -12.     -11.       8.           -0.
+ 
+  2016          -6.       5.      20.     -12.     -11.      19.
+               -11.       9.      11.     -21.      -6.       0.           -0.
+ 
+  2017           8.       1.      18.     -19.      -6.      15.
+               -10.       6.       8.     -16.      -9.      -8.           -1.
+ 
+  2018          21.       8.       8.     -13.      -8.      11.
+                 1.      -2.       3.      -8.     -16.     -13.           -1.
+ 
+  2019          24.      13.      -0.      -1.      -8.      10.
+                 8.     -12.       9.      -8.     -30.     -11.           -1.
+ 
+  2020          21.      15.      10.       4.     -24.      38.
+                 8.     -22.      11.     -14.     -35.     -11.            0.
+ 
+  2021           4.      14.      18.      15.     -24.      48.
+                -6.     -13.       8.     -23.     -28.     -13.            0.
+ 
+  2022          -4.      11.      19.      19.     -15.      55.
+               -19.      -8.       3.     -23.     -21.     -21.           -0.
+ 
+  2023          -1.       6.      18.      24.      -4.      49.
+               -26.      -3.      -6.     -18.     -12.     -26.           -0.
+ 
+  2024           4.       8.       3.      42.       3.      24.
+               -14.     -11.      -9.     -12.      -7.     -18.            1.
+ 
+  2025           9.      -1.      -2.      41.       1.      15.
+               -14.     -15.      -3.     -12.      -5.      -8.            1.
+ 
+  2026           2.      -0.       0.      38.      -1.      12.
+                                                                            9.
+ 
+  AVGE          -3.       0.       6.       8.      -2.      19.
+                -0.      -4.      -2.      -9.     -13.      -1.
+
+  Table Total-          10.   Mean-         0.   Std. Dev.-        14.
+                              Min -       -35.        Max -        55.
+
+ D 16.A  Combined adjustment component forecasts
+  From  2026.Jul to 2027.Jun
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2026                                                          
+               -11.     -16.      -5.     -17.       6.      -6.           -8.
+ 
+  2027          -4.      -1.       6.      37.       2.       6.
+                                                                            8.
+ 
+        bps_permits 17020            PAGE  15, SERIES bps_permits_addi
+  
+ D 18  Combined calendar adjustment factors
+       (includes trading day factors)
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004          -1.      -1.       6.       4.      -8.       4.
+                -1.      -1.       4.      -8.       4.       6.            1.
+ 
+  2005          -8.      -1.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.           -1.
+ 
+  2006          -1.      -1.       6.     -10.       6.       4.
+                -8.       6.      -3.      -1.       4.      -8.           -1.
+ 
+  2007           6.      -1.      -1.      -3.       6.      -3.
+                -1.       6.     -10.       6.       4.      -8.            0.
+ 
+  2008           6.       6.      -8.       4.      -1.      -3.
+                 6.      -8.       4.       6.     -10.       6.            1.
+ 
+  2009          -1.      -1.      -1.       4.      -8.       4.
+                 6.      -8.       4.      -1.      -3.       6.            0.
+ 
+  2010          -8.      -1.       6.       4.      -8.       4.
+                -1.      -1.       4.      -8.       4.       6.            0.
+ 
+  2011          -8.      -1.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.           -1.
+ 
+  2012          -1.       6.      -1.      -3.       6.      -3.
+                -1.       6.     -10.       6.       4.      -8.            0.
+ 
+  2013           6.      -1.      -8.       4.       6.     -10.
+                 6.      -1.      -3.       6.      -3.      -1.            0.
+ 
+  2014           6.      -1.      -8.       4.      -1.      -3.
+                 6.      -8.       4.       6.     -10.       6.            0.
+ 
+  2015          -1.      -1.      -1.       4.      -8.       4.
+                 6.      -8.       4.      -1.      -3.       6.            0.
+ 
+  2016          -8.       6.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.            0.
+ 
+  2017          -1.      -1.       6.     -10.       6.       4.
+                -8.       6.      -3.      -1.       4.      -8.           -1.
+ 
+  2018           6.      -1.      -1.      -3.       6.      -3.
+                -1.       6.     -10.       6.       4.      -8.            0.
+ 
+  2019           6.      -1.      -8.       4.       6.     -10.
+                 6.      -1.      -3.       6.      -3.      -1.            0.
+ 
+  2020           6.      -1.      -1.       4.      -8.       4.
+                 6.      -8.       4.      -1.      -3.       6.            1.
+ 
+  2021          -8.      -1.       6.       4.      -8.       4.
+                -1.      -1.       4.      -8.       4.       6.            0.
+ 
+  2022          -8.      -1.       6.      -3.      -1.       4.
+                -8.       6.       4.      -8.       4.      -1.           -1.
+ 
+  2023          -1.      -1.       6.     -10.       6.       4.
+                -8.       6.      -3.      -1.       4.      -8.           -1.
+ 
+  2024           6.       6.      -8.       4.       6.     -10.
+                 6.      -1.      -3.       6.      -3.      -1.            1.
+ 
+  2025           6.      -1.      -8.       4.      -1.      -3.
+                 6.      -8.       4.       6.     -10.       6.            0.
+ 
+  2026          -1.      -1.      -1.       4.      -8.       4.
+                                                                           -1.
+ 
+  AVGE          -0.      -0.       0.       0.      -0.       0.
+                -0.       0.       0.      -0.       0.      -0.
+
+  Table Total-          -1.   Mean-        -0.   Std. Dev.-         5.
+                              Min -       -10.        Max -         6.
+
+ D 18.A  Combined calendar adjustment component forecasts
+  From  2026.Jul to 2027.Jun
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2026                                                          
+                 6.      -8.       4.      -1.      -3.       6.            1.
+ 
+  2027          -8.      -1.       6.       4.      -8.       4.
+                                                                           -1.
+ 
+        bps_permits 17020            PAGE  16, SERIES bps_permits_addi
+
+ E 4  Differences of annual totals
+  From          2004 to 2025
+  Observations         22
+ -----------------------------------
+  Year       Unmodified     Modified
+                  (D11)         (E2)
+ -----------------------------------
+  2004               6.           6.
+ 
+  2005             -10.         -10.
+ 
+  2006             -12.         -12.
+ 
+  2007              -5.          -5.
+ 
+  2008               4.           4.
+ 
+  2009              -2.          -2.
+ 
+  2010              -1.          -1.
+ 
+  2011              -8.          -8.
+ 
+  2012               0.           0.
+ 
+  2013               0.           0.
+ 
+  2014               2.           2.
+ 
+  2015              -0.          -0.
+ 
+  2016              -3.          -3.
+ 
+  2017             -13.         -13.
+ 
+  2018              -9.          -9.
+ 
+  2019              -8.          -8.
+ 
+  2020               1.           1.
+ 
+  2021               1.           1.
+ 
+  2022              -4.          -4.
+ 
+  2023              -0.          -0.
+ 
+  2024              13.          13.
+ 
+  2025               6.           6.
+ 
+        bps_permits 17020            PAGE  17, SERIES bps_permits_addi
+
+ E 5  Month-to-month differences in the original series
+  From  2004.Feb to 2026.Jun
+  Observations        269
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                  -42.      74.     -23.      71.     -62.
+                33.     -56.      21.     -17.     121.    -143.           -2.
+ 
+  2005         -24.      -6.      78.     -30.     -19.      43.
+               -37.      23.     -35.      66.     -66.     117.            9.
+ 
+  2006        -143.      27.     -19.      54.     -25.     -37.
+                16.      16.      42.     -71.     -14.      51.           -9.
+ 
+  2007         -48.      44.     -35.       9.       9.      -5.
+               -24.       8.     -18.      -3.       2.     -23.           -7.
+ 
+  2008          28.      -8.      -7.      -2.      -6.      23.
+                -4.     -12.       5.       1.      -5.      -6.            1.
+ 
+  2009          -9.       1.      -3.      11.     -21.      10.
+                 7.       9.     -21.       5.     -11.      56.            3.
+ 
+  2010         -50.      25.       6.     -22.      -9.      20.
+                64.     -96.      -1.       5.       5.       5.           -4.
+ 
+  2011          -5.      -4.      10.      -3.      37.      10.
+               -54.       1.      -4.      43.     -29.      22.            2.
+ 
+  2012         -36.       9.      -3.       7.      52.     -64.
+                46.     -41.       1.       2.      -5.       2.           -2.
+ 
+  2013          86.     -74.       8.       6.       8.       1.
+               -14.      -7.     -10.      18.     -23.      11.            1.
+ 
+  2014          10.      -1.      -4.       4.       3.     -24.
+               184.    -164.     -17.       3.      -8.      20.            1.
+ 
+  2015         -20.       1.     155.    -136.     -16.      21.
+                -3.      23.     -27.     -11.      76.     -72.           -1.
+ 
+  2016          -1.      15.      11.     -35.       8.      51.
+               -41.      11.       4.     -13.      80.     -42.            4.
+ 
+  2017          -6.     -28.     162.    -189.      12.      59.
+               -65.       8.      49.     -50.      -3.      49.           -0.
+ 
+  2018         -42.      16.     -19.      11.      -2.     -11.
+                -1.      50.       0.     -38.      -1.      15.           -2.
+ 
+  2019          58.     -39.      12.     -33.     -10.     -13.
+                64.     -73.      21.     -15.      -4.     -12.           -4.
+ 
+  2020          88.     -42.     -39.      14.      -1.      20.
+               -19.      -6.      26.     -15.     -11.     167.           15.
+ 
+  2021        -141.      90.     -67.     -58.      50.     162.
+               -67.     -93.     -43.     135.     -61.     -76.          -14.
+ 
+  2022         269.    -133.     109.     -35.    -132.     283.
+              -309.     104.     -23.     -91.      -8.       4.            3.
+ 
+  2023           0.      -9.      50.     -34.       4.     121.
+              -160.      45.       7.       0.      24.     -30.            2.
+ 
+  2024          43.      25.     -77.      97.     -99.      -8.
+                12.       0.      -3.     -14.       9.       0.           -1.
+ 
+  2025         -23.      18.      23.      99.     -49.     -41.
+               -15.      -5.       5.       2.      44.     -50.            1.
+ 
+  2026          64.     -55.       1.      -2.      -7.       9.
+                                                                            2.
+ 
+  AVGE           4.      -7.      19.     -13.      -6.      25.
+               -18.     -12.      -1.      -3.       5.       3.
+
+  Table Total-         -54.   Mean-        -0.   Std. Dev.-        61.
+                              Min -      -309.        Max -       283.
+        bps_permits 17020            PAGE  18, SERIES bps_permits_addi
+
+ E 6  Month-to-month differences in seasonally adjusted series (D11)
+  From  2004.Feb to 2026.Jun
+  Observations        269
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                  -44.      39.     -29.      90.     -74.
+                29.     -45.      22.     -10.     128.    -185.           -7.
+ 
+  2005          37.     -16.      47.     -28.     -15.      36.
+               -31.      19.     -27.      74.     -63.      89.           10.
+ 
+  2006        -103.      19.     -42.      63.     -34.     -40.
+                27.       6.      59.     -77.      -7.      36.           -8.
+ 
+  2007         -30.      39.     -40.       3.       7.      -1.
+               -25.       3.       6.     -22.      12.     -31.           -7.
+ 
+  2008          38.     -23.      10.     -21.       2.      19.
+                -7.       4.      -0.      -6.      16.     -37.           -0.
+ 
+  2009          14.      -9.       0.       4.     -13.      -6.
+                10.      31.     -29.       4.      -5.      35.            3.
+ 
+  2010         -25.      13.      -2.     -19.      -7.       5.
+                76.     -83.      -4.       8.      -1.     -10.           -4.
+ 
+  2011          19.     -13.      -1.       8.      22.       5.
+               -38.       4.       1.      46.     -34.      13.            3.
+ 
+  2012         -27.       0.      -2.      12.      29.     -55.
+                50.     -35.      24.     -22.       4.       1.           -2.
+ 
+  2013          79.     -68.       6.      -0.      -6.      14.
+               -24.       9.       1.       5.     -12.      -0.            0.
+ 
+  2014           7.       7.     -10.       4.       0.     -34.
+               187.    -148.     -21.       3.       8.      -5.           -0.
+ 
+  2015         -10.       2.     141.    -124.      -7.     -11.
+                11.      33.     -35.       6.      75.     -91.           -1.
+ 
+  2016          13.       4.      -3.      -4.       7.      21.
+               -11.      -9.       2.      19.      64.     -48.            5.
+ 
+  2017         -13.     -21.     145.    -151.      -2.      38.
+               -39.      -8.      46.     -25.     -10.      49.            1.
+ 
+  2018         -71.      29.     -20.      33.      -7.     -30.
+                 9.      53.      -5.     -28.       7.      13.           -1.
+ 
+  2019          21.     -29.      25.     -32.      -3.     -31.
+                66.     -53.       0.       2.      19.     -31.           -4.
+ 
+  2020          55.     -36.     -34.      19.      27.     -41.
+                11.      24.      -7.      11.      10.     143.           15.
+ 
+  2021        -156.      80.     -72.     -55.      89.      90.
+               -13.     -86.     -63.     165.     -56.     -90.          -14.
+ 
+  2022         260.    -148.     101.     -35.     -98.     213.
+              -234.      92.     -33.     -65.     -10.       4.            4.
+ 
+  2023         -20.     -16.      38.     -40.      32.      68.
+               -85.      22.       9.      13.      17.     -16.            2.
+ 
+  2024          13.      21.     -72.      58.     -60.     -29.
+                51.      -4.      -4.     -11.       4.      11.           -2.
+ 
+  2025         -49.      28.      24.      56.      -9.     -55.
+                14.      -4.      -7.      11.      38.     -48.           -0.
+ 
+  2026          54.     -52.       1.     -40.      32.      -4.
+                                                                           -2.
+ 
+  AVGE           5.     -10.      12.     -14.       3.       4.
+                 1.      -8.      -3.       5.       9.      -9.
+
+  Table Total-         -93.   Mean-        -0.   Std. Dev.-        54.
+                              Min -      -234.        Max -       260.
+        bps_permits 17020            PAGE  19, SERIES bps_permits_addi
+
+ E 7  Month-to-month differences in final trend cycle (D12)
+  From  2004.Feb to 2026.Jun
+  Observations        269
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                    1.       1.      -0.      -0.      -0.
+                -1.      -1.      -2.      -3.      -3.      -3.           -1.
+ 
+  2005          -3.      -3.      -2.      -1.      -1.      -0.
+                -0.      -1.      -1.      -2.      -2.      -3.           -2.
+ 
+  2006          -3.      -3.      -3.      -3.      -3.      -2.
+                -2.      -1.      -0.       0.       0.       0.           -2.
+ 
+  2007          -0.      -1.      -2.      -3.      -4.      -4.
+                -5.      -5.      -5.      -5.      -4.      -3.           -3.
+ 
+  2008          -2.      -2.      -1.       0.       1.       1.
+                 0.       0.      -1.      -2.      -2.      -3.           -1.
+ 
+  2009          -3.      -4.      -3.      -3.      -2.      -0.
+                 1.       2.       3.       3.       2.       2.           -0.
+ 
+  2010           1.      -0.      -1.      -2.      -3.      -3.
+                -3.      -3.      -2.      -1.       0.       1.           -1.
+ 
+  2011           1.       2.       2.       2.       1.       1.
+                 1.      -0.      -0.      -1.      -1.      -1.            0.
+ 
+  2012          -1.      -0.      -0.      -0.      -0.      -0.
+                 0.       1.       1.       1.       1.       1.            0.
+ 
+  2013           1.       1.       1.       1.       1.       0.
+                -0.      -1.      -1.      -1.      -0.       0.            0.
+ 
+  2014           0.       1.       1.       0.      -0.      -1.
+                -1.      -2.      -2.      -2.      -2.      -1.           -1.
+ 
+  2015          -0.       0.       1.       1.       2.       1.
+                 1.       0.      -0.      -0.      -1.      -1.            0.
+ 
+  2016          -0.       0.       1.       2.       3.       3.
+                 4.       4.       3.       2.       1.       0.            2.
+ 
+  2017          -1.      -1.      -2.      -2.      -2.      -2.
+                -2.      -2.      -2.      -2.      -2.      -2.           -2.
+ 
+  2018          -1.      -1.       0.       1.       2.       4.
+                 5.       5.       5.       4.       3.       2.            2.
+ 
+  2019           0.      -1.      -3.      -4.      -4.      -4.
+                -3.      -3.      -2.      -2.      -2.      -1.           -2.
+ 
+  2020          -2.      -2.      -2.      -1.      -0.       1.
+                 2.       3.       4.       6.       7.       7.            2.
+ 
+  2021           8.       8.       8.       8.       8.       8.
+                 8.       9.      10.      10.      10.      10.            9.
+ 
+  2022           9.       7.       4.       1.      -3.      -8.
+               -12.     -16.     -17.     -17.     -16.     -13.           -7.
+ 
+  2023          -9.      -6.      -2.       1.       4.       6.
+                 7.       7.       6.       5.       3.       1.            2.
+ 
+  2024          -1.      -3.      -4.      -5.      -6.      -6.
+                -6.      -4.      -2.      -0.       2.       3.           -3.
+ 
+  2025           4.       4.       4.       4.       3.       3.
+                 3.       1.      -0.      -2.      -3.      -3.            1.
+ 
+  2026          -3.      -2.      -2.      -1.      -0.       0.
+                                                                           -1.
+ 
+  AVGE          -0.      -0.      -0.      -0.      -0.      -0.
+                -0.      -0.      -0.      -0.      -0.      -0.
+
+  Table Total-         -63.   Mean-        -0.   Std. Dev.-         4.
+                              Min -       -17.        Max -        10.
+        bps_permits 17020            PAGE  20, SERIES bps_permits_addi
+
+ E 8  Month-to-month differences in original series adjusted for calendar factors (A18)
+  From  2004.Feb to 2026.Jun
+  Observations        269
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                  -42.      67.     -21.      83.     -74.
+                38.     -56.      16.      -5.     109.    -145.           -3.
+ 
+  2005         -10.     -13.      70.     -21.     -21.      38.
+               -25.       9.     -33.      78.     -78.     122.           10.
+ 
+  2006        -143.      27.     -27.      70.     -41.     -35.
+                28.       2.      51.     -73.     -19.      63.           -8.
+ 
+  2007         -62.      52.     -35.      11.      -0.       4.
+               -26.       1.      -2.     -19.       4.     -11.           -7.
+ 
+  2008          14.      -8.       7.     -14.      -1.      25.
+               -13.       2.      -7.      -1.      11.     -22.           -1.
+ 
+  2009          -2.       1.      -3.       6.      -9.      -2.
+                 5.      23.     -33.      10.      -9.      47.            3.
+ 
+  2010         -36.      18.      -2.     -20.       3.       8.
+                69.     -96.      -6.      17.      -7.       3.           -4.
+ 
+  2011           9.     -11.       2.       6.      35.       5.
+               -42.     -13.      -2.      55.     -41.      27.            3.
+ 
+  2012         -36.       2.       4.       9.      43.     -55.
+                44.     -48.      17.     -14.      -3.      14.           -2.
+ 
+  2013          72.     -66.      15.      -6.       6.      17.
+               -30.       0.      -8.       9.     -14.       9.            0.
+ 
+  2014           3.       7.       3.      -8.       8.     -22.
+               175.    -150.     -29.       1.       8.       4.           -0.
+ 
+  2015         -13.       1.     155.    -141.      -4.       9.
+                -5.      37.     -39.      -6.      78.     -81.           -1.
+ 
+  2016          13.       1.      11.     -26.       6.      46.
+               -29.      -3.       6.      -1.      68.     -37.            5.
+ 
+  2017          -6.     -28.     154.    -173.      -4.      61.
+               -53.      -6.      58.     -52.      -8.      61.            0.
+ 
+  2018         -56.      24.     -19.      13.     -11.      -2.
+                -3.      43.      16.     -54.       1.      27.           -2.
+ 
+  2019          44.     -31.      19.     -45.     -12.       3.
+                48.     -66.      23.     -24.       5.     -14.           -4.
+ 
+  2020          81.     -35.     -39.       9.      11.       8.
+               -21.       8.      14.     -10.      -9.     158.           15.
+ 
+  2021        -127.      83.     -75.     -56.      62.     150.
+               -62.     -93.     -48.     147.     -73.     -78.          -14.
+ 
+  2022         283.    -140.     101.     -26.    -134.     278.
+              -297.      90.     -21.     -79.     -20.       9.            4.
+ 
+  2023           0.      -9.      42.     -18.     -12.     123.
+              -148.      31.      16.      -2.      19.     -18.            2.
+ 
+  2024          29.      25.     -63.      85.    -101.       8.
+                -4.       7.      -1.     -23.      18.      -2.           -2.
+ 
+  2025         -30.      26.      30.      87.     -44.     -39.
+               -24.       9.      -7.      -0.      60.     -66.            0.
+ 
+  2026          71.     -55.       1.      -7.       5.      -3.
+                                                                            2.
+ 
+  AVGE           4.      -7.      18.     -12.      -6.      24.
+               -17.     -12.      -1.      -2.       5.       3.
+
+  Table Total-         -59.   Mean-        -0.   Std. Dev.-        60.
+                              Min -      -297.        Max -       283.
+        bps_permits 17020            PAGE  21, SERIES bps_permits_addi
+
+ E 18  Final adjustment ratios
+  From  2004.Jan to 2026.Jun
+  Observations        270
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004       82.933   77.654  106.637  113.008   98.582  106.569
+            107.981  101.572  100.504   95.538   95.040  137.084       101.925
+ 
+  2005       72.002   77.620  106.514  105.995  103.068  107.403
+            104.042  106.976  100.816   95.799   90.276  108.882        98.283
+ 
+  2006       76.293   87.211  110.754   99.376  108.406  118.070
+             99.806  109.837   95.330   97.854   88.157  106.062        99.763
+ 
+  2007       85.037   94.457   98.545  106.310  108.746  103.872
+            107.014  114.292   77.904  107.901   89.880  108.922       100.240
+ 
+  2008       88.848  119.318   82.094  130.549  104.314  110.445
+            117.527   83.559   93.825  107.986   70.289  161.709       105.872
+ 
+  2009       74.955  104.341   92.866  118.106   85.794  213.794
+            145.097   76.564   82.641   87.295   60.039  119.311       105.067
+ 
+  2010       60.102   96.526  115.215  113.764  107.047  167.250
+            104.064   47.051   51.971   55.512   82.747  200.841       100.174
+ 
+  2011       57.625   77.773  147.381   83.974  124.469  132.066
+            101.083   84.680   57.482   83.578   81.146  106.950        94.851
+ 
+  2012       62.682  117.118  108.731   87.317  135.293 1960.907
+            113.572  104.555   43.727  113.130   68.849   73.398       249.107
+ 
+  2013      100.960   83.661   90.616  106.870  150.585  107.801
+            162.003   93.897   59.834   98.210   55.749   97.090       100.606
+ 
+  2014      107.040   85.158  100.696  101.217  108.433 1461.508
+            105.497   85.719   89.207   88.732   39.854  127.003       208.339
+ 
+  2015       77.670   75.615  106.129   93.612   57.816  223.032
+            122.937   93.782  117.036   60.632   89.369  152.703       105.861
+ 
+  2016       77.621  116.006  168.860   52.779   65.539  135.877
+             74.564  127.492  131.019   60.895   95.206  100.329       100.516
+ 
+  2017      113.193  102.832  109.958   33.923   78.772  123.554
+             60.728  130.317  112.862   58.563   69.402   89.042        90.262
+ 
+  2018      440.284  121.236  154.465   72.539   80.453  196.734
+            102.908   96.924  104.084   81.361   67.333   77.919       133.020
+ 
+  2019      128.909  124.671   99.483   96.884   80.516  183.484
+            110.760   52.367  135.587   71.379   33.008   20.764        94.818
+ 
+  2020      130.538  144.202 3385.024  121.424   49.304  790.736
+            147.724   45.258  135.195   66.994   33.795   94.414       428.717
+ 
+  2021      110.089  111.425  137.830 -146.602   71.095  127.652
+             96.335   82.917  172.678   87.065   76.855   54.613        81.830
+ 
+  2022       98.523  107.724  107.874  109.431   86.515  117.198
+             77.937   95.730  101.811   71.471   70.254   71.911        93.031
+ 
+  2023       98.193  114.925  123.595  163.852   94.289  135.761
+             49.816   95.381   93.093   80.940   89.585   73.339       101.064
+ 
+  2024      103.385  106.111  104.708  135.127  105.123  185.493
+             81.884   86.047   86.804   79.716   89.071   76.486       103.330
+ 
+  2025      135.236   98.210   97.259  130.949  100.747  121.946
+             83.331   80.804   95.688   85.897   95.497   89.481       101.254
+ 
+  2026      101.928   99.724  100.260  208.358   99.172  119.431
+                                                                       121.479
+ 
+  AVGE      108.002  101.892  254.587   97.338   95.830  306.547
+            103.482   90.715   97.232   83.475   74.155  102.193
+
+  Table Total-       34304.   Mean-       127.   Std. Dev.-       251.
+                              Min -      -147.        Max -      3385.
+
+ E 18.A  Final adjustment ratio forecasts
+  From  2026.Jul to 2027.Jun
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2026                                                          
+             88.713   81.153   94.690   82.162  108.590   92.970        91.380
+ 
+  2027       94.657   98.454  107.682  181.540  103.193  107.251
+                                                                       115.463
+ 
+        bps_permits 17020            PAGE  22, SERIES bps_permits_addi
+
+ F 4.  Additive Day of the Week Trading Day Component Factors
+
+
+      Day of Week Component for regARIMA Trading Day Factors:
+
+                                       months starting on:
+                     Mon      Tue      Wed      Thu      Fri      Sat      Sun
+ 31-day months         6.       6.       6.      -1.      -8.      -8.      -1.
+ 30-day months         4.       4.       4.       4.      -3.     -10.      -3.
+ Leap year Feb.        2. ********       2.       2.       2.      -5.      -5.
+
+  QS statistic for seasonality:
+  Original Series                                     3.14  (P-Value =     0.2076)
+  Original Series (EV adj)                            4.18  (P-Value =     0.1236)
+  Residuals                                           3.75  (P-Value =     0.1533)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+
+  QS statistic for seasonality (starting 2018.Jul):
+  Original Series                                     2.13  (P-Value =     0.3454)
+  Original Series (EV adj)                            2.68  (P-Value =     0.2621)
+  Residuals                                           1.54  (P-Value =     0.4623)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+
+
+ WARNING: Series should not be a candidate for seasonal adjustment
+          because the spectrum of the prior adjusted series (Table B1)
+          has no visually significant seasonal peaks.
+
+          If this is a component series of an indirectly adjusted
+          composite series, consider using type = trend or type = summary
+          in the x11 spec.
+        bps_permits 17020            PAGE  23, SERIES bps_permits_addi
+ G 0  10*LOG(SPECTRUM) of the differenced Prior Adjusted Series
+      (Table B1).  Spectrum estimated from 2018.Jul to 2026.Jun.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      45.38I                                                 *           I     45.38
+           I                                                 *           I
+           I                                                **           I
+           I                                                **           I
+      43.36I                                                **           I     43.36
+           I                                             *  **           I
+           I                                             *  **S          I
+           I                                            ** ***S          I
+      41.34I                                            ******S         SI     41.34
+           I                                   *        ******S*        SI
+           I                                   *        ******S*        SI
+           I                                   *        ******S*T**     SI
+      39.32I                                   *    S*  ******S*T**    *SI     39.32
+           I                              S*   *    S*  ******S*T**    *SI
+           I                              S*   *    S* *******S*T***   *SI
+           I                              S*   *    S*T*******S*T***   *SI
+      37.30I                              S*   *    S*T*******S*T***  **SI     37.30
+           I                              S*  ***   S*T*******S*T**** **SI
+           I                     *       *S*  ***   S*T*******S*T*******SI
+           I                    S*       *S*  ***  *S*T*******S*T*******SI
+      35.28I                    S*      **S** ***  *S*T*******S*T*******SI     35.28
+           I                    S*      **S** ***  *S*T*******S*T*******SI
+           I                *   S*      **S******  *S*T*******S*T*******SI
+           I                *   S*     ***S******* *S*T*******S*T*******SI
+      33.26I                *   S*     ***S*********S*T*******S*T*******SI     33.26
+           I                *   S*     ***S*********S*T*******S*T*******SI
+           I                *   S*     ***S*********S*T*******S*T*******SI
+           I          S     **  S*     ***S*********S*T*******S*T*******SI
+      31.24I          S     ** *S**   ****S*********S*T*******S*T*******SI     31.24
+           I          S     ** *S**   ****S*********S*T*******S*T*******SI
+           I          S     ** *S**   ****S*********S*T*******S*T*******SI
+           I          S*   *****S**   ****S*********S*T*******S*T*******SI
+      29.22I       * *S*   *****S*** *****S*********S*T*******S*T*******SI     29.22
+           I      ****S*   *****S*********S*********S*T*******S*T*******SI
+           I      ****S*   *****S*********S*********S*T*******S*T*******SI
+           I      ****S*   *****S*********S*********S*T*******S*T*******SI
+      27.20I      ****S*   *****S*********S*********S*T*******S*T*******SI     27.20
+           I     *****S*   *****S*********S*********S*T*******S*T*******SI
+           I    ******S*   *****S*********S*********S*T*******S*T*******SI
+           I    ******S** ******S*********S*********S*T*******S*T*******SI
+      25.18I    ******S** ******S*********S*********S*T*******S*T*******SI     25.18
+           I   *******S*********S*********S*********S*T*******S*T*******SI
+           I   *******S*********S*********S*********S*T*******S*T*******SI
+           I   *******S*********S*********S*********S*T*******S*T*******SI
+      23.16I   *******S*********S*********S*********S*T*******S*T*******SI     23.16
+           I   *******S*********S*********S*********S*T*******S*T*******SI
+           I   *******S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+      21.14I  ********S*********S*********S*********S*T*******S*T*******SI     21.14
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I *********S*********S*********S*********S*T*******S*T*******SI
+      19.12I**********S*********S*********S*********S*T*******S*T*******SI     19.12
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 17020            PAGE  24, SERIES bps_permits_addi
+ G 1  10*LOG(SPECTRUM) of the differenced seasonally adjusted 
+      data (Table E2).  Spectrum estimated from 2018.Jul to 2026.Jun.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      38.63I                                                             I     38.63
+           I                                           *                 I
+           I                          *                *   *             I
+           I                          *                *   **            I
+      36.92I                          *        *       *   **            I     36.92
+           I                          *        **      *   **            I
+           I                          *        **      *   **         *  I
+           I                          *        ***    T*   **         *  I
+      35.21I                          **       ****   T*   **         *  I     35.21
+           I                         ***       ****   T*   **         *  I
+           I                         ***      *****   T*   **     *   *  I
+           I                *        ***      ******  T*   **     *   ** I
+      33.49I                *        ***      ******  T*   **    **  *** I     33.49
+           I                *        ***      ******  T**  **    **  *** I
+           I                *        ***      ******S*T** ***    **  *** I
+           I                *        ****     ******S*T** ***    **  ***SI
+      31.78I                *        ****     ******S*T** ***    **  ***SI     31.78
+           I                *        ****    *******S*T*******   *** ***SI
+           I                *        ****    *******S*T*******   *******SI
+           I                *       ******   *******S*T*******   *******SI
+      30.07I                *       ******S*********S*T*******   *******SI     30.07
+           I                *       ******S*********S*T*******  T*******SI
+           I               **       ******S*********S*T*******  T*******SI
+           I               **       ******S*********S*T*******  T*******SI
+      28.35I      *        ***      ******S*********S*T*******S*T*******SI     28.35
+           I      *        ***      ******S*********S*T*******S*T*******SI
+           I      *        ***      ******S*********S*T*******S*T*******SI
+           I   *  *        ***  S  *******S*********S*T*******S*T*******SI
+      26.64I   *  *        *** *S  *******S*********S*T*******S*T*******SI     26.64
+           I   * **        *****S* *******S*********S*T*******S*T*******SI
+           I   ****        *****S*********S*********S*T*******S*T*******SI
+           I   ****        *****S*********S*********S*T*******S*T*******SI
+      24.93I   ****        *****S*********S*********S*T*******S*T*******SI     24.93
+           I   ****        *****S*********S*********S*T*******S*T*******SI
+           I   ****       ******S*********S*********S*T*******S*T*******SI
+           I   ****       ******S*********S*********S*T*******S*T*******SI
+      23.21I   ****       ******S*********S*********S*T*******S*T*******SI     23.21
+           I   ****       ******S*********S*********S*T*******S*T*******SI
+           I   ****       ******S*********S*********S*T*******S*T*******SI
+           I  ******     *******S*********S*********S*T*******S*T*******SI
+      21.50I  ******     *******S*********S*********S*T*******S*T*******SI     21.50
+           I  ******     *******S*********S*********S*T*******S*T*******SI
+           I  ******    ********S*********S*********S*T*******S*T*******SI
+           I  ******    ********S*********S*********S*T*******S*T*******SI
+      19.79I  ******    ********S*********S*********S*T*******S*T*******SI     19.79
+           I  ******    ********S*********S*********S*T*******S*T*******SI
+           I  ******    ********S*********S*********S*T*******S*T*******SI
+           I  ******   *********S*********S*********S*T*******S*T*******SI
+      18.07I  ******   *********S*********S*********S*T*******S*T*******SI     18.07
+           I ********  *********S*********S*********S*T*******S*T*******SI
+           I ********  *********S*********S*********S*T*******S*T*******SI
+           I*********  *********S*********S*********S*T*******S*T*******SI
+      16.36I**********S*********S*********S*********S*T*******S*T*******SI     16.36
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 17020            PAGE  25, SERIES bps_permits_addi
+ G 2  10*LOG(SPECTRUM) of the Modified Irregular (Table E3).  
+      Spectrum estimated from 2018.Jul to 2026.Jun.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      36.57I                                                             I     36.57
+           I                          *                                  I
+           I                          *                                  I
+           I                          *                                  I
+      34.99I                *         *                                  I     34.99
+           I                *         *                                  I
+           I                *         *                                  I
+           I                *         *                                  I
+      33.41I                *         *                                  I     33.41
+           I                *         *        *       *                 I
+           I                *        ***       *       *                 I
+           I               **        ***       **      *   **            I
+      31.82I               **        ***       **      *   **            I     31.82
+           I               **        ***       ***     *   **            I
+           I               **        ***       ****   T*   **            I
+           I               **        ***       ****   T*   **            I
+      30.24I               **        ***      *****   T*   **         *  I     30.24
+           I               **        ***      *****   T*   **         *  I
+           I               **        ****     *****   T*   **         *  I
+           I               ***      *****     ******  T*   **         *  I
+      28.65I               ***      *****     ******  T*   **     *   *  I     28.65
+           I               ***      *****     ******  T*   **     *   *  I
+           I               ***      ******    ****** *T**  **     *  **  I
+           I               ****     ******S  *******S*T** ***    **  *** I
+      27.07I               *****    ******S  *******S*T** ***    **  *** I     27.07
+           I               *****   *******S* *******S*T** ***    **  *** I
+           I              ******   *******S*********S*T******    **  *** I
+           I            * ******S  *******S*********S*T*******   **  ***SI
+      25.48I            * ******S  *******S*********S*T*******   *** ***SI     25.48
+           I            ********S ********S*********S*T*******   *******SI
+           I     **     ********S*********S*********S*T*******   *******SI
+           I     **     ********S*********S*********S*T*******   *******SI
+      23.90I     **     ********S*********S*********S*T*******  T*******SI     23.90
+           I     **     ********S*********S*********S*T*******  T*******SI
+           I     **     ********S*********S*********S*T*******  T*******SI
+           I     **     ********S*********S*********S*T*******S T*******SI
+      22.32I     **    *********S*********S*********S*T*******S*T*******SI     22.32
+           I     **    *********S*********S*********S*T*******S*T*******SI
+           I     **    *********S*********S*********S*T*******S*T*******SI
+           I     **    *********S*********S*********S*T*******S*T*******SI
+      20.73I     **    *********S*********S*********S*T*******S*T*******SI     20.73
+           I     **    *********S*********S*********S*T*******S*T*******SI
+           I     **    *********S*********S*********S*T*******S*T*******SI
+           I    ***    *********S*********S*********S*T*******S*T*******SI
+      19.15I    ***    *********S*********S*********S*T*******S*T*******SI     19.15
+           I    ****   *********S*********S*********S*T*******S*T*******SI
+           I    ****   *********S*********S*********S*T*******S*T*******SI
+           I    ****  S*********S*********S*********S*T*******S*T*******SI
+      17.56I   *****  S*********S*********S*********S*T*******S*T*******SI     17.56
+           I   *****  S*********S*********S*********S*T*******S*T*******SI
+           I  ******  S*********S*********S*********S*T*******S*T*******SI
+           I *******  S*********S*********S*********S*T*******S*T*******SI
+      15.98I**********S*********S*********S*********S*T*******S*T*******SI     15.98
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 17020            PAGE  26, SERIES bps_permits_addi
+
+  Peak probabilities for Tukey spectrum estimator
+  Spectrum estimated from 2018.Jul to 2026.Jun.
+
+                                          S1       S2       S3       S4       S5       S6       TD
+                                        ------   ------   ------   ------   ------   ------   ------
+  Model Residuals                        0.793    0.521    0.375    0.739    0.393    0.238    0.704  
+  Prior Adjusted Series (Table B1)       0.768    0.391    0.448    0.723    0.685    0.834    0.258  
+  Seasonally adjusted series (E2)        0.514    0.419    0.064    0.069    0.047    0.554    0.753  
+  Modified Irregular (E3)                0.488    0.381    0.064    0.077    0.040    0.535    0.753  
+  ----------
+     ** - Peak Probability > 0.99,
+      * - 0.90 < Peak Probability < 0.99
+
+

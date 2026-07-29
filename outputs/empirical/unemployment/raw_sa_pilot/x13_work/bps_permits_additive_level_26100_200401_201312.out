@@ -1,0 +1,1394 @@
+  Reading input spec file from D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_26100_200401_201312.spc
+
+1
+
+               U. S. Department of Commerce, U. S. Census Bureau
+
+              X-13ARIMA-SEATS monthly seasonal adjustment Method,
+                          Release Version 1.1 Build 62
+
+
+           This software application provides an enhanced version of
+             Statistics Canada's X-11-ARIMA extension (Dagum, 1980)
+                 of the X-11 variant of the Census Method II of
+                      Shiskin, Young and Musgrave (1967).
+
+            It also provides an ARIMA model-based method following
+       Hillmer and Tiao (1982) and Burman (1980) that is very similar
+       to the update of the method of SEATS (Gomez and Maravall, 1996)
+                produced at the Bank of Spain by G. Caporello and
+               A. Maravall for TSW (Caporello and Maravall, 2004).
+          The present application includes additional enhancements.
+
+         X-13ARIMA-SEATS includes an automatic ARIMA model selection procedure
+          based largely on the procedure of Gomez and Maravall (1998)
+            as implemented in TRAMO (1996) and subsequent revisions.
+
+              Primary Programmers: Brian Monsell, Mark Otto and,
+                 for the ARIMA model-based signal extraction,
+                      Gianluca Caporello and Victor Gomez
+
+
+     Series Title- bps_permits 26100
+     Series Name- bps_permits_addi
+     Jul 29, 2026  08.27.47 
+
+        -Period covered-  1st month,2004 to 12th month,2013
+        -Type of run - additive seasonal adjustment
+
+        -Sigma limits for graduating extreme values are  1.5 and  2.5 .
+        -3x3 moving average used in section 1 of each iteration, 
+         3x5 moving average in section 2 of iterations B and C,
+         moving average for final seasonal factors chosen by Global MSR.
+        -Holiday adjustment factors applied directly to the final seasonally adjusted series
+        -Spectral plots generated for selected series
+        -Spectral plots generated for series starting in 2006.Jan
+
+ FILE SAVE REQUESTS (* indicates file exists and will be overwritten)
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_26100_200401_201312.d10  final seasonal factors
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_26100_200401_201312.d11  final seasonally adjusted data
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_26100_200401_201312.out  program output file
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_26100_200401_201312.err  program error file
+        bps_permits 26100            PAGE   1, SERIES bps_permits_addi
+
+     Contents of spc file D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_26100_200401_201312.spc
+
+ Line #
+ ------
+      1: series {
+      2:   title = "bps_permits 26100"
+      3:   start = 2004.1
+      4:   period = 12
+      5:   data = (
+      6: 114
+      7: 137
+      8: 239
+      9: 253
+     10: 189
+     11: 201
+     12: 164
+     13: 239
+     14: 204
+     15: 190
+     16: 255
+     17: 159
+     18: 73
+     19: 151
+     20: 120
+     21: 124
+     22: 146
+     23: 145
+     24: 140
+     25: 163
+     26: 125
+     27: 125
+     28: 125
+     29: 98
+     30: 75
+     31: 87
+     32: 97
+     33: 101
+     34: 112
+     35: 88
+     36: 85
+     37: 124
+     38: 79
+     39: 129
+     40: 78
+     41: 36
+     42: 43
+     43: 40
+     44: 63
+     45: 92
+     46: 64
+     47: 69
+     48: 111
+     49: 71
+     50: 86
+     51: 35
+     52: 77
+     53: 27
+     54: 45
+     55: 16
+     56: 26
+     57: 32
+     58: 29
+     59: 55
+     60: 60
+     61: 96
+     62: 35
+     63: 62
+     64: 17
+     65: 15
+     66: 5
+     67: 12
+     68: 15
+     69: 25
+     70: 27
+     71: 42
+     72: 29
+     73: 31
+     74: 28
+     75: 29
+     76: 20
+     77: 25
+     78: 16
+     79: 22
+     80: 36
+     81: 37
+     82: 30
+     83: 29
+     84: 24
+     85: 27
+     86: 30
+     87: 24
+     88: 33
+     89: 19
+     90: 30
+     91: 22
+     92: 43
+     93: 21
+     94: 35
+     95: 30
+     96: 29
+     97: 44
+     98: 29
+     99: 34
+    100: 26
+    101: 24
+    102: 17
+    103: 26
+    104: 37
+    105: 37
+    106: 49
+    107: 49
+    108: 44
+    109: 55
+    110: 47
+    111: 59
+    112: 51
+    113: 42
+    114: 37
+    115: 31
+    116: 44
+    117: 60
+    118: 67
+    119: 58
+    120: 65
+    121: 56
+    122: 66
+    123: 50
+    124: 56
+    125: 40
+    126:   )
+    127: }
+    128: transform { function = none }
+    129: regression { aictest = (td easter) }
+    130: automdl {}
+    131: x11 { mode = add save = (d10 d11) }
+        bps_permits 26100            PAGE   2, SERIES bps_permits_addi
+
+ A 1  Time series data (for the span analyzed)
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         114.     137.     239.     253.     189.     201.
+               164.     239.     204.     190.     255.     159.         2344.
+ 
+  2005          73.     151.     120.     124.     146.     145.
+               140.     163.     125.     125.     125.      98.         1535.
+ 
+  2006          75.      87.      97.     101.     112.      88.
+                85.     124.      79.     129.      78.      36.         1091.
+ 
+  2007          43.      40.      63.      92.      64.      69.
+               111.      71.      86.      35.      77.      27.          778.
+ 
+  2008          45.      16.      26.      32.      29.      55.
+                60.      96.      35.      62.      17.      15.          488.
+ 
+  2009           5.      12.      15.      25.      27.      42.
+                29.      31.      28.      29.      20.      25.          288.
+ 
+  2010          16.      22.      36.      37.      30.      29.
+                24.      27.      30.      24.      33.      19.          327.
+ 
+  2011          30.      22.      43.      21.      35.      30.
+                29.      44.      29.      34.      26.      24.          367.
+ 
+  2012          17.      26.      37.      37.      49.      49.
+                44.      55.      47.      59.      51.      42.          513.
+ 
+  2013          37.      31.      44.      60.      67.      58.
+                65.      56.      66.      50.      56.      40.          630.
+ 
+  AVGE          46.      54.      72.      78.      75.      77.
+                75.      91.      73.      74.      74.      49.
+
+  Table Total-        8361.   Mean-        70.   Std. Dev.-        56.
+                              Min -         5.        Max -       255.
+        bps_permits 26100            PAGE   3, SERIES bps_permits_addi
+                        Automatic ARIMA Model Selection
+
+                    Procedure based closely on TRAMO method 
+                         of Gomez and Maravall (2000)
+              "Automatic Modeling Methods for Univariate Series",
+                            A Course in Time Series
+                  (Edited by D. Pena, G. C. Tiao, R. S. Tsay),
+                         New York : J. Wiley and Sons
+
+
+     Maximum order for regular ARMA parameters :   2
+     Maximum order for seasonal ARMA parameters :   1
+     Maximum order for regular differencing :   2
+     Maximum order for seasonal differencing :   1
+
+   Results of Unit Root Test for identifying orders of differencing:
+     Regular difference order :   1
+     Seasonal difference order :   0
+
+     Mean is not significant.
+
+  Automatic model choice : (1 1 1)(1 0 1)
+   Model changed to 
+   ( 0, 1, 1) ( 0, 1, 1) with constant term
+
+
+  Final Checks for Identified Model
+
+
+  Checking for Unit Roots.
+   No unit roots found.
+
+  Checking for nonseasonal overdifferencing.
+   Reduce order of nonseasonal MA, nonseasonal differencing.
+   ( 0, 0, 0) ( 0, 1, 1)
+
+  Checking for insignificant ARMA coefficients.
+
+  Final automatic model choice : (0 0 0)(0 1 1)
+   End of automatic model selection procedure.
+
+ Average absolute percentage error in within-sample forecasts:
+  Last year:  43.86      Last-1 year:  58.33     Last-2 year:  56.00
+  Last three years:   52.73
+
+ Estimation converged in    2 ARMA iterations,   15 function evaluations.
+
+ Regression Model
+ ------------------------------------------------------------------------------
+                             Parameter        Standard
+ Variable                     Estimate           Error      t-value
+ ------------------------------------------------------------------------------
+ Constant                     -16.2805         3.62582        -4.49
+ ------------------------------------------------------------------------------
+
+
+ ARIMA Model:  (0 0 0)(0 1 1)
+   Seasonal differences:    1
+                                              Standard
+ Parameter                    Estimate          Errors
+ -----------------------------------------------------
+ Seasonal MA                                       
+   Lag 12                      -0.1418         0.08213
+
+ Variance                       0.11192E+04
+ SE of Var                      0.15230E+03
+ -----------------------------------------------------
+
+ Likelihood Statistics
+ ------------------------------------------------------------------
+ Number of observations (nobs)                                  120
+ Effective number of observations (nefobs)                      108
+ Number of parameters estimated (np)                              3
+ Log likelihood (L)                                       -532.4675
+ AIC                                                      1070.9350 
+ AICC (F-corrected-AIC)                                   1071.1657 
+ Hannan Quinn                                             1074.1975 
+ BIC                                                      1078.9814 
+ ------------------------------------------------------------------
+
+ QS Statistic for regARIMA Model Residuals (full series):             0.00
+                                                       (P-Value =     1.0000)
+
+ QS Statistic for regARIMA Model Residuals (starting 2006.Jan):       0.00
+                                                       (P-Value =     1.0000)
+      10*LOG(SPECTRUM) of the regARIMA model residuals
+      Spectrum estimated from 2006.Jan to 2013.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      39.30I*                                                            I     39.30
+           I*                                                            I
+           I*                                                            I
+           I*                                                            I
+      37.45I*                                                     *      I     37.45
+           I**                                                    *      I
+           I**                                                    *      I
+           I**                                                    *      I
+      35.60I**                                                    *      I     35.60
+           I**                                                    *      I
+           I**                                                    *      I
+           I**                                                    *      I
+      33.75I**                                                    *      I     33.75
+           I***                                                   *      I
+           I***                                                   * *    I
+           I***                                                   ***    I
+      31.90I***                                                   ****   I     31.90
+           I***             *                                     ****   I
+           I***             *                                     ****   I
+           I***             *                             *       ****   I
+      30.05I****            *      *                      *       ****   I     30.05
+           I****            *      *                     **       ****   I
+           I****            **     *                     **       ****   I
+           I****            **     *                     **       ****   I
+      28.20I****          ****     *                     **       ****   I     28.20
+           I****          ****     ***                   ***      ****   I
+           I*****         ****     ***                   ***      ****   I
+           I*****        *****     ****                 ****      ****   I
+      26.35I*****        *****     ****                 ****      ****   I     26.35
+           I*****        *****     ****                 ****      ****   I
+           I******       *****     ****                 ****      ****   I
+           I******  *    *****     ****                 ****     *****   I
+      24.50I*********    *****     ****                *****     *****   I     24.50
+           I**********  ******     ****                *****     ******  I
+           I**********  ******     ****               T******    ******  I
+           I**********  ******     ****          *    T******    ******  I
+      22.65I**********S ******    *****         **   *T******    ******  I     22.65
+           I**********S*******    *****         **   *T******    ******  I
+           I**********S*******    *****         **  S*T******    ******  I
+           I**********S********   *****         *** S*T******    ******  I
+      20.80I**********S********   *****     *   ****S*T******    ******  I     20.80
+           I**********S********   ******    *   ****S*T*******  T******  I
+           I**********S********   ******    ** *****S*T*******  T******* I
+           I**********S********   ******    ** *****S*T*******  T******* I
+      18.95I**********S********   ******    ********S*T*******  T*******SI     18.95
+           I**********S********  *******   *********S*T*******S*T*******SI
+           I**********S********* *******   *********S*T*******S*T*******SI
+           I**********S********* *******   *********S*T*******S*T*******SI
+      17.09I**********S*********S*******   *********S*T*******S*T*******SI     17.09
+           I**********S*********S*******   *********S*T*******S*T*******SI
+           I**********S*********S********  *********S*T*******S*T*******SI
+           I**********S*********S******** S*********S*T*******S*T*******SI
+      15.24I**********S*********S*********S*********S*T*******S*T*******SI     15.24
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+
+
+ FORECASTING
+  Origin  2013.Dec
+  Number        12
+
+  Forecasts and Standard Errors
+   ------------------------------
+                         Standard
+       Date   Forecast      Error
+   ------------------------------
+   2014.Jan      25.87     33.605
+   2014.Feb      17.37     33.605
+   2014.Mar      30.86     33.605
+   2014.Apr      48.63     33.605
+   2014.May      55.02     33.605
+   2014.Jun      44.64     33.605
+   2014.Jul      53.43     33.605
+   2014.Aug      41.71     33.605
+   2014.Sep      54.07     33.605
+   2014.Oct      33.99     33.605
+   2014.Nov      41.92     33.605
+   2014.Dec      25.11     33.605
+   ------------------------------
+
+  Confidence intervals with coverage probability ( 0.95000
+   ---------------------------------------
+       Date      Lower  Forecast     Upper
+   ---------------------------------------
+   2014.Jan     -39.99     25.87     91.73
+   2014.Feb     -48.50     17.37     83.23
+   2014.Mar     -35.00     30.86     96.73
+   2014.Apr     -17.24     48.63    114.49
+   2014.May     -10.84     55.02    120.89
+   2014.Jun     -21.22     44.64    110.51
+   2014.Jul     -12.43     53.43    119.30
+   2014.Aug     -24.16     41.71    107.57
+   2014.Sep     -11.80     54.07    119.93
+   2014.Oct     -31.87     33.99     99.86
+   2014.Nov     -23.94     41.92    107.79
+   2014.Dec     -40.75     25.11     90.98
+   ---------------------------------------
+        bps_permits 26100            PAGE   4, SERIES bps_permits_addi
+
+ B 1  Original series (prior adjusted)
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         114.     137.     239.     253.     189.     201.
+               164.     239.     204.     190.     255.     159.         2344.
+ 
+  2005          73.     151.     120.     124.     146.     145.
+               140.     163.     125.     125.     125.      98.         1535.
+ 
+  2006          75.      87.      97.     101.     112.      88.
+                85.     124.      79.     129.      78.      36.         1091.
+ 
+  2007          43.      40.      63.      92.      64.      69.
+               111.      71.      86.      35.      77.      27.          778.
+ 
+  2008          45.      16.      26.      32.      29.      55.
+                60.      96.      35.      62.      17.      15.          488.
+ 
+  2009           5.      12.      15.      25.      27.      42.
+                29.      31.      28.      29.      20.      25.          288.
+ 
+  2010          16.      22.      36.      37.      30.      29.
+                24.      27.      30.      24.      33.      19.          327.
+ 
+  2011          30.      22.      43.      21.      35.      30.
+                29.      44.      29.      34.      26.      24.          367.
+ 
+  2012          17.      26.      37.      37.      49.      49.
+                44.      55.      47.      59.      51.      42.          513.
+ 
+  2013          37.      31.      44.      60.      67.      58.
+                65.      56.      66.      50.      56.      40.          630.
+ 
+  AVGE          46.      54.      72.      78.      75.      77.
+                75.      91.      73.      74.      74.      49.
+
+  Table Total-        8361.   Mean-        70.   Std. Dev.-        56.
+                              Min -         5.        Max -       255.
+
+ B 1.A  Forecasts of (prior adjusted) original series
+  From  2014.Jan to 2014.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2014          26.      17.      31.      49.      55.      45.
+                53.      42.      54.      34.      42.      25.          473.
+ 
+        bps_permits 26100            PAGE   5, SERIES bps_permits_addi
+
+ C 17  Final weights for irregular component
+  From  2004.Jan to 2013.Dec
+  Observations        120
+  Lower sigma limit    1.50
+  Upper sigma limit    2.50
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2004         100.      47.       0.       0.     100.     100.
+                50.     100.     100.     100.       0.     100.         1593.
+ 
+  2005           0.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.         1593.
+ 
+  2006         100.     100.     100.     100.     100.     100.
+               100.     100.     100.       0.     100.     100.         1593.
+ 
+  2007         100.     100.     100.     100.     100.     100.
+                 0.     100.      90.       0.     100.     100.         1263.
+ 
+  2008          85.     100.     100.     100.     100.     100.
+               100.       0.     100.     100.      88.     100.          985.
+ 
+  2009         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          799.
+ 
+  2010         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          648.
+ 
+  2011           0.     100.       0.      19.     100.     100.
+               100.     100.     100.     100.     100.     100.          484.
+ 
+  2012         100.     100.     100.     100.     100.     100.
+               100.     100.     100.      40.     100.     100.          475.
+ 
+  2013         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          475.
+ 
+        bps_permits 26100            PAGE   6, SERIES bps_permits_addi
+
+ D 8  Final unmodified SI ratios
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004         -59.     -43.      53.      62.      -5.       7.
+               -28.      49.      16.       4.      74.     -14.           10.
+ 
+  2005         -90.      -2.     -25.     -16.      10.      12.
+                10.      37.       3.       8.      11.     -14.           -4.
+ 
+  2006         -36.     -22.      -9.      -0.      16.      -3.
+                -1.      44.       4.      58.      10.     -31.            2.
+ 
+  2007         -24.     -29.      -8.      22.      -4.       4.
+                49.       9.      24.     -28.      15.     -30.           -0.
+ 
+  2008          -5.     -27.     -11.      -3.      -7.      17.
+                19.      55.      -4.      27.     -14.     -13.            3.
+ 
+  2009         -20.     -12.      -9.       1.       3.      18.
+                 6.       8.       5.       5.      -6.      -5.           -1.
+ 
+  2010         -16.     -12.       3.       6.       3.       5.
+                 2.       5.       7.      -2.       5.     -10.           -0.
+ 
+  2011           0.      -7.      15.      -7.       8.       2.
+                 1.      15.       0.       5.      -4.      -7.            2.
+ 
+  2012         -15.      -9.       0.      -2.       9.       8.
+                 1.      11.       1.      12.       3.      -7.            1.
+ 
+  2013         -13.     -20.      -8.       6.      12.       3.
+                10.       2.      13.      -1.       7.      -6.            0.
+ 
+  AVGE         -28.     -18.      -0.       7.       4.       7.
+                 7.      24.       7.       9.      10.     -14.
+
+  Table Total-         155.   Mean-         1.   Std. Dev.-        22.
+                              Min -       -90.        Max -        74.
+        bps_permits 26100            PAGE   7, SERIES bps_permits_addi
+
+ D 8.B  Final unmodified SI ratios, with labels for outliers and extreme values
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ ---------------------------------------------------------------------
+               Jan       Feb       Mar       Apr       May       Jun  
+               Jul       Aug       Sep       Oct       Nov       Dec  
+ ---------------------------------------------------------------------
+  2004        -59.      -43.*      53.*      62.*      -5.        7.  
+              -28.*      49.       16.        4.       74.*     -14.  
+ 
+  2005        -90.*      -2.      -25.      -16.       10.       12.  
+               10.       37.        3.        8.       11.      -14.  
+ 
+  2006        -36.      -22.       -9.       -0.       16.       -3.  
+               -1.       44.        4.       58.*      10.      -31.  
+ 
+  2007        -24.      -29.       -8.       22.       -4.        4.  
+               49.*       9.       24.*     -28.*      15.      -30.  
+ 
+  2008         -5.*     -27.      -11.       -3.       -7.       17.  
+               19.       55.*      -4.       27.      -14.*     -13.  
+ 
+  2009        -20.      -12.       -9.        1.        3.       18.  
+                6.        8.        5.        5.       -6.       -5.  
+ 
+  2010        -16.      -12.        3.        6.        3.        5.  
+                2.        5.        7.       -2.        5.      -10.  
+ 
+  2011          0.*      -7.       15.*      -7.*       8.        2.  
+                1.       15.        0.        5.       -4.       -7.  
+ 
+  2012        -15.       -9.        0.       -2.        9.        8.  
+                1.       11.        1.       12.*       3.       -7.  
+ 
+  2013        -13.      -20.       -8.        6.       12.        3.  
+               10.        2.       13.       -1.        7.       -6.  
+ 
+
+  Key to symbols:
+    *  : extreme value as determined by X-11 extreme value procedure
+ 
+        bps_permits 26100            PAGE   8, SERIES bps_permits_addi
+
+ D 9  Final replacement values for SI ratios
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+  2004     ********     -26.       2.      16. ******** ********
+               -12. ******** ******** ********      14. ********
+ 
+  2005         -41. ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2006     ******** ******** ******** ******** ******** ********
+           ******** ******** ********      17. ******** ********
+ 
+  2007     ******** ******** ******** ******** ******** ********
+                 9. ********      22.      11. ******** ********
+ 
+  2008          -8. ******** ******** ******** ******** ********
+           ********      21. ******** ********     -12. ********
+ 
+  2009     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2010     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2011         -13. ********      -1.       2. ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2012     ******** ******** ******** ******** ******** ********
+           ******** ******** ********       6. ******** ********
+ 
+  2013     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+
+ D 9.A  Moving seasonality ratio
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+ ---------------------------------------------------------------
+   I          5.980    9.619    8.396   12.303    7.056    7.790
+   S          3.766    1.404    1.145    1.285    1.385    1.199
+ RATIO        1.588    6.849    7.334    9.577    5.094    6.498
+
+
+
+ ---------------------------------------------------------------
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+   I          8.831   11.067    8.920    8.437    7.404    6.354
+   S          1.525    3.801    1.254    1.553    2.058    1.826
+ RATIO        5.790    2.911    7.116    5.433    3.598    3.480
+
+
+
+        bps_permits 26100            PAGE   9, SERIES bps_permits_addi
+
+ D 10  Final seasonal factors
+  From  2004.Jan to 2013.Dec
+  Observations        120
+  Seasonal filter    3 x 5 moving average
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004         -42.     -18.     -10.       4.       6.       6.
+                 1.      39.      10.      10.      13.     -21.           -0.
+ 
+  2005         -39.     -19.     -10.       4.       5.       7.
+                 3.      36.      10.      11.      11.     -21.           -0.
+ 
+  2006         -33.     -20.     -10.       4.       4.       8.
+                 5.      30.       8.      12.       8.     -20.           -0.
+ 
+  2007         -27.     -20.     -10.       3.       3.       9.
+                 7.      24.       7.      13.       4.     -19.           -0.
+ 
+  2008         -21.     -19.      -8.       4.       3.       9.
+                 8.      18.       6.      11.       2.     -17.           -0.
+ 
+  2009         -18.     -17.      -5.       4.       2.       9.
+                 7.      14.       5.      10.      -1.     -13.           -0.
+ 
+  2010         -16.     -14.      -4.       3.       4.       9.
+                 6.      11.       4.       7.      -1.     -10.           -0.
+ 
+  2011         -15.     -13.      -3.       3.       6.       7.
+                 5.       9.       5.       4.       1.      -8.            0.
+ 
+  2012         -15.     -14.      -4.       4.       9.       5.
+                 5.       8.       6.       2.       3.      -7.            0.
+ 
+  2013         -15.     -15.      -5.       4.      10.       4.
+                 6.       7.       7.       2.       4.      -8.            0.
+ 
+  AVGE         -24.     -17.      -7.       4.       5.       7.
+                 5.      20.       7.       8.       4.     -14.
+
+  Table Total-         -20.   Mean-        -0.   Std. Dev.-        13.
+                              Min -       -42.        Max -        39.
+
+ D 10.A  Final seasonal component forecasts
+  From  2014.Jan to 2014.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014         -15.     -16.      -6.       4.      11.       4.
+                 7.       6.       7.       1.       4.      -7.            0.
+ 
+        bps_permits 26100            PAGE  10, SERIES bps_permits_addi
+
+ D 11  Final seasonally adjusted data
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         156.     155.     249.     249.     183.     195.
+               163.     200.     194.     180.     242.     180.         2346.
+ 
+  2005         112.     170.     130.     120.     141.     138.
+               137.     127.     115.     114.     114.     119.         1538.
+ 
+  2006         108.     107.     107.      97.     108.      80.
+                80.      94.      71.     117.      70.      56.         1095.
+ 
+  2007          70.      60.      73.      89.      61.      60.
+               104.      47.      79.      22.      73.      46.          783.
+ 
+  2008          66.      35.      34.      28.      26.      46.
+                52.      78.      29.      51.      15.      32.          492.
+ 
+  2009          23.      29.      20.      21.      25.      33.
+                22.      17.      23.      19.      21.      38.          291.
+ 
+  2010          32.      36.      40.      34.      26.      20.
+                18.      16.      26.      17.      34.      29.          328.
+ 
+  2011          45.      35.      46.      18.      29.      23.
+                24.      35.      24.      30.      25.      32.          367.
+ 
+  2012          32.      40.      41.      33.      40.      44.
+                39.      47.      41.      57.      48.      49.          512.
+ 
+  2013          52.      46.      49.      56.      57.      54.
+                59.      49.      59.      48.      52.      48.          629.
+ 
+  AVGE          70.      71.      79.      75.      70.      69.
+                70.      71.      66.      66.      69.      63.
+
+  Table Total-        8381.   Mean-        70.   Std. Dev.-        54.
+                              Min -        15.        Max -       249.
+        bps_permits 26100            PAGE  11, SERIES bps_permits_addi
+
+ D 12  Final trend cycle
+  From  2004.Jan to 2013.Dec
+  Observations        120
+  Trend filter    13-term Henderson moving average
+  I/C ratio        3.39
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2004         173.     179.     185.     190.     192.     193.
+               192.     191.     189.     187.     182.     174.         2228.
+ 
+  2005         164.     153.     144.     138.     134.     132.
+               130.     127.     122.     118.     114.     112.         1587.
+ 
+  2006         111.     109.     105.     101.      96.      91.
+                86.      81.      76.      72.      68.      66.         1062.
+ 
+  2007          66.      68.      70.      70.      68.      65.
+                63.      62.      63.      64.      62.      57.          779.
+ 
+  2008          49.      41.      36.      34.      36.      39.
+                42.      42.      40.      36.      31.      28.          454.
+ 
+  2009          25.      24.      24.      24.      24.      24.
+                23.      22.      22.      23.      26.      30.          291.
+ 
+  2010          34.      36.      35.      32.      27.      23.
+                20.      19.      21.      24.      28.      30.          329.
+ 
+  2011          32.      32.      31.      29.      27.      27.
+                27.      27.      27.      28.      30.      31.          347.
+ 
+  2012          34.      36.      38.      39.      40.      41.
+                42.      44.      46.      47.      48.      49.          504.
+ 
+  2013          50.      51.      52.      53.      55.      56.
+                56.      55.      54.      52.      49.      45.          626.
+ 
+  AVGE          74.      73.      72.      71.      70.      69.
+                68.      67.      66.      65.      64.      62.
+
+  Table Total-        8207.   Mean-        68.   Std. Dev.-        51.
+                              Min -        19.        Max -       193.
+        bps_permits 26100            PAGE  12, SERIES bps_permits_addi
+
+ D 13  Final irregular component
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2004         -18.     -24.      64.      60.      -9.       2.
+               -29.      10.       5.      -7.      60.       6.           33.
+ 
+  2005         -52.      17.     -14.     -18.       7.       6.
+                 8.       1.      -7.      -4.      -0.       7.           18.
+ 
+  2006          -3.      -2.       2.      -3.      13.     -11.
+                -6.      13.      -6.      45.       2.     -10.           15.
+ 
+  2007           3.      -8.       3.      19.      -7.      -5.
+                41.     -16.      16.     -42.      10.     -11.           20.
+ 
+  2008          17.      -6.      -2.      -6.      -9.       7.
+                10.      36.     -11.      15.     -16.       4.           14.
+ 
+  2009          -3.       5.      -4.      -3.       0.       9.
+                -1.      -5.       2.      -3.      -6.       8.            5.
+ 
+  2010          -2.       0.       5.       2.      -1.      -3.
+                -2.      -3.       5.      -7.       6.      -2.            4.
+ 
+  2011          13.       3.      16.     -11.       1.      -4.
+                -3.       8.      -3.       2.      -4.       0.            7.
+ 
+  2012          -1.       4.       3.      -6.       0.       3.
+                -3.       3.      -5.      10.       0.       0.            4.
+ 
+  2013           3.      -4.      -3.       3.       2.      -2.
+                 3.      -6.       5.      -3.       3.       2.            4.
+ 
+  S.D.          19.      10.      21.      21.       7.       6.
+                17.      14.       8.      21.      20.       6.
+
+  Table Total-         174.   Mean-         1.   Std. Dev.-        15.
+                              Min -       -52.        Max -        64.
+        bps_permits 26100            PAGE  13, SERIES bps_permits_addi
+
+ D 16  Combined adjustment factors
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004         -42.     -18.     -10.       4.       6.       6.
+                 1.      39.      10.      10.      13.     -21.           -0.
+ 
+  2005         -39.     -19.     -10.       4.       5.       7.
+                 3.      36.      10.      11.      11.     -21.           -0.
+ 
+  2006         -33.     -20.     -10.       4.       4.       8.
+                 5.      30.       8.      12.       8.     -20.           -0.
+ 
+  2007         -27.     -20.     -10.       3.       3.       9.
+                 7.      24.       7.      13.       4.     -19.           -0.
+ 
+  2008         -21.     -19.      -8.       4.       3.       9.
+                 8.      18.       6.      11.       2.     -17.           -0.
+ 
+  2009         -18.     -17.      -5.       4.       2.       9.
+                 7.      14.       5.      10.      -1.     -13.           -0.
+ 
+  2010         -16.     -14.      -4.       3.       4.       9.
+                 6.      11.       4.       7.      -1.     -10.           -0.
+ 
+  2011         -15.     -13.      -3.       3.       6.       7.
+                 5.       9.       5.       4.       1.      -8.            0.
+ 
+  2012         -15.     -14.      -4.       4.       9.       5.
+                 5.       8.       6.       2.       3.      -7.            0.
+ 
+  2013         -15.     -15.      -5.       4.      10.       4.
+                 6.       7.       7.       2.       4.      -8.            0.
+ 
+  AVGE         -24.     -17.      -7.       4.       5.       7.
+                 5.      20.       7.       8.       4.     -14.
+
+  Table Total-         -20.   Mean-        -0.   Std. Dev.-        13.
+                              Min -       -42.        Max -        39.
+
+ D 16.A  Combined adjustment component forecasts
+  From  2014.Jan to 2014.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014         -15.     -16.      -6.       4.      11.       4.
+                 7.       6.       7.       1.       4.      -7.            0.
+ 
+        bps_permits 26100            PAGE  14, SERIES bps_permits_addi
+
+ E 4  Differences of annual totals
+  From          2004 to 2013
+  Observations         10
+ -----------------------------------
+  Year       Unmodified     Modified
+                  (D11)         (E2)
+ -----------------------------------
+  2004              -2.          -2.
+ 
+  2005              -3.          -3.
+ 
+  2006              -4.          -4.
+ 
+  2007              -5.          -5.
+ 
+  2008              -4.          -4.
+ 
+  2009              -3.          -3.
+ 
+  2010              -1.          -1.
+ 
+  2011               0.           0.
+ 
+  2012               1.           1.
+ 
+  2013               1.           1.
+ 
+        bps_permits 26100            PAGE  15, SERIES bps_permits_addi
+
+ E 5  Month-to-month differences in the original series
+  From  2004.Feb to 2013.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                   23.     102.      14.     -64.      12.
+               -37.      75.     -35.     -14.      65.     -96.            4.
+ 
+  2005         -86.      78.     -31.       4.      22.      -1.
+                -5.      23.     -38.       0.       0.     -27.           -5.
+ 
+  2006         -23.      12.      10.       4.      11.     -24.
+                -3.      39.     -45.      50.     -51.     -42.           -5.
+ 
+  2007           7.      -3.      23.      29.     -28.       5.
+                42.     -40.      15.     -51.      42.     -50.           -1.
+ 
+  2008          18.     -29.      10.       6.      -3.      26.
+                 5.      36.     -61.      27.     -45.      -2.           -1.
+ 
+  2009         -10.       7.       3.      10.       2.      15.
+               -13.       2.      -3.       1.      -9.       5.            1.
+ 
+  2010          -9.       6.      14.       1.      -7.      -1.
+                -5.       3.       3.      -6.       9.     -14.           -0.
+ 
+  2011          11.      -8.      21.     -22.      14.      -5.
+                -1.      15.     -15.       5.      -8.      -2.            0.
+ 
+  2012          -7.       9.      11.       0.      12.       0.
+                -5.      11.      -8.      12.      -8.      -9.            2.
+ 
+  2013          -5.      -6.      13.      16.       7.      -9.
+                 7.      -9.      10.     -16.       6.     -16.           -0.
+ 
+  AVGE         -12.       9.      18.       6.      -3.       2.
+                -1.      16.     -18.       1.       0.     -25.
+
+  Table Total-         -74.   Mean-        -1.   Std. Dev.-        28.
+                              Min -       -96.        Max -       102.
+        bps_permits 26100            PAGE  16, SERIES bps_permits_addi
+
+ E 6  Month-to-month differences in seasonally adjusted series (D11)
+  From  2004.Feb to 2013.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                   -1.      94.       0.     -66.      12.
+               -32.      37.      -7.     -14.      63.     -63.            2.
+ 
+  2005         -68.      59.     -41.     -10.      22.      -3.
+                -1.     -10.     -12.      -2.       0.       5.           -5.
+ 
+  2006         -11.      -1.       1.     -10.      11.     -28.
+                -0.      14.     -23.      46.     -47.     -14.           -5.
+ 
+  2007          14.     -10.      12.      16.     -28.      -1.
+                44.     -57.      33.     -57.      50.     -27.           -1.
+ 
+  2008          20.     -31.      -1.      -6.      -1.      19.
+                 7.      26.     -49.      22.     -35.      16.           -1.
+ 
+  2009          -9.       7.      -9.       1.       4.       8.
+               -10.      -5.       6.      -4.       1.      18.            1.
+ 
+  2010          -7.       5.       4.      -6.      -7.      -6.
+                -2.      -2.       9.      -8.      17.      -5.           -1.
+ 
+  2011          17.     -10.      11.     -28.      10.      -6.
+                 1.      11.     -11.       6.      -4.       6.            0.
+ 
+  2012           0.       7.       1.      -7.       7.       4.
+                -5.       8.      -7.      16.      -9.       1.            1.
+ 
+  2013           3.      -6.       3.       7.       1.      -3.
+                 5.     -10.      10.     -10.       4.      -5.           -0.
+ 
+  AVGE          -5.       2.       8.      -4.      -5.      -0.
+                 1.       1.      -5.      -1.       4.      -7.
+
+  Table Total-        -108.   Mean-        -1.   Std. Dev.-        24.
+                              Min -       -68.        Max -        94.
+        bps_permits 26100            PAGE  17, SERIES bps_permits_addi
+
+ E 7  Month-to-month differences in final trend cycle (D12)
+  From  2004.Feb to 2013.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                    6.       6.       5.       3.       1.
+                -1.      -2.      -2.      -2.      -5.      -8.            0.
+ 
+  2005         -10.     -11.      -9.      -6.      -4.      -2.
+                -2.      -3.      -4.      -5.      -4.      -2.           -5.
+ 
+  2006          -1.      -2.      -3.      -4.      -5.      -5.
+                -5.      -5.      -5.      -5.      -4.      -2.           -4.
+ 
+  2007           0.       2.       1.      -0.      -2.      -3.
+                -2.      -0.       1.       1.      -2.      -5.           -1.
+ 
+  2008          -8.      -8.      -5.      -2.       1.       3.
+                 3.       1.      -2.      -4.      -5.      -4.           -2.
+ 
+  2009          -2.      -1.      -0.       0.       0.      -1.
+                -1.      -1.      -0.       1.       3.       4.            0.
+ 
+  2010           4.       2.      -1.      -3.      -5.      -4.
+                -3.      -1.       2.       3.       3.       3.           -0.
+ 
+  2011           2.      -0.      -1.      -2.      -1.      -1.
+                -0.       0.       0.       1.       1.       2.            0.
+ 
+  2012           2.       2.       2.       1.       1.       1.
+                 1.       2.       2.       1.       1.       1.            1.
+ 
+  2013           1.       1.       1.       1.       1.       1.
+                 0.      -1.      -1.      -2.      -3.      -3.           -0.
+ 
+  AVGE          -2.      -1.      -1.      -1.      -1.      -1.
+                -1.      -1.      -1.      -1.      -1.      -1.
+
+  Table Total-        -128.   Mean-        -1.   Std. Dev.-         3.
+                              Min -       -11.        Max -         6.
+        bps_permits 26100            PAGE  18, SERIES bps_permits_addi
+
+ E 8  Month-to-month differences in original series adjusted for calendar factors (A18)
+  From  2004.Feb to 2013.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004                   23.     102.      14.     -64.      12.
+               -37.      75.     -35.     -14.      65.     -96.            4.
+ 
+  2005         -86.      78.     -31.       4.      22.      -1.
+                -5.      23.     -38.       0.       0.     -27.           -5.
+ 
+  2006         -23.      12.      10.       4.      11.     -24.
+                -3.      39.     -45.      50.     -51.     -42.           -5.
+ 
+  2007           7.      -3.      23.      29.     -28.       5.
+                42.     -40.      15.     -51.      42.     -50.           -1.
+ 
+  2008          18.     -29.      10.       6.      -3.      26.
+                 5.      36.     -61.      27.     -45.      -2.           -1.
+ 
+  2009         -10.       7.       3.      10.       2.      15.
+               -13.       2.      -3.       1.      -9.       5.            1.
+ 
+  2010          -9.       6.      14.       1.      -7.      -1.
+                -5.       3.       3.      -6.       9.     -14.           -0.
+ 
+  2011          11.      -8.      21.     -22.      14.      -5.
+                -1.      15.     -15.       5.      -8.      -2.            0.
+ 
+  2012          -7.       9.      11.       0.      12.       0.
+                -5.      11.      -8.      12.      -8.      -9.            2.
+ 
+  2013          -5.      -6.      13.      16.       7.      -9.
+                 7.      -9.      10.     -16.       6.     -16.           -0.
+ 
+  AVGE         -12.       9.      18.       6.      -3.       2.
+                -1.      16.     -18.       1.       0.     -25.
+
+  Table Total-         -74.   Mean-        -1.   Std. Dev.-        28.
+                              Min -       -96.        Max -       102.
+        bps_permits 26100            PAGE  19, SERIES bps_permits_addi
+
+ E 18  Final adjustment ratios
+  From  2004.Jan to 2013.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2004       73.247   88.360   96.076  101.502  103.204  102.933
+            100.640  119.276  105.266  105.756  105.264   88.484        99.167
+ 
+  2005       65.436   88.705   92.553  103.581  103.267  104.710
+            101.864  128.046  108.302  109.898  109.694   82.460        99.876
+ 
+  2006       69.347   81.515   90.252  103.793  103.493  109.911
+            106.745  132.264  111.854  110.456  111.308   63.862        99.567
+ 
+  2007       61.441   66.571   86.845  103.952  104.959  114.885
+            106.936  152.482  108.495  155.974  105.865   58.581       102.249
+ 
+  2008       67.770   45.791   76.484  114.723  109.470  120.879
+            115.273  122.716  120.765  121.892  110.044   47.383        97.766
+ 
+  2009       22.172   41.095   74.323  119.928  109.190  129.205
+            131.358  180.814  120.095  148.718   97.522   65.348       103.314
+ 
+  2010       50.400   60.440   89.905  109.995  114.450  145.039
+            131.754  166.767  117.077  138.497   97.475   66.401       107.350
+ 
+  2011       66.312   62.387   92.545  115.170  122.611  131.208
+            121.014  126.566  119.585  113.826  102.286   75.367       104.073
+ 
+  2012       52.654   65.447   90.447  110.641  121.981  111.405
+            113.005  116.135  115.625  103.625  105.723   85.055        99.312
+ 
+  2013       70.962   67.104   90.169  106.801  117.883  107.389
+            110.380  113.817  112.126  103.125  107.625   84.180        99.297
+ 
+  AVGE       59.974   66.742   87.960  109.009  111.051  117.756
+            113.897  135.888  113.919  121.177  105.281   71.712
+
+  Table Total-       12144.   Mean-       101.   Std. Dev.-        26.
+                              Min -        22.        Max -       181.
+
+ E 18.A  Final adjustment ratio forecasts
+  From  2014.Jan to 2014.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014       62.913   52.092   84.597  108.152  124.531  109.874
+            114.389  118.010  115.947  104.258  111.114   77.162        98.587
+ 
+
+  QS statistic for seasonality:
+  Original Series                                     0.82  (P-Value =     0.6635)
+  Original Series (EV adj)                            0.82  (P-Value =     0.6635)
+  Residuals                                           0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+
+  QS statistic for seasonality (starting 2006.Jan):
+  Original Series                                     0.00  (P-Value =     1.0000)
+  Original Series (EV adj)                            0.00  (P-Value =     1.0000)
+  Residuals                                           0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+        bps_permits 26100            PAGE  20, SERIES bps_permits_addi
+
+
+  Visually significant residual trading day peaks have been
+  found in the spectral plots of the following series starting in 2006.Jan:
+
+          differenced seasonally adjusted series (Table E2) (1 Trading Day peak(s))
+
+          Modified irregular component (Table E3) (1 Seasonal and 
+
+
+ WARNING: Series should not be a candidate for seasonal adjustment
+          because the spectrum of the original series (Table A1 or B1)
+          has no visually significant seasonal peaks.
+
+          If this is a component series of an indirectly adjusted
+          composite series, consider using type = trend or type = summary
+          in the x11 spec.
+        bps_permits 26100            PAGE  21, SERIES bps_permits_addi
+ G 0  10*LOG(SPECTRUM) of the differenced Original Series
+      (Table A1 or B1).  Spectrum estimated from 2006.Jan to 2013.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      35.36I                                                      *      I     35.36
+           I                                                      *      I
+           I                                                      *      I
+           I                                                      *  *   I
+      33.49I                                                      *  *   I     33.49
+           I                                                      *  *   I
+           I                                                      * **   I
+           I                                                      ****   I
+      31.62I                                                      ****   I     31.62
+           I                                                      ****   I
+           I                                             *        ****   I
+           I                                             *        ****   I
+      29.75I                                             **       ****   I     29.75
+           I                                             **       ****   I
+           I          S                                  **       ****   I
+           I          S                                  **       ****   I
+      27.87I          S                                  **   S  *****   I     27.87
+           I          S                              *T  **   S  *****   I
+           I          S                              *T ***   S  *****   I
+           I         *S                             S*T****  *S* *****   I
+      26.00I         *S*                            S*T****  *S* *****   I     26.00
+           I         *S*                            S*T***** *S*T*****   I
+           I         *S*                            S*T***** *S*T*****   I
+           I         *S*          *                 S*T*******S*T******  I
+      24.13I         *S*          *                *S*T*******S*T******  I     24.13
+           I         *S*    *    ***               *S*T*******S*T******  I
+           I         *S*    **   ***      S        *S*T*******S*T******  I
+           I         *S*    **   ***      S        *S*T*******S*T******  I
+      22.26I        **S*    **  S***      S*       *S*T*******S*T******  I     22.26
+           I        **S*    ****S****    *S*       *S*T*******S*T******  I
+           I        **S*    ****S****    *S*       *S*T*******S*T******  I
+           I        **S*   *****S****   **S*      **S*T*******S*T******  I
+      20.39I        **S**  *****S*********S*      **S*T*******S*T******* I     20.39
+           I        **S**  *****S*********S*      **S*T*******S*T******* I
+           I        **S**  *****S*********S**     **S*T*******S*T******* I
+           I        **S**  *****S*********S**     **S*T*******S*T*******SI
+      18.52I        **S** ******S*********S**     **S*T*******S*T*******SI     18.52
+           I        **S*********S*********S**    ***S*T*******S*T*******SI
+           I        **S*********S*********S**    ***S*T*******S*T*******SI
+           I        **S*********S*********S***   ***S*T*******S*T*******SI
+      16.64I        **S*********S*********S***   ***S*T*******S*T*******SI     16.64
+           I       ***S*********S*********S***   ***S*T*******S*T*******SI
+           I  *    ***S*********S*********S**** ****S*T*******S*T*******SI
+           I  *    ***S*********S*********S*********S*T*******S*T*******SI
+      14.77I  *    ***S*********S*********S*********S*T*******S*T*******SI     14.77
+           I  *    ***S*********S*********S*********S*T*******S*T*******SI
+           I ***   ***S*********S*********S*********S*T*******S*T*******SI
+           I ***   ***S*********S*********S*********S*T*******S*T*******SI
+      12.90I****   ***S*********S*********S*********S*T*******S*T*******SI     12.90
+           I****  ****S*********S*********S*********S*T*******S*T*******SI
+           I****  ****S*********S*********S*********S*T*******S*T*******SI
+           I***** ****S*********S*********S*********S*T*******S*T*******SI
+      11.03I**********S*********S*********S*********S*T*******S*T*******SI     11.03
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 26100            PAGE  22, SERIES bps_permits_addi
+ G 1  10*LOG(SPECTRUM) of the differenced seasonally adjusted 
+      data (Table E2).  Spectrum estimated from 2006.Jan to 2013.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      30.37I                                          T                  I     30.37
+           I                                          T                  I
+           I                                          T                  I
+           I                                          T              *   I
+      28.84I                                          T              *   I     28.84
+           I                                          T              *   I
+           I                                          T              *   I
+           I                                          T              *   I
+      27.30I                                          T              *   I     27.30
+           I                                          T              *   I
+           I                                          T    *     ** **   I
+           I                                          T    *     ** **   I
+      25.77I                                          T    *     ** **   I     25.77
+           I                                          T   **     ** **   I
+           I                                          T   **     ** **   I
+           I                                          T   **     ** **   I
+      24.23I                                          T   **     *****   I     24.23
+           I                                          T   ***    *****   I
+           I                                          T  ****    *****   I
+           I             *                            T  ****    ******  I
+      22.70I             *                            T  ****    ******  I     22.70
+           I             *                           *T  ****    ******  I
+           I             *                           *T* ****    ******  I
+           I             *                           *T* ****    ******  I
+      21.16I             *                   *  *    *T******    ******  I     21.16
+           I             *                   *  *    *T******    ******  I
+           I             *                   *  **   *T******    ******  I
+           I             *                   *  **   *T******   T******  I
+      19.63I             *   *          *    *  **   *T******   T******* I     19.63
+           I             **  *     *    *    *  **   *T*******  T******* I
+           I             **  *     *    *    *  **   *T*******  T*******SI
+           I             **  *     *    *   **  **   *T*******  T*******SI
+      18.09I*            **  *     *    *   **  **   *T*******  T*******SI     18.09
+           I*            **  *     *    *   **  **   *T*******  T*******SI
+           I*            ** **     *    *   **  **   *T******* *T*******SI
+           I*            ** ***    *    *   **  **  S*T*******S*T*******SI
+      16.56I*       *    ******   **    *   ******  S*T*******S*T*******SI     16.56
+           I*       *    ******   **    *   ******  S*T*******S*T*******SI
+           I**      *   *******   **   **   ******  S*T*******S*T*******SI
+           I**      *   *******   **   **   ******* S*T*******S*T*******SI
+      15.02I**      *   *******   **   **   ******* S*T*******S*T*******SI     15.02
+           I**      *   *******   **   **   ******* S*T*******S*T*******SI
+           I**     **   *******   **   ***  ********S*T*******S*T*******SI
+           I**     **   *******   ***  ***  ********S*T*******S*T*******SI
+      13.48I**     ***  ********  ***  *** *********S*T*******S*T*******SI     13.48
+           I***    ***  ********  ***  *** *********S*T*******S*T*******SI
+           I***    ***  ******** ****  *** *********S*T*******S*T*******SI
+           I***    ***  ******** ****  *** *********S*T*******S*T*******SI
+      11.95I***    *** *********S****  ***S*********S*T*******S*T*******SI     11.95
+           I****   ***S*********S**** ****S*********S*T*******S*T*******SI
+           I****  ****S*********S*********S*********S*T*******S*T*******SI
+           I****  ****S*********S*********S*********S*T*******S*T*******SI
+      10.41I**********S*********S*********S*********S*T*******S*T*******SI     10.41
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 26100            PAGE  23, SERIES bps_permits_addi
+ G 2  10*LOG(SPECTRUM) of the Modified Irregular (Table E3).  
+      Spectrum estimated from 2006.Jan to 2013.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      25.45I                                          T                  I     25.45
+           I                                          T                  I
+           I                                          T                  I
+           I                                          T                  I
+      23.53I                                          T              *   I     23.53
+           I                                          T              *   I
+           I                                          T              *   I
+           I                                          T              *   I
+      21.62I                                          T              *   I     21.62
+           I                                          T    *         *   I
+           I                                          T    *     **  *   I
+           I                                          T   **     ** **   I
+      19.70I                                          T   **     ** **   I     19.70
+           I                                          T   **     ** **   I
+           I                                          T   **     ** **   I
+           I                       *                  T   **     *****   I
+      17.78I                       *    *            *T  ****    *****   I     17.78
+           I             *         *    *            *T* ****    ******  I
+           I             *   *     *    *    *  *    *T* ****    ******  I
+           I             **  *     *    *    *  *    *T******    ******  I
+      15.87I             **  **   **    *    *  *    *T******    ******  I     15.87
+           I             **  **   **    *   **  **   *T******    ******  I
+           I             **  **   **    *   **  **   *T******    ******  I
+           I             ** ***   **    *   **  **   *T******   T******  I
+      13.95I             ******   **   **   **  **   *T******   T******  I     13.95
+           I             ******   **   **   **  **   *T*******  T******  I
+           I             *******  **   **   **  **   *T*******  T******* I
+           I             *******  **   **   ******  S*T*******  T******* I
+      12.04I             ******* ***   **   ******  S*T*******  T*******SI     12.04
+           I             ******* ****  **   ******  S*T*******S*T*******SI
+           I             *******S****  ***  ******* S*T*******S*T*******SI
+           I            ********S****  ***  ******* S*T*******S*T*******SI
+      10.12I            ********S****  *** *********S*T*******S*T*******SI     10.12
+           I            ********S****  *** *********S*T*******S*T*******SI
+           I            ********S**** **** *********S*T*******S*T*******SI
+           I            ********S*********S*********S*T*******S*T*******SI
+       8.20I            ********S*********S*********S*T*******S*T*******SI      8.20
+           I            ********S*********S*********S*T*******S*T*******SI
+           I            ********S*********S*********S*T*******S*T*******SI
+           I            ********S*********S*********S*T*******S*T*******SI
+       6.29I           *********S*********S*********S*T*******S*T*******SI      6.29
+           I    *      *********S*********S*********S*T*******S*T*******SI
+           I   **      *********S*********S*********S*T*******S*T*******SI
+           I   **      *********S*********S*********S*T*******S*T*******SI
+       4.37I   **      *********S*********S*********S*T*******S*T*******SI      4.37
+           I   ***    S*********S*********S*********S*T*******S*T*******SI
+           I   ***    S*********S*********S*********S*T*******S*T*******SI
+           I   ***    S*********S*********S*********S*T*******S*T*******SI
+       2.45I  ****   *S*********S*********S*********S*T*******S*T*******SI      2.45
+           I  *****  *S*********S*********S*********S*T*******S*T*******SI
+           I  ***** **S*********S*********S*********S*T*******S*T*******SI
+           I *********S*********S*********S*********S*T*******S*T*******SI
+       0.54I**********S*********S*********S*********S*T*******S*T*******SI      0.54
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 26100            PAGE  24, SERIES bps_permits_addi
+
+  Peak probabilities for Tukey spectrum estimator
+  Spectrum estimated from 2006.Jan to 2013.Dec.
+
+                                          S1       S2       S3       S4       S5       S6       TD
+                                        ------   ------   ------   ------   ------   ------   ------
+  Model Residuals                        0.398    0.824    0.538    0.007    0.264    0.021    0.779  
+  Original Series (Table A1 or B1)       0.850    0.801    0.869    0.529    0.931*   0.084    0.232  
+  Seasonally adjusted series (E2)        0.008    0.055    0.073    0.008    0.070    0.191    0.719  
+  Modified Irregular (E3)                0.068    0.058    0.063    0.010    0.065    0.178    0.735  
+  ----------
+     ** - Peak Probability > 0.99,
+      * - 0.90 < Peak Probability < 0.99
+
+

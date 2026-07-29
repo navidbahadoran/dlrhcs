@@ -1,0 +1,1395 @@
+  Reading input spec file from D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\ces_hours_additive_level_27260_200701_201612.spc
+
+1
+
+               U. S. Department of Commerce, U. S. Census Bureau
+
+              X-13ARIMA-SEATS monthly seasonal adjustment Method,
+                          Release Version 1.1 Build 62
+
+
+           This software application provides an enhanced version of
+             Statistics Canada's X-11-ARIMA extension (Dagum, 1980)
+                 of the X-11 variant of the Census Method II of
+                      Shiskin, Young and Musgrave (1967).
+
+            It also provides an ARIMA model-based method following
+       Hillmer and Tiao (1982) and Burman (1980) that is very similar
+       to the update of the method of SEATS (Gomez and Maravall, 1996)
+                produced at the Bank of Spain by G. Caporello and
+               A. Maravall for TSW (Caporello and Maravall, 2004).
+          The present application includes additional enhancements.
+
+         X-13ARIMA-SEATS includes an automatic ARIMA model selection procedure
+          based largely on the procedure of Gomez and Maravall (1998)
+            as implemented in TRAMO (1996) and subsequent revisions.
+
+              Primary Programmers: Brian Monsell, Mark Otto and,
+                 for the ARIMA model-based signal extraction,
+                      Gianluca Caporello and Victor Gomez
+
+
+     Series Title- ces_hours 27260
+     Series Name- ces_hours_additi
+     Jul 29, 2026  08.41.21 
+
+        -Period covered-  1st month,2007 to 12th month,2016
+        -Type of run - additive seasonal adjustment
+
+        -Sigma limits for graduating extreme values are  1.5 and  2.5 .
+        -3x3 moving average used in section 1 of each iteration, 
+         3x5 moving average in section 2 of iterations B and C,
+         moving average for final seasonal factors chosen by Global MSR.
+        -Holiday adjustment factors applied directly to the final seasonally adjusted series
+        -Spectral plots generated for selected series
+        -Spectral plots generated for series starting in 2009.Jan
+
+ FILE SAVE REQUESTS (* indicates file exists and will be overwritten)
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\ces_hours_additive_level_27260_200701_201612.d10  final seasonal factors
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\ces_hours_additive_level_27260_200701_201612.d11  final seasonally adjusted data
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\ces_hours_additive_level_27260_200701_201612.out  program output file
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\ces_hours_additive_level_27260_200701_201612.err  program error file
+        ces_hours 27260            PAGE   1, SERIES ces_hours_additi
+
+     Contents of spc file D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\ces_hours_additive_level_27260_200701_201612.spc
+
+ Line #
+ ------
+      1: series {
+      2:   title = "ces_hours 27260"
+      3:   start = 2007.1
+      4:   period = 12
+      5:   data = (
+      6: 35.2
+      7: 35.7
+      8: 35.9
+      9: 36.4
+     10: 34.9
+     11: 36.5
+     12: 35.7
+     13: 35.5
+     14: 35.5
+     15: 35
+     16: 33.7
+     17: 34.1
+     18: 32.3
+     19: 32.6
+     20: 32.2
+     21: 31.8
+     22: 32
+     23: 39.5
+     24: 38.4
+     25: 37.4
+     26: 37.2
+     27: 36.7
+     28: 37.2
+     29: 36.5
+     30: 36.5
+     31: 37.2
+     32: 36.3
+     33: 36.1
+     34: 35
+     35: 34.7
+     36: 33
+     37: 33.4
+     38: 33.4
+     39: 33.4
+     40: 33.2
+     41: 33.3
+     42: 32.6
+     43: 33.1
+     44: 33.2
+     45: 34
+     46: 34
+     47: 34.1
+     48: 34.2
+     49: 34.4
+     50: 34
+     51: 33.7
+     52: 33.9
+     53: 34.1
+     54: 34.5
+     55: 34.8
+     56: 34.6
+     57: 34.8
+     58: 34.9
+     59: 34.9
+     60: 34.7
+     61: 34.2
+     62: 34.2
+     63: 34.4
+     64: 34.6
+     65: 34.2
+     66: 34.2
+     67: 33.8
+     68: 34.1
+     69: 33.8
+     70: 33.8
+     71: 33.7
+     72: 34.3
+     73: 33.8
+     74: 34.9
+     75: 34.5
+     76: 34.4
+     77: 34.1
+     78: 33.9
+     79: 34.1
+     80: 34.1
+     81: 34.2
+     82: 34.4
+     83: 34.9
+     84: 34.9
+     85: 34.7
+     86: 35.1
+     87: 34.6
+     88: 35
+     89: 35
+     90: 34.7
+     91: 34.9
+     92: 34.8
+     93: 35
+     94: 35.1
+     95: 35.2
+     96: 34.8
+     97: 35
+     98: 35
+     99: 35.1
+    100: 35.4
+    101: 35.4
+    102: 34.8
+    103: 35
+    104: 34.9
+    105: 35.1
+    106: 34.8
+    107: 34.9
+    108: 34.7
+    109: 35.5
+    110: 34.8
+    111: 35.4
+    112: 35.7
+    113: 35.3
+    114: 35.2
+    115: 35.2
+    116: 35.1
+    117: 34.9
+    118: 35.3
+    119: 34.7
+    120: 34.9
+    121: 34.5
+    122: 34.4
+    123: 34.4
+    124: 34.5
+    125: 34.7
+    126:   )
+    127: }
+    128: transform { function = none }
+    129: regression { aictest = (td easter) }
+    130: automdl {}
+    131: x11 { mode = add save = (d10 d11) }
+        ces_hours 27260            PAGE   2, SERIES ces_hours_additi
+
+ A 1  Time series data (for the span analyzed)
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2007          35.      36.      36.      36.      35.      37.
+                36.      36.      36.      35.      34.      34.          424.
+ 
+  2008          32.      33.      32.      32.      32.      40.
+                38.      37.      37.      37.      37.      37.          424.
+ 
+  2009          37.      37.      36.      36.      35.      35.
+                33.      33.      33.      33.      33.      33.          415.
+ 
+  2010          33.      33.      33.      34.      34.      34.
+                34.      34.      34.      34.      34.      34.          405.
+ 
+  2011          35.      35.      35.      35.      35.      35.
+                35.      34.      34.      34.      35.      34.          415.
+ 
+  2012          34.      34.      34.      34.      34.      34.
+                34.      34.      35.      35.      34.      34.          409.
+ 
+  2013          34.      34.      34.      34.      34.      35.
+                35.      35.      35.      35.      35.      35.          415.
+ 
+  2014          35.      35.      35.      35.      35.      35.
+                35.      35.      35.      35.      35.      35.          420.
+ 
+  2015          35.      35.      35.      35.      35.      35.
+                35.      36.      35.      35.      36.      35.          421.
+ 
+  2016          35.      35.      35.      35.      35.      35.
+                35.      35.      34.      34.      35.      35.          418.
+ 
+  AVGE          34.      35.      35.      35.      34.      35.
+                35.      35.      35.      35.      35.      35.
+
+  Table Total-        4167.   Mean-        35.   Std. Dev.-         1.
+                              Min -        32.        Max -        40.
+        ces_hours 27260            PAGE   3, SERIES ces_hours_additi
+                        Automatic ARIMA Model Selection
+
+                    Procedure based closely on TRAMO method 
+                         of Gomez and Maravall (2000)
+              "Automatic Modeling Methods for Univariate Series",
+                            A Course in Time Series
+                  (Edited by D. Pena, G. C. Tiao, R. S. Tsay),
+                         New York : J. Wiley and Sons
+
+
+     Maximum order for regular ARMA parameters :   2
+     Maximum order for seasonal ARMA parameters :   1
+     Maximum order for regular differencing :   2
+     Maximum order for seasonal differencing :   1
+
+   Results of Unit Root Test for identifying orders of differencing:
+     Regular difference order :   0
+     Seasonal difference order :   0
+
+  Automatic model choice : (1 0 0)
+
+
+  Final Checks for Identified Model
+
+
+  Checking for Unit Roots.
+   No unit roots found.
+   Nonseasonal MA not within  0.001 of 1.0 - model passes test.
+
+  Checking for insignificant ARMA coefficients.
+
+  Final automatic model choice : (1 0 0)
+   End of automatic model selection procedure.
+
+ Average absolute percentage error in within-sample forecasts:
+  Last year:   0.56      Last-1 year:   0.92     Last-2 year:   0.81
+  Last three years:    0.76
+
+ Estimation converged in    4 ARMA iterations,   19 function evaluations.
+
+ Regression Model
+ ------------------------------------------------------------------------------
+                             Parameter        Standard
+ Variable                     Estimate           Error      t-value
+ ------------------------------------------------------------------------------
+ Constant                      34.7338         0.25992       133.63
+ ------------------------------------------------------------------------------
+
+
+ ARIMA Model:  (1 0 0)
+                                              Standard
+ Parameter                    Estimate          Errors
+ -----------------------------------------------------
+ Nonseasonal AR                                    
+   Lag  1                       0.7278         0.06183
+
+ Variance                       0.62728E+00
+ SE of Var                      0.80981E-01
+ -----------------------------------------------------
+
+ Likelihood Statistics
+ ------------------------------------------------------------------
+ Number of observations (nobs)                                  120
+ Effective number of observations (nefobs)                      120
+ Number of parameters estimated (np)                              3
+ Log likelihood (L)                                       -142.6681
+ AIC                                                       291.3362 
+ AICC (F-corrected-AIC)                                    291.5431 
+ Hannan Quinn                                              294.7323 
+ BIC                                                       299.6987 
+ ------------------------------------------------------------------
+
+ QS Statistic for regARIMA Model Residuals (full series):             1.01
+                                                       (P-Value =     0.6036)
+
+ QS Statistic for regARIMA Model Residuals (starting 2009.Jan):       0.44
+                                                       (P-Value =     0.8006)
+
+
+  At least one visually significant residual trading day peaks has been
+  found in the spectral plot of the following series starting in 2009.Jan:
+
+          regARIMA model residuals (1 Trading Day peak(s))
+
+
+
+
+      10*LOG(SPECTRUM) of the regARIMA model residuals
+      Spectrum estimated from 2009.Jan to 2016.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+       0.18I                                                          *  I      0.18
+           I                                                          *  I
+           I                                                          *  I
+           I                                                          *  I
+      -1.02I                                                          *  I     -1.02
+           I                                                          *  I
+           I                                                          *  I
+           I                                                          *  I
+      -2.23I                                          T               *  I     -2.23
+           I*                                         T               *  I
+           I*                                         T               *  I
+           I*                                         T               *  I
+      -3.43I*                                         T               *  I     -3.43
+           I*                                         T               *  I
+           I*                                         T               *  I
+           I*   *                                     T               *  I
+      -4.63I*   *                                     T               ** I     -4.63
+           I*   *         *                           T               ** I
+           I*   *         *                           T               ** I
+           I**  *    *    *                           T              *** I
+      -5.84I**  *    *    *                           T              *** I     -5.84
+           I**  *    *    *                           T              *** I
+           I** **   **    *                           T              *** I
+           I** **   **    **                          T              ***SI
+      -7.04I** ***  **    **                          T       S   *  ***SI     -7.04
+           I******  **    **                          T       S   *  ***SI
+           I******  **    **        *                 T       S* **  ***SI
+           I******  **    **        *                 T       S* **  ***SI
+      -8.24I******  **    **        *                 T       S* **  ***SI     -8.24
+           I******  **    **  *     *                *T       S*T*** ***SI
+           I******  **    **  *     *        *       *T       S*T*******SI
+           I******  **    **  *     *        *       *T       S*T*******SI
+      -9.44I****** ***   ***  *     *        *       *T*      S*T*******SI     -9.44
+           I**********S  ******     *        *       *T*      S*T*******SI
+           I**********S  *******    *        **      *T*      S*T*******SI
+           I**********S  *******    **       **      *T*     *S*T*******SI
+     -10.65I**********S  *******    **       **      *T*     *S*T*******SI    -10.65
+           I**********S  *******    **      ***      *T*     *S*T*******SI
+           I**********S  *******    **      ***      *T*     *S*T*******SI
+           I**********S  *******    **      ****     *T*     *S*T*******SI
+     -11.85I**********S  *******    **      *****    *T*     *S*T*******SI    -11.85
+           I**********S*********   ***      *****   S*T*     *S*T*******SI
+           I**********S*********   ***      ******  S*T*     *S*T*******SI
+           I**********S*********   ***      ******  S*T*     *S*T*******SI
+     -13.05I**********S*********   ***      ******  S*T*     *S*T*******SI    -13.05
+           I**********S*********S  ***     *******  S*T*     *S*T*******SI
+           I**********S*********S  ***     ******** S*T*    **S*T*******SI
+           I**********S*********S  ****    *********S*T**   **S*T*******SI
+     -14.26I**********S*********S  ****   S*********S*T**   **S*T*******SI    -14.26
+           I**********S*********S  ****  *S*********S*T**   **S*T*******SI
+           I**********S*********S *****  *S*********S*T**   **S*T*******SI
+           I**********S*********S*********S*********S*T*** ***S*T*******SI
+     -15.46I**********S*********S*********S*********S*T*******S*T*******SI    -15.46
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+
+
+ FORECASTING
+  Origin  2016.Dec
+  Number        12
+
+  Forecasts and Standard Errors of the Prior Adjusted Data
+   ------------------------------
+                         Standard
+       Date   Forecast      Error
+   ------------------------------
+   2017.Jan      34.71      0.795
+   2017.Feb      34.72      0.987
+   2017.Mar      34.72      1.078
+   2017.Apr      34.72      1.124
+   2017.May      34.73      1.149
+   2017.Jun      34.73      1.163
+   2017.Jul      34.73      1.171
+   2017.Aug      34.73      1.176
+   2017.Sep      34.73      1.179
+   2017.Oct      34.73      1.181
+   2017.Nov      34.73      1.182
+   2017.Dec      34.73      1.182
+   ------------------------------
+
+  Confidence intervals with coverage probability ( 0.95000
+   ---------------------------------------
+       Date      Lower  Forecast     Upper
+   ---------------------------------------
+   2017.Jan      33.15     34.71     36.27
+   2017.Feb      32.78     34.72     36.65
+   2017.Mar      32.61     34.72     36.83
+   2017.Apr      32.52     34.72     36.93
+   2017.May      32.47     34.73     36.98
+   2017.Jun      32.45     34.73     37.01
+   2017.Jul      32.43     34.73     37.03
+   2017.Aug      32.43     34.73     37.04
+   2017.Sep      32.42     34.73     37.04
+   2017.Oct      32.42     34.73     37.05
+   2017.Nov      32.42     34.73     37.05
+   2017.Dec      32.42     34.73     37.05
+   ---------------------------------------
+        ces_hours 27260            PAGE   4, SERIES ces_hours_additi
+
+ B 1  Original series (prior adjusted)
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2007          35.      36.      36.      36.      35.      37.
+                36.      36.      36.      35.      34.      34.          424.
+ 
+  2008          32.      33.      32.      32.      32.      40.
+                38.      37.      37.      37.      37.      37.          424.
+ 
+  2009          37.      37.      36.      36.      35.      35.
+                33.      33.      33.      33.      33.      33.          415.
+ 
+  2010          33.      33.      33.      34.      34.      34.
+                34.      34.      34.      34.      34.      34.          405.
+ 
+  2011          35.      35.      35.      35.      35.      35.
+                35.      34.      34.      34.      35.      34.          415.
+ 
+  2012          34.      34.      34.      34.      34.      34.
+                34.      34.      35.      35.      34.      34.          409.
+ 
+  2013          34.      34.      34.      34.      34.      35.
+                35.      35.      35.      35.      35.      35.          415.
+ 
+  2014          35.      35.      35.      35.      35.      35.
+                35.      35.      35.      35.      35.      35.          420.
+ 
+  2015          35.      35.      35.      35.      35.      35.
+                35.      36.      35.      35.      36.      35.          421.
+ 
+  2016          35.      35.      35.      35.      35.      35.
+                35.      35.      34.      34.      35.      35.          418.
+ 
+  AVGE          34.      35.      35.      35.      34.      35.
+                35.      35.      35.      35.      35.      35.
+
+  Table Total-        4167.   Mean-        35.   Std. Dev.-         1.
+                              Min -        32.        Max -        40.
+
+ B 1.A  Forecasts of (prior adjusted) original series
+  From  2017.Jan to 2017.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2017          35.      35.      35.      35.      35.      35.
+                35.      35.      35.      35.      35.      35.          417.
+ 
+        ces_hours 27260            PAGE   5, SERIES ces_hours_additi
+
+ C 17  Final weights for irregular component
+  From  2007.Jan to 2016.Dec
+  Observations        120
+  Lower sigma limit    1.50
+  Upper sigma limit    2.50
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2007         100.     100.     100.     100.      56.     100.
+               100.     100.     100.      90.     100.      46.           32.
+ 
+  2008         100.     100.      34.       0.       0.       0.
+                 0.     100.     100.     100.     100.      96.           32.
+ 
+  2009         100.     100.     100.     100.     100.     100.
+                 0.     100.     100.     100.     100.     100.           32.
+ 
+  2010         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.           29.
+ 
+  2011          94.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.           24.
+ 
+  2012         100.     100.     100.     100.     100.      71.
+               100.     100.       0.      85.     100.     100.           17.
+ 
+  2013         100.     100.     100.     100.     100.     100.
+               100.     100.      76.     100.     100.     100.           17.
+ 
+  2014         100.     100.     100.     100.     100.     100.
+                60.     100.     100.     100.     100.     100.           15.
+ 
+  2015         100.     100.     100.     100.     100.     100.
+                 0.       0.       0.     100.     100.     100.           13.
+ 
+  2016         100.     100.     100.     100.       0.     100.
+               100.     100.     100.     100.     100.     100.           13.
+ 
+        ces_hours 27260            PAGE   6, SERIES ces_hours_additi
+
+ D 8  Final unmodified SI ratios
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007          -1.      -1.      -0.       0.      -1.       1.
+                 0.       0.       1.       1.      -0.       0.            0.
+ 
+  2008          -1.      -1.      -1.      -2.      -3.       4.
+                 2.       1.       0.      -0.       0.      -1.           -0.
+ 
+  2009          -1.       0.      -0.       0.      -0.       0.
+                -1.      -0.       0.       0.      -0.       0.           -0.
+ 
+  2010          -1.      -0.      -0.       0.       0.       0.
+                 0.       0.      -0.      -0.      -0.      -0.           -0.
+ 
+  2011           0.       0.      -0.       0.       0.       0.
+                 0.      -0.      -0.       0.       0.      -0.            0.
+ 
+  2012          -0.      -0.       0.      -0.      -0.      -0.
+                 0.      -0.       1.       0.       0.      -0.            0.
+ 
+  2013          -0.      -0.      -0.      -0.      -0.       0.
+                 0.      -0.       0.      -0.       0.       0.            0.
+ 
+  2014          -0.      -0.      -0.      -0.       0.       0.
+                -0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  2015          -0.      -0.      -0.       0.      -0.      -0.
+                -0.       0.      -0.       0.       0.      -0.           -0.
+ 
+  2016          -0.       0.       0.      -0.       0.      -0.
+                 0.      -0.      -0.      -0.       0.       0.            0.
+ 
+  AVGE          -0.      -0.      -0.      -0.      -0.       1.
+                 0.       0.       0.       0.       0.       0.
+
+  Table Total-          -1.   Mean-        -0.   Std. Dev.-         1.
+                              Min -        -3.        Max -         4.
+        ces_hours 27260            PAGE   7, SERIES ces_hours_additi
+
+ D 8.B  Final unmodified SI ratios, with labels for outliers and extreme values
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ ---------------------------------------------------------------------
+               Jan       Feb       Mar       Apr       May       Jun  
+               Jul       Aug       Sep       Oct       Nov       Dec  
+ ---------------------------------------------------------------------
+  2007         -1.       -1.       -0.        0.       -1.*       1.  
+                0.        0.        1.        1.*      -0.        0.* 
+ 
+  2008         -1.       -1.       -1.*      -2.*      -3.*       4.* 
+                2.*       1.        0.       -0.        0.       -1.* 
+ 
+  2009         -1.        0.       -0.        0.       -0.        0.  
+               -1.*      -0.        0.        0.       -0.        0.  
+ 
+  2010         -1.       -0.       -0.        0.        0.        0.  
+                0.        0.       -0.       -0.       -0.       -0.  
+ 
+  2011          0.*       0.       -0.        0.        0.        0.  
+                0.       -0.       -0.        0.        0.       -0.  
+ 
+  2012         -0.       -0.        0.       -0.       -0.       -0.* 
+                0.       -0.        1.*       0.*       0.       -0.  
+ 
+  2013         -0.       -0.       -0.       -0.       -0.        0.  
+                0.       -0.        0.*      -0.        0.        0.  
+ 
+  2014         -0.       -0.       -0.       -0.        0.        0.  
+               -0.*      -0.       -0.        0.        0.        0.  
+ 
+  2015         -0.       -0.       -0.        0.       -0.       -0.  
+               -0.*       0.*      -0.*       0.        0.       -0.  
+ 
+  2016         -0.        0.        0.       -0.        0.*      -0.  
+                0.       -0.       -0.       -0.        0.        0.  
+ 
+
+  Key to symbols:
+    *  : extreme value as determined by X-11 extreme value procedure
+ 
+        ces_hours 27260            PAGE   8, SERIES ces_hours_additi
+
+ D 9  Final replacement values for SI ratios
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+  2007     ******** ******** ******** ********      -1. ********
+           ******** ******** ********       1. ********       0.
+ 
+  2008     ******** ********      -1.       0.      -0.       1.
+                 1. ******** ******** ******** ********      -1.
+ 
+  2009     ******** ******** ******** ******** ******** ********
+                 0. ******** ******** ******** ******** ********
+ 
+  2010     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2011           0. ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2012     ******** ******** ******** ******** ********      -0.
+           ******** ********       0.       0. ******** ********
+ 
+  2013     ******** ******** ******** ******** ******** ********
+           ******** ********       0. ******** ******** ********
+ 
+  2014     ******** ******** ******** ******** ******** ********
+                -0. ******** ******** ******** ******** ********
+ 
+  2015     ******** ******** ******** ******** ******** ********
+                 0.      -0.      -0. ******** ******** ********
+ 
+  2016     ******** ******** ******** ********       0. ********
+           ******** ******** ******** ******** ******** ********
+ 
+
+ D 9.A  Moving seasonality ratio
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+ ---------------------------------------------------------------
+   I          0.212    0.335    0.239    0.194    0.193    0.192
+   S          0.102    0.052    0.046    0.040    0.048    0.064
+ RATIO        2.076    6.383    5.207    4.903    4.031    2.999
+
+
+
+ ---------------------------------------------------------------
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+   I          0.190    0.363    0.184    0.348    0.188    0.308
+   S          0.042    0.076    0.053    0.043    0.044    0.042
+ RATIO        4.545    4.774    3.487    8.183    4.311    7.349
+
+
+
+        ces_hours 27260            PAGE   9, SERIES ces_hours_additi
+
+ D 10  Final seasonal factors
+  From  2007.Jan to 2016.Dec
+  Observations        120
+  Seasonal filter    3 x 5 moving average
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007          -1.      -0.      -0.       0.      -0.       1.
+                 0.       0.       0.       0.      -0.      -0.           -0.
+ 
+  2008          -1.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.       0.      -0.      -0.           -0.
+ 
+  2009          -1.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.      -0.      -0.      -0.           -0.
+ 
+  2010          -0.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.      -0.       0.      -0.           -0.
+ 
+  2011          -0.      -0.      -0.       0.       0.       0.
+                 0.      -0.       0.      -0.       0.      -0.           -0.
+ 
+  2012          -0.      -0.      -0.       0.       0.       0.
+                 0.      -0.      -0.      -0.       0.       0.            0.
+ 
+  2013          -0.      -0.      -0.      -0.       0.       0.
+                 0.      -0.      -0.      -0.       0.       0.            0.
+ 
+  2014          -0.      -0.      -0.      -0.      -0.       0.
+                 0.      -0.       0.       0.       0.       0.            0.
+ 
+  2015          -0.      -0.      -0.      -0.      -0.       0.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  2016          -0.       0.      -0.      -0.      -0.      -0.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  AVGE          -0.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.      -0.       0.      -0.
+
+  Table Total-          -0.   Mean-        -0.   Std. Dev.-         0.
+                              Min -        -1.        Max -         1.
+
+ D 10.A  Final seasonal component forecasts
+  From  2017.Jan to 2017.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2017          -0.       0.      -0.      -0.      -0.      -0.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+        ces_hours 27260            PAGE  10, SERIES ces_hours_additi
+
+ D 11  Final seasonally adjusted data
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2007          36.      36.      36.      36.      35.      36.
+                35.      35.      35.      35.      34.      34.          424.
+ 
+  2008          33.      33.      33.      32.      32.      39.
+                38.      37.      37.      37.      37.      37.          424.
+ 
+  2009          37.      37.      37.      36.      35.      34.
+                33.      33.      33.      33.      33.      33.          416.
+ 
+  2010          33.      33.      33.      34.      34.      34.
+                34.      34.      34.      34.      34.      34.          405.
+ 
+  2011          35.      35.      35.      35.      35.      35.
+                34.      34.      34.      34.      35.      34.          415.
+ 
+  2012          34.      34.      34.      34.      34.      34.
+                34.      34.      35.      35.      34.      34.          409.
+ 
+  2013          34.      34.      34.      34.      34.      35.
+                35.      35.      35.      35.      35.      35.          415.
+ 
+  2014          35.      35.      35.      35.      35.      35.
+                35.      35.      35.      35.      35.      35.          420.
+ 
+  2015          35.      35.      35.      35.      35.      35.
+                35.      36.      35.      35.      35.      35.          421.
+ 
+  2016          35.      35.      35.      35.      35.      35.
+                35.      35.      34.      34.      34.      35.          418.
+ 
+  AVGE          35.      35.      35.      35.      34.      35.
+                35.      35.      35.      35.      35.      35.
+
+  Table Total-        4167.   Mean-        35.   Std. Dev.-         1.
+                              Min -        32.        Max -        39.
+        ces_hours 27260            PAGE  11, SERIES ces_hours_additi
+
+ D 12  Final trend cycle
+  From  2007.Jan to 2016.Dec
+  Observations        120
+  Trend filter    13-term Henderson moving average
+  I/C ratio        1.36
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2007          36.      36.      36.      36.      36.      36.
+                35.      35.      35.      35.      34.      34.          424.
+ 
+  2008          33.      33.      33.      34.      35.      35.
+                36.      37.      37.      37.      37.      37.          424.
+ 
+  2009          37.      37.      36.      36.      35.      34.
+                34.      33.      33.      33.      33.      33.          416.
+ 
+  2010          33.      33.      33.      34.      34.      34.
+                34.      34.      34.      34.      34.      34.          406.
+ 
+  2011          35.      35.      35.      35.      35.      35.
+                34.      34.      34.      34.      34.      34.          414.
+ 
+  2012          34.      34.      34.      34.      34.      34.
+                34.      34.      34.      34.      34.      34.          409.
+ 
+  2013          34.      34.      34.      34.      34.      35.
+                35.      35.      35.      35.      35.      35.          415.
+ 
+  2014          35.      35.      35.      35.      35.      35.
+                35.      35.      35.      35.      35.      35.          420.
+ 
+  2015          35.      35.      35.      35.      35.      35.
+                35.      35.      35.      35.      35.      35.          421.
+ 
+  2016          35.      35.      35.      35.      35.      35.
+                35.      35.      34.      34.      34.      35.          418.
+ 
+  AVGE          35.      35.      35.      35.      35.      35.
+                35.      35.      35.      35.      35.      35.
+
+  Table Total-        4168.   Mean-        35.   Std. Dev.-         1.
+                              Min -        33.        Max -        37.
+        ces_hours 27260            PAGE  12, SERIES ces_hours_additi
+
+ D 13  Final irregular component
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2007          -0.      -0.       0.       0.      -1.       0.
+                -0.      -0.       0.       0.      -0.       1.            0.
+ 
+  2008          -0.      -0.      -1.      -2.      -2.       4.
+                 2.       0.       0.      -0.       0.      -0.            2.
+ 
+  2009           0.       1.       0.      -0.      -0.      -0.
+                -1.      -0.      -0.       0.       0.       0.            0.
+ 
+  2010          -0.      -0.      -0.       0.       0.      -0.
+                -0.       0.      -0.      -0.      -0.      -0.            0.
+ 
+  2011           0.       0.      -0.      -0.       0.       0.
+                -0.      -0.      -0.       0.       0.      -0.            0.
+ 
+  2012           0.      -0.       0.      -0.      -0.      -0.
+                 0.      -0.       1.       0.       0.      -0.            0.
+ 
+  2013          -0.       0.      -0.      -0.      -0.       0.
+                 0.      -0.       0.      -0.      -0.       0.            0.
+ 
+  2014          -0.       0.      -0.       0.       0.       0.
+                -0.       0.      -0.      -0.       0.       0.            0.
+ 
+  2015          -0.      -0.      -0.       0.      -0.      -0.
+                -0.       0.      -0.       0.       0.      -0.            0.
+ 
+  2016           0.      -0.       0.      -0.       0.      -0.
+                 0.      -0.      -0.      -0.      -0.       0.            0.
+ 
+  S.D.           0.       0.       0.       1.       1.       1.
+                 1.       0.       0.       0.       0.       0.
+
+  Table Total-          -0.   Mean-        -0.   Std. Dev.-         1.
+                              Min -        -2.        Max -         4.
+        ces_hours 27260            PAGE  13, SERIES ces_hours_additi
+
+ D 16  Combined adjustment factors
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007          -1.      -0.      -0.       0.      -0.       1.
+                 0.       0.       0.       0.      -0.      -0.           -0.
+ 
+  2008          -1.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.       0.      -0.      -0.           -0.
+ 
+  2009          -1.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.      -0.      -0.      -0.           -0.
+ 
+  2010          -0.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.      -0.       0.      -0.           -0.
+ 
+  2011          -0.      -0.      -0.       0.       0.       0.
+                 0.      -0.       0.      -0.       0.      -0.           -0.
+ 
+  2012          -0.      -0.      -0.       0.       0.       0.
+                 0.      -0.      -0.      -0.       0.       0.            0.
+ 
+  2013          -0.      -0.      -0.      -0.       0.       0.
+                 0.      -0.      -0.      -0.       0.       0.            0.
+ 
+  2014          -0.      -0.      -0.      -0.      -0.       0.
+                 0.      -0.       0.       0.       0.       0.            0.
+ 
+  2015          -0.      -0.      -0.      -0.      -0.       0.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  2016          -0.       0.      -0.      -0.      -0.      -0.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  AVGE          -0.      -0.      -0.       0.      -0.       0.
+                 0.       0.       0.      -0.       0.      -0.
+
+  Table Total-          -0.   Mean-        -0.   Std. Dev.-         0.
+                              Min -        -1.        Max -         1.
+
+ D 16.A  Combined adjustment component forecasts
+  From  2017.Jan to 2017.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2017          -0.       0.      -0.      -0.      -0.      -0.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+        ces_hours 27260            PAGE  14, SERIES ces_hours_additi
+
+ E 4  Differences of annual totals
+  From          2007 to 2016
+  Observations         10
+ -----------------------------------
+  Year       Unmodified     Modified
+                  (D11)         (E2)
+ -----------------------------------
+  2007              -0.          -0.
+ 
+  2008              -0.          -0.
+ 
+  2009              -0.          -0.
+ 
+  2010              -0.          -0.
+ 
+  2011              -0.          -0.
+ 
+  2012               0.           0.
+ 
+  2013               0.           0.
+ 
+  2014               0.           0.
+ 
+  2015              -0.          -0.
+ 
+  2016              -0.          -0.
+ 
+        ces_hours 27260            PAGE  15, SERIES ces_hours_additi
+
+ E 5  Month-to-month differences in the original series
+  From  2007.Feb to 2016.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007                    1.       0.       1.      -1.       2.
+                -1.      -0.       0.      -0.      -1.       0.           -0.
+ 
+  2008          -2.       0.      -0.      -0.       0.       8.
+                -1.      -1.      -0.      -0.       1.      -1.            0.
+ 
+  2009           0.       1.      -1.      -0.      -1.      -0.
+                -2.       0.       0.       0.      -0.       0.           -0.
+ 
+  2010          -1.       1.       0.       1.       0.       0.
+                 0.       0.      -0.      -0.       0.       0.            0.
+ 
+  2011           0.       0.      -0.       0.       0.       0.
+                -0.      -0.       0.       0.       0.      -0.            0.
+ 
+  2012           0.      -0.       0.      -0.       0.      -0.
+                 1.      -0.       1.      -0.      -0.      -0.           -0.
+ 
+  2013          -0.       0.       0.       0.       0.       1.
+                 0.      -0.       0.      -0.       0.       0.            0.
+ 
+  2014          -0.       0.      -0.       0.       0.       0.
+                -0.       0.       0.       0.       0.       0.            0.
+ 
+  2015          -1.       0.      -0.       0.      -0.       0.
+                -0.       1.      -1.       1.       0.      -0.           -0.
+ 
+  2016          -0.       0.      -0.      -0.       0.      -1.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  AVGE          -0.       0.      -0.       0.      -0.       1.
+                -0.      -0.       0.      -0.       0.      -0.
+
+  Table Total-          -0.   Mean-        -0.   Std. Dev.-         1.
+                              Min -        -2.        Max -         8.
+        ces_hours 27260            PAGE  16, SERIES ces_hours_additi
+
+ E 6  Month-to-month differences in seasonally adjusted series (D11)
+  From  2007.Feb to 2016.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007                   -0.       0.      -0.      -1.       1.
+                -1.      -0.       0.      -0.      -1.       0.           -0.
+ 
+  2008          -1.      -0.      -0.      -1.       1.       7.
+                -1.      -1.      -0.      -0.       1.      -1.            0.
+ 
+  2009           1.       0.      -1.      -1.      -1.      -1.
+                -2.       0.       0.       0.      -0.       0.           -0.
+ 
+  2010          -0.       0.       0.       0.       0.      -0.
+                 0.       0.      -0.      -0.       0.       0.            0.
+ 
+  2011           1.       0.      -0.      -0.       0.      -0.
+                -0.      -0.      -0.       0.       0.      -0.            0.
+ 
+  2012           0.      -1.       0.      -0.       0.      -0.
+                 1.      -0.       1.      -0.      -0.      -0.           -0.
+ 
+  2013          -0.       0.       0.       0.       0.       0.
+                -0.       0.       0.      -1.       0.       0.            0.
+ 
+  2014          -0.       0.      -0.       0.       0.       0.
+                -0.       0.      -0.       0.       0.       0.            0.
+ 
+  2015          -0.       0.      -0.       0.      -0.       0.
+                -0.       1.      -1.       1.       0.      -0.           -0.
+ 
+  2016           0.      -0.      -0.      -0.       0.      -1.
+                 0.      -0.      -0.      -0.      -0.       0.           -0.
+ 
+  AVGE          -0.      -0.      -0.      -0.      -0.       1.
+                -0.       0.      -0.      -0.      -0.       0.
+
+  Table Total-          -2.   Mean-        -0.   Std. Dev.-         1.
+                              Min -        -2.        Max -         7.
+        ces_hours 27260            PAGE  17, SERIES ces_hours_additi
+
+ E 7  Month-to-month differences in final trend cycle (D12)
+  From  2007.Feb to 2016.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007                   -0.      -0.      -0.      -0.      -0.
+                -0.      -0.      -0.      -0.      -0.      -0.           -0.
+ 
+  2008          -0.      -0.       0.       1.       1.       1.
+                 1.       1.       0.       0.       0.       0.            0.
+ 
+  2009          -0.      -0.      -0.      -1.      -1.      -1.
+                -1.      -0.      -0.      -0.      -0.       0.           -0.
+ 
+  2010           0.       0.       0.       0.       0.       0.
+                 0.      -0.      -0.       0.       0.       0.            0.
+ 
+  2011           0.       0.       0.       0.      -0.      -0.
+                -0.      -0.      -0.      -0.      -0.      -0.            0.
+ 
+  2012          -0.      -0.      -0.      -0.      -0.       0.
+                 0.       0.       0.       0.      -0.      -0.           -0.
+ 
+  2013          -0.      -0.       0.       0.       0.       0.
+                 0.       0.       0.      -0.      -0.       0.            0.
+ 
+  2014           0.       0.       0.       0.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2015          -0.      -0.      -0.      -0.      -0.       0.
+                 0.       0.       0.       0.       0.      -0.            0.
+ 
+  2016          -0.      -0.      -0.      -0.      -0.      -0.
+                -0.      -0.      -0.      -0.       0.       0.           -0.
+ 
+  AVGE          -0.      -0.      -0.      -0.      -0.       0.
+                 0.      -0.      -0.      -0.      -0.      -0.
+
+  Table Total-          -2.   Mean-        -0.   Std. Dev.-         0.
+                              Min -        -1.        Max -         1.
+        ces_hours 27260            PAGE  18, SERIES ces_hours_additi
+
+ E 8  Month-to-month differences in original series adjusted for calendar factors (A18)
+  From  2007.Feb to 2016.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007                    1.       0.       1.      -1.       2.
+                -1.      -0.       0.      -0.      -1.       0.           -0.
+ 
+  2008          -2.       0.      -0.      -0.       0.       8.
+                -1.      -1.      -0.      -0.       1.      -1.            0.
+ 
+  2009           0.       1.      -1.      -0.      -1.      -0.
+                -2.       0.       0.       0.      -0.       0.           -0.
+ 
+  2010          -1.       1.       0.       1.       0.       0.
+                 0.       0.      -0.      -0.       0.       0.            0.
+ 
+  2011           0.       0.      -0.       0.       0.       0.
+                -0.      -0.       0.       0.       0.      -0.            0.
+ 
+  2012           0.      -0.       0.      -0.       0.      -0.
+                 1.      -0.       1.      -0.      -0.      -0.           -0.
+ 
+  2013          -0.       0.       0.       0.       0.       1.
+                 0.      -0.       0.      -0.       0.       0.            0.
+ 
+  2014          -0.       0.      -0.       0.       0.       0.
+                -0.       0.       0.       0.       0.       0.            0.
+ 
+  2015          -1.       0.      -0.       0.      -0.       0.
+                -0.       1.      -1.       1.       0.      -0.           -0.
+ 
+  2016          -0.       0.      -0.      -0.       0.      -1.
+                 0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  AVGE          -0.       0.      -0.       0.      -0.       1.
+                -0.      -0.       0.      -0.       0.      -0.
+
+  Table Total-          -0.   Mean-        -0.   Std. Dev.-         1.
+                              Min -        -2.        Max -         8.
+        ces_hours 27260            PAGE  19, SERIES ces_hours_additi
+
+ E 18  Final adjustment ratios
+  From  2007.Jan to 2016.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2007       97.587   99.196   98.940  100.740   99.249  101.431
+            101.072  101.184  100.994  100.189   99.690   99.540        99.984
+ 
+  2008       97.562   99.218   98.902  100.840   99.365  101.241
+            100.919  100.966  100.759  100.079   99.730   99.548        99.927
+ 
+  2009       98.197   99.450   99.173  100.651   99.708  101.133
+            100.994  100.777  100.501   99.923   99.822   99.456        99.982
+ 
+  2010       98.520   99.657   99.373  100.515   99.931  100.848
+            100.826  100.274  100.209   99.883  100.023   99.608        99.972
+ 
+  2011       99.047   99.780   99.596  100.308  100.113  100.556
+            100.652   99.960  100.017   99.829  100.218   99.791        99.989
+ 
+  2012       99.360   99.871   99.744  100.145  100.091  100.421
+            100.451   99.683   99.976   99.930  100.448  100.052       100.014
+ 
+  2013       99.513   99.805   99.773   99.986  100.009  100.256
+            100.339   99.656   99.985   99.988  100.590  100.190       100.008
+ 
+  2014       99.576   99.875   99.795   99.905   99.899  100.130
+            100.235   99.647  100.008  100.029  100.647  100.322       100.006
+ 
+  2015       99.581   99.921   99.801   99.907   99.879  100.006
+            100.135   99.727   99.966  100.016  100.585  100.420        99.995
+ 
+  2016       99.613  100.015   99.822   99.954   99.879   99.917
+            100.049   99.756   99.904  100.021  100.572  100.448        99.996
+ 
+  AVGE       98.856   99.679   99.492  100.295   99.812  100.594
+            100.567  100.163  100.232   99.989  100.232   99.937
+
+  Table Total-       11998.   Mean-       100.   Std. Dev.-         1.
+                              Min -        98.        Max -       101.
+
+ E 18.A  Final adjustment ratio forecasts
+  From  2017.Jan to 2017.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2017       99.647  100.046   99.867   99.995   99.879   99.828
+            100.044   99.755   99.858  100.071  100.560  100.427        99.998
+ 
+
+  QS statistic for seasonality:
+  Original Series                                     2.75  (P-Value =     0.2529)
+  Original Series (EV adj)                            2.75  (P-Value =     0.2529)
+  Residuals                                           1.01  (P-Value =     0.6036)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+
+  QS statistic for seasonality (starting 2009.Jan):
+  Original Series                                     0.18  (P-Value =     0.9153)
+  Original Series (EV adj)                            0.18  (P-Value =     0.9153)
+  Residuals                                           0.44  (P-Value =     0.8006)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+        ces_hours 27260            PAGE  20, SERIES ces_hours_additi
+
+
+  Visually significant residual trading day peaks have been
+  found in the spectral plot of the following series starting in 2009.Jan:
+
+          differenced original series (Table A1 or B1) (1 Trading Day peak(s))
+
+
+
+ WARNING: Series should not be a candidate for seasonal adjustment
+          because the spectrum of the original series (Table A1 or B1)
+          has no visually significant seasonal peaks.
+
+          If this is a component series of an indirectly adjusted
+          composite series, consider using type = trend or type = summary
+          in the x11 spec.
+        ces_hours 27260            PAGE  21, SERIES ces_hours_additi
+ G 0  10*LOG(SPECTRUM) of the differenced Original Series
+      (Table A1 or B1).  Spectrum estimated from 2009.Jan to 2016.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+       1.44I                                                          *  I      1.44
+           I                                                          *  I
+           I                                                          *  I
+           I                                                          *  I
+       0.16I                                                          *  I      0.16
+           I                                                          *  I
+           I                                                          *  I
+           I                                          T               *  I
+      -1.12I                                          T               *  I     -1.12
+           I                                          T               *  I
+           I                                          T               *  I
+           I                                          T               *  I
+      -2.41I                                          T               *  I     -2.41
+           I                                          T               ** I
+           I                                          T               ** I
+           I                                          T               ** I
+      -3.69I                                          T               ** I     -3.69
+           I                                          T              *** I
+           I              *                           T              *** I
+           I    *         *                           T              *** I
+      -4.97I    *         *                           T              ***SI     -4.97
+           I    *         *         *                 T              ***SI
+           I    *   *     *         *                 T       S      ***SI
+           I    *   *     *         *                 T       S   *  ***SI
+      -6.25I    *   *     *         *                 T       S* **  ***SI     -6.25
+           I    *   *     *         *                 T       S* **  ***SI
+           I    *   *     *         *                 T       S* **  ***SI
+           I    *   *     *         *                *T       S*T** ****SI
+      -7.53I    *   *     *         *                *T       S*T*******SI     -7.53
+           I    *   **    **        *                *T*      S*T*******SI
+           I    *   **    **        *        *       *T*      S*T*******SI
+           I    **  **    **        *        *       *T*      S*T*******SI
+      -8.82I   ***  **   ***        *        *       *T*      S*T*******SI     -8.82
+           I   ***  **   ***  *     *        *       *T*      S*T*******SI
+           I   ***  **   ***  **    *        *       *T*     *S*T*******SI
+           I   ***  **   ***  **    *        **      *T*     *S*T*******SI
+     -10.10I   *** ***   ***  **    *        **      *T*     *S*T*******SI    -10.10
+           I   *** ***   **** **    *       ***      *T*     *S*T*******SI
+           I*  *** ***   *******    **      ***      *T*     *S*T*******SI
+           I*  *******   *******    **      *****   S*T*     *S*T*******SI
+     -11.38I**********   *******   ***      ******  S*T*     *S*T*******SI    -11.38
+           I**********   *******   ***      ******  S*T*     *S*T*******SI
+           I**********   *******   ***      ******  S*T*     *S*T*******SI
+           I**********S  *******   ***      ******  S*T*     *S*T*******SI
+     -12.66I**********S ********   ***      ******* S*T**    *S*T*******SI    -12.66
+           I**********S ********S  ***     *********S*T**    *S*T*******SI
+           I**********S ********S  ***     *********S*T**   **S*T*******SI
+           I**********S ********S  ***   *S*********S*T**   **S*T*******SI
+     -13.95I**********S*********S  ***   *S*********S*T**   **S*T*******SI    -13.95
+           I**********S*********S  ***   *S*********S*T**   **S*T*******SI
+           I**********S*********S ***** **S*********S*T***  **S*T*******SI
+           I**********S*********S****** **S*********S*T*** ***S*T*******SI
+     -15.23I**********S*********S*********S*********S*T*******S*T*******SI    -15.23
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        ces_hours 27260            PAGE  22, SERIES ces_hours_additi
+ G 1  10*LOG(SPECTRUM) of the differenced seasonally adjusted 
+      data (Table E2).  Spectrum estimated from 2009.Jan to 2016.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      -4.98I    *                                                        I     -4.98
+           I    *                                                        I
+           I    *                                                        I
+           I    *                                                        I
+      -6.43I    *                   *                                 *  I     -6.43
+           I   **                   *                                 *  I
+           I   **         *         *                                 *  I
+           I   ***        *         *        *                        *  I
+      -7.87I   ***   *    *         *        *                        *  I     -7.87
+           I   ***   *    *         *        *        T              **  I
+           I  ****  **   **         *  *     *        T*             **  I
+           I  ****  **   **         *  *     *        T*         *   **  I
+      -9.32I  ****  **   **         *  *     *        T*         **  **  I     -9.32
+           I *****  **   **         *  *     *        T*         **  **  I
+           I******* **   **         * **     *        T*         **  **  I
+           I**********   **         * **     *        T*         **  **  I
+     -10.76I**********   ***        * **     *  *     T*    *    **  **  I    -10.76
+           I**********S  ***        * **     *  *     T*    *    **  **  I
+           I**********S  ***        ****     *  *     T*   **    **  **  I
+           I**********S  ***        ****     *  *     T*   ***   **  **  I
+     -12.21I**********S *****       ****     *  *     T*   ***   **  *** I    -12.21
+           I**********S *****       ****     *  *     T*  ****   ******* I
+           I**********S******       ****     *  *     T*  ****   ******* I
+           I**********S******       ****     *  *     T*  ****  T******* I
+     -13.65I**********S******       ****     *  *     T** ****  T******* I    -13.65
+           I**********S*******      ****    **  *     T*******S T*******SI
+           I**********S*******      ****    *****     T*******S*T*******SI
+           I**********S*******      ****    ******    T*******S*T*******SI
+     -15.10I**********S*******      ****    ******    T*******S*T*******SI    -15.10
+           I**********S*******     *****    ******    T*******S*T*******SI
+           I**********S*******     *****    ******    T*******S*T*******SI
+           I**********S*******     *****    ******    T*******S*T*******SI
+     -16.55I**********S*******     *****    ******   *T*******S*T*******SI    -16.55
+           I**********S*******     *****    ******   *T*******S*T*******SI
+           I**********S*******     *****    ******   *T*******S*T*******SI
+           I**********S*******     ******   ******   *T*******S*T*******SI
+     -17.99I**********S*******     ******   ******   *T*******S*T*******SI    -17.99
+           I**********S*******     ******   ******   *T*******S*T*******SI
+           I**********S********    ******   ******   *T*******S*T*******SI
+           I**********S********    ******   ******   *T*******S*T*******SI
+     -19.44I**********S********    ******   *******  *T*******S*T*******SI    -19.44
+           I**********S********    ******   ******* S*T*******S*T*******SI
+           I**********S********    ******  ******** S*T*******S*T*******SI
+           I**********S********    ******  ******** S*T*******S*T*******SI
+     -20.88I**********S********    ******  *********S*T*******S*T*******SI    -20.88
+           I**********S********   *******  *********S*T*******S*T*******SI
+           I**********S********   ******** *********S*T*******S*T*******SI
+           I**********S********   ******** *********S*T*******S*T*******SI
+     -22.33I**********S*********  ********S*********S*T*******S*T*******SI    -22.33
+           I**********S*********  ********S*********S*T*******S*T*******SI
+           I**********S*********  ********S*********S*T*******S*T*******SI
+           I**********S*********  ********S*********S*T*******S*T*******SI
+     -23.77I**********S*********S*********S*********S*T*******S*T*******SI    -23.77
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        ces_hours 27260            PAGE  23, SERIES ces_hours_additi
+ G 2  10*LOG(SPECTRUM) of the Modified Irregular (Table E3).  
+      Spectrum estimated from 2009.Jan to 2016.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      -7.82I                        *                                    I     -7.82
+           I                        *                                    I
+           I                        *                                    I
+           I                        *                                    I
+      -9.39I                        *                                    I     -9.39
+           I                        *                                    I
+           I                        *                                    I
+           I                        *                                    I
+     -10.95I                        *  *                                 I    -10.95
+           I                        *  *     *                           I
+           I              *         * **     *                           I
+           I              *         * **     *                           I
+     -12.51I              *         * **     *                        *  I    -12.51
+           I             **         ****     *                        *  I
+           I             **         ****     *        T               *  I
+           I             **         ****     *        T               *  I
+     -14.08I             **         ****     *        T*              *  I    -14.08
+           I             **         ****     *        T*             **  I
+           I             **         ****     *        T*             **  I
+           I             ****       ****     *  *     T*         **  **  I
+     -15.64I             ****       ****     *  *     T*         **  **  I    -15.64
+           I             ****       ****     *  *     T*         **  **  I
+           I             ****      *****     *  *     T*    *    **  **  I
+           I             ****      *****     *  *     T*   **    **  **  I
+     -17.20I             ****      *****    **  *     T*   **    **  **  I    -17.20
+           I         *   *****     *****    **  *     T*   ***   **  **  I
+           I         *   *****     *****    **  *     T*  ****   **  **  I
+           I         *   *****     *****    *** *     T*  ****   **  *** I
+     -18.77I         *   *****     *****    *****     T*  ****   ******* I    -18.77
+           I         *  ******     *****    ******    T*******  T******* I
+           I         *S ******     ******   ******    T*******S T******* I
+           I         *S ******     ******   ******    T*******S T******* I
+     -20.33I         *S ******     ******   ******    T*******S*T*******SI    -20.33
+           I         *S ******     ******   ******    T*******S*T*******SI
+           I        **S*******     ******   ******    T*******S*T*******SI
+           I        **S*******     ******   ******    T*******S*T*******SI
+     -21.89I        **S*******     ******   ******   *T*******S*T*******SI    -21.89
+           I     *  **S********   *******   ******   *T*******S*T*******SI
+           I     *  **S********   *******   ******   *T*******S*T*******SI
+           I     ** **S********   *******  *******   *T*******S*T*******SI
+     -23.45I     *****S********   *******  *******   *T*******S*T*******SI    -23.45
+           I     *****S********   ******** ********  *T*******S*T*******SI
+           I     *****S********   ******** ********  *T*******S*T*******SI
+           I    ******S********   ******** ******** S*T*******S*T*******SI
+     -25.02I    ******S********  *********S******** S*T*******S*T*******SI    -25.02
+           I    ******S********* *********S******** S*T*******S*T*******SI
+           I    ******S********* *********S*********S*T*******S*T*******SI
+           I    ******S*********S*********S*********S*T*******S*T*******SI
+     -26.58I    ******S*********S*********S*********S*T*******S*T*******SI    -26.58
+           I*   ******S*********S*********S*********S*T*******S*T*******SI
+           I*  *******S*********S*********S*********S*T*******S*T*******SI
+           I** *******S*********S*********S*********S*T*******S*T*******SI
+     -28.14I**********S*********S*********S*********S*T*******S*T*******SI    -28.14
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        ces_hours 27260            PAGE  24, SERIES ces_hours_additi
+
+  Peak probabilities for Tukey spectrum estimator
+  Spectrum estimated from 2009.Jan to 2016.Dec.
+
+                                          S1       S2       S3       S4       S5       S6       TD
+                                        ------   ------   ------   ------   ------   ------   ------
+  Model Residuals                        0.570    0.307    0.580    0.501    0.826    0.895    0.749  
+  Original Series (Table A1 or B1)       0.070    0.910*   0.030    0.197    0.660    0.371    0.891  
+  Seasonally adjusted series (E2)        0.547    0.007    0.008    0.005    0.053    0.195    0.986* 
+  Modified Irregular (E3)                0.702    0.002    0.009    0.006    0.053    0.194    0.984* 
+  ----------
+     ** - Peak Probability > 0.99,
+      * - 0.90 < Peak Probability < 0.99
+
+

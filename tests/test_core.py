@@ -34,6 +34,7 @@ from scripts import (
     report_housing_data,
     housing_all_homes,
     report_housing_all_homes,
+    unemployment_raw_sa_pilot,
 )
 
 
@@ -2085,6 +2086,57 @@ def test_gram_scale():
     held_scaled = (1.0 / fd.p) * float(np.vdot(AD * fd.val, AD * fd.val))
     assert 0.3 < train_scaled / full < 3.0
     assert 0.3 < held_scaled / full < 3.0
+
+
+# 9. unemployment official-data pilot helpers -------------------------------- #
+def test_unemployment_pilot_parses_laus_by_cbsa_code_not_name():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = housing_data.Path(tmp) / "ssamatab1.txt"
+        path.write_text(
+            "Area  Year  Month  Labor force  Employment  Unemployment  Rate\n"
+            "Anniston-Oxford, AL 11500 2020 M01 50000 48000 2000 4.0\n"
+            "Renamed area text should not matter 11500 2020 M02 50000 47900 2100 4.2\n",
+            encoding="utf-8",
+        )
+        rows, warnings = unemployment_raw_sa_pilot.parse_laus_sa_table(path)
+        assert not warnings
+        assert [r["cbsa_code"] for r in rows] == ["11500", "11500"]
+        assert [r["date"] for r in rows] == ["2020-01-01", "2020-02-01"]
+        assert [r["unemployment_rate_sa"] for r in rows] == [4.0, 4.2]
+
+
+def test_unemployment_pilot_ces_metadata_filters_total_private_hours():
+    with tempfile.TemporaryDirectory() as tmp:
+        raw = housing_data.Path(tmp)
+        (raw / "sm.area").write_text("area_code\tarea_name\n11500\tAnniston-Oxford, AL\n", encoding="utf-8")
+        (raw / "sm.industry").write_text("industry_code\tindustry_name\n05000000\tTotal Private\n", encoding="utf-8")
+        (raw / "sm.series").write_text(
+            "series_id\tstate_code\tarea_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\tbenchmark_year\tfootnote_codes\tbegin_year\tbegin_period\tend_year\tend_period\n"
+            "SMU01115000500000002\t01\t11500\t05\t05000000\t02\tU\t2025\t\t2007\tM01\t2026\tM06\n"
+            "SMS01115000500000002\t01\t11500\t05\t05000000\t02\tS\t2025\t\t2007\tM01\t2026\tM06\n"
+            "SMU01115000000000001\t01\t11500\t00\t00000000\t01\tU\t2025\t\t1990\tM01\t2026\tM06\n",
+            encoding="utf-8",
+        )
+        meta, _, diag = unemployment_raw_sa_pilot.parse_ces_metadata(raw)
+        assert sorted(meta) == ["SMS01115000500000002", "SMU01115000500000002"]
+        assert diag[0]["selected_by"] == "industry_code=05000000 and data_type_code=02"
+        assert diag[0]["seasonally_adjusted_series"] == 1
+        assert diag[0]["not_seasonally_adjusted_series"] == 1
+
+
+def test_unemployment_pilot_missing_transform_values_are_not_filled():
+    adjusted = [
+        {"variable": "ces_hours", "x13_mode": "log_additive", "x13_status": "ok", "cbsa_code": "11500", "date": "2020-01-01", "adjusted_value": 10.0},
+        {"variable": "ces_hours", "x13_mode": "log_additive", "x13_status": "ok", "cbsa_code": "11500", "date": "2020-03-01", "adjusted_value": 12.0},
+        {"variable": "bps_permits", "x13_mode": "additive_level", "x13_status": "ok", "cbsa_code": "11500", "date": "2020-01-01", "adjusted_value": -2.0},
+        {"variable": "bps_permits", "x13_mode": "additive_level", "x13_status": "ok", "cbsa_code": "11500", "date": "2020-03-01", "adjusted_value": 4.0},
+    ]
+    maps = unemployment_raw_sa_pilot.transformed_maps(adjusted)
+    assert ("11500", "2020-02") not in maps["hours_log_sa"]
+    assert unemployment_raw_sa_pilot.transform_value(
+        maps["hours_log_sa"], "11500", "2020-03", "one_month_growth", "hours"
+    ) is None
+    assert maps["permits_asinh_sa"][("11500", "2020-01")] == math.asinh(-2.0)
 
 
 if __name__ == "__main__":

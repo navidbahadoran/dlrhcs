@@ -1,0 +1,1557 @@
+  Reading input spec file from D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_14100_201401_202312.spc
+
+1
+
+               U. S. Department of Commerce, U. S. Census Bureau
+
+              X-13ARIMA-SEATS monthly seasonal adjustment Method,
+                          Release Version 1.1 Build 62
+
+
+           This software application provides an enhanced version of
+             Statistics Canada's X-11-ARIMA extension (Dagum, 1980)
+                 of the X-11 variant of the Census Method II of
+                      Shiskin, Young and Musgrave (1967).
+
+            It also provides an ARIMA model-based method following
+       Hillmer and Tiao (1982) and Burman (1980) that is very similar
+       to the update of the method of SEATS (Gomez and Maravall, 1996)
+                produced at the Bank of Spain by G. Caporello and
+               A. Maravall for TSW (Caporello and Maravall, 2004).
+          The present application includes additional enhancements.
+
+         X-13ARIMA-SEATS includes an automatic ARIMA model selection procedure
+          based largely on the procedure of Gomez and Maravall (1998)
+            as implemented in TRAMO (1996) and subsequent revisions.
+
+              Primary Programmers: Brian Monsell, Mark Otto and,
+                 for the ARIMA model-based signal extraction,
+                      Gianluca Caporello and Victor Gomez
+
+
+     Series Title- bps_permits 14100
+     Series Name- bps_permits_addi
+     Jul 29, 2026  08.23.10 
+
+        -Period covered-  1st month,2014 to 12th month,2023
+        -Type of run - additive seasonal adjustment
+
+        -Sigma limits for graduating extreme values are  1.5 and  2.5 .
+        -3x3 moving average used in section 1 of each iteration, 
+         3x5 moving average in section 2 of iterations B and C,
+         moving average for final seasonal factors chosen by Global MSR.
+        -Holiday adjustment factors applied directly to the final seasonally adjusted series
+        -Spectral plots generated for selected series
+        -Spectral plots generated for series starting in 2016.Jan
+
+ FILE SAVE REQUESTS (* indicates file exists and will be overwritten)
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_14100_201401_202312.d10  final seasonal factors
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_14100_201401_202312.d11  final seasonally adjusted data
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_14100_201401_202312.out  program output file
+  D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_14100_201401_202312.err  program error file
+        bps_permits 14100            PAGE   1, SERIES bps_permits_addi
+
+     Contents of spc file D:\Programming\Dynamic Paper-dlrhcs_replication\outputs\empirical\unemployment\raw_sa_pilot\x13_work\bps_permits_additive_level_14100_201401_202312.spc
+
+ Line #
+ ------
+      1: series {
+      2:   title = "bps_permits 14100"
+      3:   start = 2014.1
+      4:   period = 12
+      5:   data = (
+      6: 1
+      7: 0
+      8: 1
+      9: 5
+     10: 2
+     11: 1
+     12: 4
+     13: 3
+     14: 1
+     15: 4
+     16: 1
+     17: 8
+     18: 4
+     19: 6
+     20: 7
+     21: 13
+     22: 7
+     23: 14
+     24: 14
+     25: 13
+     26: 9
+     27: 10
+     28: 7
+     29: 10
+     30: 3
+     31: 5
+     32: 11
+     33: 16
+     34: 20
+     35: 27
+     36: 5
+     37: 9
+     38: 10
+     39: 21
+     40: 13
+     41: 17
+     42: 8
+     43: 9
+     44: 17
+     45: 13
+     46: 14
+     47: 8
+     48: 6
+     49: 14
+     50: 8
+     51: 11
+     52: 14
+     53: 13
+     54: 17
+     55: 5
+     56: 11
+     57: 70
+     58: 13
+     59: 15
+     60: 12
+     61: 12
+     62: 9
+     63: 13
+     64: 42
+     65: 3
+     66: 8
+     67: 5
+     68: 6
+     69: 9
+     70: 7
+     71: 26
+     72: 12
+     73: 16
+     74: 18
+     75: 15
+     76: 7
+     77: 13
+     78: 4
+     79: 11
+     80: 12
+     81: 5
+     82: 11
+     83: 9
+     84: 13
+     85: 12
+     86: 11
+     87: 9
+     88: 5
+     89: 5
+     90: 9
+     91: 7
+     92: 12
+     93: 8
+     94: 10
+     95: 57
+     96: 7
+     97: 8
+     98: 4
+     99: 9
+    100: 5
+    101: 31
+    102: 9
+    103: 7
+    104: 9
+    105: 12
+    106: 14
+    107: 15
+    108: 13
+    109: 11
+    110: 9
+    111: 21
+    112: 9
+    113: 13
+    114: 2
+    115: 9
+    116: 15
+    117: 7
+    118: 14
+    119: 16
+    120: 10
+    121: 10
+    122: 10
+    123: 12
+    124: 6
+    125: 3
+    126:   )
+    127: }
+    128: transform { function = none }
+    129: regression { aictest = (td easter) }
+    130: automdl {}
+    131: x11 { mode = add save = (d10 d11) }
+        bps_permits 14100            PAGE   2, SERIES bps_permits_addi
+
+ A 1  Time series data (for the span analyzed)
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2014           1.       0.       1.       5.       2.       1.
+                 4.       3.       1.       4.       1.       8.           31.
+ 
+  2015           4.       6.       7.      13.       7.      14.
+                14.      13.       9.      10.       7.      10.          114.
+ 
+  2016           3.       5.      11.      16.      20.      27.
+                 5.       9.      10.      21.      13.      17.          157.
+ 
+  2017           8.       9.      17.      13.      14.       8.
+                 6.      14.       8.      11.      14.      13.          135.
+ 
+  2018          17.       5.      11.      70.      13.      15.
+                12.      12.       9.      13.      42.       3.          222.
+ 
+  2019           8.       5.       6.       9.       7.      26.
+                12.      16.      18.      15.       7.      13.          142.
+ 
+  2020           4.      11.      12.       5.      11.       9.
+                13.      12.      11.       9.       5.       5.          107.
+ 
+  2021           9.       7.      12.       8.      10.      57.
+                 7.       8.       4.       9.       5.      31.          167.
+ 
+  2022           9.       7.       9.      12.      14.      15.
+                13.      11.       9.      21.       9.      13.          142.
+ 
+  2023           2.       9.      15.       7.      14.      16.
+                10.      10.      10.      12.       6.       3.          114.
+ 
+  AVGE           7.       6.      10.      16.      11.      19.
+                10.      11.       9.      13.      11.      12.
+
+  Table Total-        1331.   Mean-        11.   Std. Dev.-         9.
+                              Min -         0.        Max -        70.
+        bps_permits 14100            PAGE   3, SERIES bps_permits_addi
+                        Automatic ARIMA Model Selection
+
+                    Procedure based closely on TRAMO method 
+                         of Gomez and Maravall (2000)
+              "Automatic Modeling Methods for Univariate Series",
+                            A Course in Time Series
+                  (Edited by D. Pena, G. C. Tiao, R. S. Tsay),
+                         New York : J. Wiley and Sons
+
+
+     Maximum order for regular ARMA parameters :   2
+     Maximum order for seasonal ARMA parameters :   1
+     Maximum order for regular differencing :   2
+     Maximum order for seasonal differencing :   1
+
+   Results of Unit Root Test for identifying orders of differencing:
+     Regular difference order :   0
+     Seasonal difference order :   0
+
+  Automatic model choice : (1 0 1)
+   Model changed to 
+   ( 0, 1, 1) ( 0, 1, 1)
+
+
+  Final Checks for Identified Model
+
+
+  Checking for Unit Roots.
+   No unit roots found.
+
+  Checking for nonseasonal overdifferencing.
+   Nonseasonal MA not within  0.001 of 1.0 - model passes test.
+
+  Checking for insignificant ARMA coefficients.
+
+  Final automatic model choice : (0 1 1)(0 1 1)
+   End of automatic model selection procedure.
+
+ Average absolute percentage error in within-sample forecasts:
+  Last year:  59.30      Last-1 year:  21.81     Last-2 year:  40.72
+  Last three years:   40.61
+
+ Estimation converged in   22 ARMA iterations,   95 function evaluations.
+
+ Regression Model
+ ------------------------------------------------------------------------------
+                             Parameter        Standard
+ Variable                     Estimate           Error      t-value
+ ------------------------------------------------------------------------------
+ Easter[1]                    -16.3861         4.47362        -3.66
+
+ Constant                      -0.0586         0.01985        -2.95
+ ------------------------------------------------------------------------------
+
+
+ ARIMA Model:  (0 1 1)(0 1 1)
+   Nonseasonal differences: 1
+   Seasonal differences:    1
+                                              Standard
+ Parameter                    Estimate          Errors
+ -----------------------------------------------------
+ Nonseasonal MA                                    
+   Lag  1                       0.9630         0.03085
+
+ Seasonal MA                                       
+   Lag 12                       0.9999         0.09121
+
+ Variance                       0.66461E+02
+ SE of Var                      0.90864E+01
+ -----------------------------------------------------
+
+ Likelihood Statistics
+ ------------------------------------------------------------------
+ Number of observations (nobs)                                  120
+ Effective number of observations (nefobs)                      107
+ Number of parameters estimated (np)                              5
+ Log likelihood (L)                                       -392.1897
+ AIC                                                       794.3793 
+ AICC (F-corrected-AIC)                                    794.9734 
+ Hannan Quinn                                              799.7970 
+ BIC                                                       807.7435 
+ ------------------------------------------------------------------
+
+ QS Statistic for regARIMA Model Residuals (full series):             0.00
+                                                       (P-Value =     1.0000)
+
+ QS Statistic for regARIMA Model Residuals (starting 2016.Jan):       0.00
+                                                       (P-Value =     1.0000)
+      10*LOG(SPECTRUM) of the regARIMA model residuals
+      Spectrum estimated from 2016.Jan to 2023.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      22.90I                                  *                          I     22.90
+           I                                  *                          I
+           I                *                 *                          I
+           I                *     *          **                          I
+      21.98I                *     *          **                          I     21.98
+           I      *         *     *          **                          I
+           I      *         *     *          **            *             I
+           I      *         *     *          **            *             I
+      21.05I      *         *     *          **            **            I     21.05
+           I      *         *     *          **            **    **      I
+           I  *   *         *     *          **  *         **    **      I
+           I  *   *        **     *          **  *         **    **      I
+      20.13I  *   *        **     *          **  **        **    **      I     20.13
+           I  *   *        ***    *          **  **        **    **      I
+           I  *   *     *  ***    *          **  **        **    **      I
+           I  *   *     *  ***    **         *** **        **    **      I
+      19.21I  *   *     *  ***   ***         *** **        **    **      I     19.21
+           I  *   *     *  ***   ***         *** **        **    **      I
+           I  *   *     *  ***   ***         ******        **    **      I
+           I  *   *     *  ***   ***         ******       ***    **      I
+      18.28I  *   *     *  ***   ***        *******       ***    **      I     18.28
+           I  *   **    ** ***   ***        *******       ****   **      I
+           I  *   **    ******   ***        *******    *  ****   **      I
+           I  *   **    *******  ***        *******    *  ****   **      I
+      17.36I  *   **    *******  ***        *******    *  ****  T**      I     17.36
+           I  *   **    *******  ***        *******    *  ****  T***     I
+           I  **  **    ******* S***        ********   *  ****  T***     I
+           I  **  **    ******* S***        ********  T*******  T***     I
+      16.44I  **  **    ********S***       *********  T*******  T***  *  I     16.44
+           I  **  **   *********S***       *********  T*******S T***  *  I
+           I  **  **   *********S***     *S*********  T*******S*T*** **  I
+           I  **  **   *********S****   **S*********  T*******S*T******* I
+      15.51I ***  **   *********S****   **S*********  T*******S*T******* I     15.51
+           I ***  **   *********S****   **S********* *T*******S*T*******SI
+           I ***  **   *********S****   **S*********S*T*******S*T*******SI
+           I *** ***   *********S****  ***S*********S*T*******S*T*******SI
+      14.59I *** ***   *********S****  ***S*********S*T*******S*T*******SI     14.59
+           I *** ***   *********S****  ***S*********S*T*******S*T*******SI
+           I *** ***   *********S***** ***S*********S*T*******S*T*******SI
+           I *** ***   *********S*********S*********S*T*******S*T*******SI
+      13.67I *******   *********S*********S*********S*T*******S*T*******SI     13.67
+           I********   *********S*********S*********S*T*******S*T*******SI
+           I********   *********S*********S*********S*T*******S*T*******SI
+           I********   *********S*********S*********S*T*******S*T*******SI
+      12.74I********   *********S*********S*********S*T*******S*T*******SI     12.74
+           I********   *********S*********S*********S*T*******S*T*******SI
+           I*********  *********S*********S*********S*T*******S*T*******SI
+           I********* S*********S*********S*********S*T*******S*T*******SI
+      11.82I********* S*********S*********S*********S*T*******S*T*******SI     11.82
+           I********* S*********S*********S*********S*T*******S*T*******SI
+           I********* S*********S*********S*********S*T*******S*T*******SI
+           I********* S*********S*********S*********S*T*******S*T*******SI
+      10.89I**********S*********S*********S*********S*T*******S*T*******SI     10.89
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+
+
+ FORECASTING
+  Origin  2023.Dec
+  Number        12
+
+  Forecasts and Standard Errors
+   ------------------------------
+                         Standard
+       Date   Forecast      Error
+   ------------------------------
+   2024.Jan       3.25      8.301
+   2024.Feb       2.83      8.327
+   2024.Mar      -6.90      9.087
+   2024.Apr      24.70      9.119
+   2024.May       6.67      8.415
+   2024.Jun      13.94      8.447
+   2024.Jul       4.42      8.481
+   2024.Aug       5.30      8.515
+   2024.Sep       3.08      8.551
+   2024.Oct       6.36      8.588
+   2024.Nov       4.43      8.626
+   2024.Dec       4.81      8.666
+   ------------------------------
+
+  Confidence intervals with coverage probability ( 0.95000
+   ---------------------------------------
+       Date      Lower  Forecast     Upper
+   ---------------------------------------
+   2024.Jan     -13.02      3.25     19.52
+   2024.Feb     -13.49      2.83     19.15
+   2024.Mar     -24.71     -6.90     10.91
+   2024.Apr       6.82     24.70     42.57
+   2024.May      -9.83      6.67     23.16
+   2024.Jun      -2.61     13.94     30.50
+   2024.Jul     -12.20      4.42     21.04
+   2024.Aug     -11.39      5.30     21.99
+   2024.Sep     -13.68      3.08     19.84
+   2024.Oct     -10.48      6.36     23.19
+   2024.Nov     -12.47      4.43     21.34
+   2024.Dec     -12.17      4.81     21.80
+   ---------------------------------------
+        bps_permits 14100            PAGE   4, SERIES bps_permits_addi
+
+ A 7  RegARIMA holiday component
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2015           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2016           0.       0.     -12.      12.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2017           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2018           0.       0.     -12.      12.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2019           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2020           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2021           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2022           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2023           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  AVGE           0.       0.       1.      -1.       0.       0.
+                 0.       0.       0.       0.       0.       0.
+
+  Table Total-           0.   Mean-         0.   Std. Dev.-         3.
+                              Min -       -12.        Max -        12.
+
+ A 7.A  RegARIMA holiday component forecasts
+  From  2024.Jan to 2024.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2024           0.       0.     -12.      12.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+        bps_permits 14100            PAGE   5, SERIES bps_permits_addi
+  
+ B 1  Original series (prior adjusted)
+      (adjusted for regARIMA factors)
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2014           1.       0.      -3.       9.       2.       1.
+                 4.       3.       1.       4.       1.       8.           31.
+ 
+  2015           4.       6.       3.      17.       7.      14.
+                14.      13.       9.      10.       7.      10.          114.
+ 
+  2016           3.       5.      23.       4.      20.      27.
+                 5.       9.      10.      21.      13.      17.          157.
+ 
+  2017           8.       9.      13.      17.      14.       8.
+                 6.      14.       8.      11.      14.      13.          135.
+ 
+  2018          17.       5.      23.      58.      13.      15.
+                12.      12.       9.      13.      42.       3.          222.
+ 
+  2019           8.       5.       2.      13.       7.      26.
+                12.      16.      18.      15.       7.      13.          142.
+ 
+  2020           4.      11.       8.       9.      11.       9.
+                13.      12.      11.       9.       5.       5.          107.
+ 
+  2021           9.       7.       8.      12.      10.      57.
+                 7.       8.       4.       9.       5.      31.          167.
+ 
+  2022           9.       7.       5.      16.      14.      15.
+                13.      11.       9.      21.       9.      13.          142.
+ 
+  2023           2.       9.      11.      11.      14.      16.
+                10.      10.      10.      12.       6.       3.          114.
+ 
+  AVGE           7.       6.       9.      17.      11.      19.
+                10.      11.       9.      13.      11.      12.
+
+  Table Total-        1331.   Mean-        11.   Std. Dev.-         9.
+                              Min -        -3.        Max -        58.
+
+ B 1.A  Forecasts of (prior adjusted) original series
+  From  2024.Jan to 2024.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2024           3.       3.       5.      13.       7.      14.
+                 4.       5.       3.       6.       4.       5.           73.
+ 
+        bps_permits 14100            PAGE   6, SERIES bps_permits_addi
+
+ C 17  Final weights for irregular component
+  From  2014.Jan to 2023.Dec
+  Observations        120
+  Lower sigma limit    1.50
+  Upper sigma limit    2.50
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2014         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          468.
+ 
+  2015         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          468.
+ 
+  2016         100.     100.       0.       0.     100.      12.
+               100.     100.     100.     100.     100.     100.          468.
+ 
+  2017         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          500.
+ 
+  2018         100.      45.     100.       0.     100.     100.
+               100.     100.     100.     100.       0.     100.          509.
+ 
+  2019         100.     100.      90.     100.      97.      28.
+               100.     100.     100.     100.     100.     100.          405.
+ 
+  2020         100.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          404.
+ 
+  2021         100.     100.     100.     100.     100.       0.
+                58.     100.      75.     100.     100.       0.          341.
+ 
+  2022         100.     100.     100.     100.     100.     100.
+               100.     100.     100.      24.     100.     100.          285.
+ 
+  2023          70.     100.     100.     100.     100.     100.
+               100.     100.     100.     100.     100.     100.          285.
+ 
+        bps_permits 14100            PAGE   7, SERIES bps_permits_addi
+
+ D 8  Final unmodified SI ratios
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014          -1.      -1.      -4.       8.       1.      -0.
+                 2.       1.      -2.       0.      -4.       2.            0.
+ 
+  2015          -3.      -2.      -6.       8.      -3.       4.
+                 4.       3.      -1.      -0.      -3.      -0.            0.
+ 
+  2016          -7.      -5.      13.      -7.       8.      15.
+                -8.      -4.      -4.       7.      -1.       3.            1.
+ 
+  2017          -5.      -3.       1.       6.       3.      -2.
+                -4.       3.      -4.      -2.       0.      -2.           -1.
+ 
+  2018           1.     -11.       7.      42.      -2.       0.
+                -1.       0.      -2.       3.      33.      -5.            5.
+ 
+  2019           0.      -3.      -7.       4.      -3.      15.
+                -0.       3.       5.       2.      -6.       1.            1.
+ 
+  2020          -7.       0.      -2.      -0.       2.       0.
+                 4.       3.       2.      -0.      -4.      -4.           -1.
+ 
+  2021          -1.      -3.      -2.       3.       1.      48.
+                -2.      -1.      -5.       0.      -4.      22.            5.
+ 
+  2022          -1.      -3.      -6.       6.       3.       4.
+                 2.      -1.      -3.       9.      -3.       1.            1.
+ 
+  2023          -9.      -2.      -0.       1.       3.       6.
+                 0.       0.       1.       3.      -2.      -5.           -0.
+ 
+  AVGE          -3.      -3.      -1.       7.       1.       9.
+                -0.       1.      -1.       2.       1.       1.
+
+  Table Total-         136.   Mean-         1.   Std. Dev.-         8.
+                              Min -       -11.        Max -        48.
+        bps_permits 14100            PAGE   8, SERIES bps_permits_addi
+
+ D 8.B  Final unmodified SI ratios, with labels for outliers and extreme values
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ ---------------------------------------------------------------------
+               Jan       Feb       Mar       Apr       May       Jun  
+               Jul       Aug       Sep       Oct       Nov       Dec  
+ ---------------------------------------------------------------------
+  2014         -1.       -1.       -4.        8.        1.       -0.  
+                2.        1.       -2.        0.       -4.        2.  
+ 
+  2015         -3.       -2.       -6.        8.       -3.        4.  
+                4.        3.       -1.       -0.       -3.       -0.  
+ 
+  2016         -7.       -5.       13.*      -7.*       8.       15.* 
+               -8.       -4.       -4.        7.       -1.        3.  
+ 
+  2017         -5.       -3.        1.        6.        3.       -2.  
+               -4.        3.       -4.       -2.        0.       -2.  
+ 
+  2018          1.      -11.*       7.       42.*      -2.        0.  
+               -1.        0.       -2.        3.       33.*      -5.  
+ 
+  2019          0.       -3.       -7.*       4.       -3.*      15.* 
+               -0.        3.        5.        2.       -6.        1.  
+ 
+  2020         -7.        0.       -2.       -0.        2.        0.  
+                4.        3.        2.       -0.       -4.       -4.  
+ 
+  2021         -1.       -3.       -2.        3.        1.       48.* 
+               -2.*      -1.       -5.*       0.       -4.       22.* 
+ 
+  2022         -1.       -3.       -6.        6.        3.        4.  
+                2.       -1.       -3.        9.*      -3.        1.  
+ 
+  2023         -9.*      -2.       -0.        1.        3.        6.  
+                0.        0.        1.        3.       -2.       -5.  
+ 
+
+  Key to symbols:
+    *  : extreme value as determined by X-11 extreme value procedure
+ 
+        bps_permits 14100            PAGE   9, SERIES bps_permits_addi
+
+ D 9  Final replacement values for SI ratios
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+  2014     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2015     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2016     ******** ********      -2.       9. ********       5.
+           ******** ******** ******** ******** ******** ********
+ 
+  2017     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2018     ********      -5. ********       8. ******** ********
+           ******** ******** ******** ********       1. ********
+ 
+  2019     ******** ********      -6. ********      -3.       8.
+           ******** ******** ******** ******** ******** ********
+ 
+  2020     ******** ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+  2021     ******** ******** ******** ******** ********       9.
+                 1. ********      -3. ******** ********       0.
+ 
+  2022     ******** ******** ******** ******** ******** ********
+           ******** ******** ********       4. ******** ********
+ 
+  2023          -8. ******** ******** ******** ******** ********
+           ******** ******** ******** ******** ******** ********
+ 
+
+ D 9.A  Moving seasonality ratio
+ ---------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+ ---------------------------------------------------------------
+   I          4.392    1.871    4.440    2.660    4.010    5.098
+   S          0.444    0.296    0.630    0.696    0.592    0.679
+ RATIO        9.891    6.309    7.047    3.821    6.773    7.511
+
+
+
+ ---------------------------------------------------------------
+               Jul      Aug      Sep      Oct      Nov      Dec 
+ ---------------------------------------------------------------
+   I          3.382    3.266    3.092    3.431    1.671    3.747
+   S          0.471    0.439    0.509    0.332    0.351    0.597
+ RATIO        7.183    7.444    6.075   10.344    4.759    6.275
+
+
+
+        bps_permits 14100            PAGE  10, SERIES bps_permits_addi
+
+ D 10  Final seasonal factors
+  From  2014.Jan to 2023.Dec
+  Observations        120
+  Seasonal filter    3 x 9 moving average
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014          -3.      -3.      -2.       8.       1.       2.
+                -1.       1.      -2.       2.      -2.       0.           -0.
+ 
+  2015          -3.      -3.      -2.       7.       1.       2.
+                -1.       1.      -2.       2.      -2.       0.            0.
+ 
+  2016          -3.      -3.      -2.       7.       1.       2.
+                -1.       1.      -1.       2.      -2.      -0.           -0.
+ 
+  2017          -3.      -3.      -2.       6.       1.       3.
+                -0.       1.      -1.       2.      -2.      -0.           -0.
+ 
+  2018          -3.      -3.      -2.       6.       1.       3.
+                -0.       1.      -1.       2.      -3.      -1.            0.
+ 
+  2019          -3.      -3.      -2.       5.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.            0.
+ 
+  2020          -3.      -3.      -2.       5.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.           -0.
+ 
+  2021          -3.      -3.      -2.       4.       1.       5.
+                -0.       1.      -1.       2.      -2.      -1.            0.
+ 
+  2022          -3.      -3.      -2.       4.       1.       5.
+                 0.       1.      -0.       2.      -3.      -2.            0.
+ 
+  2023          -4.      -3.      -2.       3.       1.       6.
+                 1.       1.      -1.       2.      -3.      -1.            0.
+ 
+  AVGE          -3.      -3.      -2.       5.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.
+
+  Table Total-           0.   Mean-         0.   Std. Dev.-         3.
+                              Min -        -4.        Max -         8.
+
+ D 10.A  Final seasonal component forecasts
+  From  2024.Jan to 2024.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2024          -4.      -3.      -3.       3.       2.       6.
+                 1.       0.      -1.       2.      -3.      -1.            0.
+ 
+        bps_permits 14100            PAGE  11, SERIES bps_permits_addi
+  
+ D 11  Final seasonally adjusted data
+       (also adjusted for holiday)
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2014           4.       3.      -1.       2.       1.      -1.
+                 5.       2.       3.       2.       3.       8.           31.
+ 
+  2015           7.       9.       5.      10.       6.      12.
+                15.      12.      11.       8.       9.      10.          114.
+ 
+  2016           6.       8.      25.      -3.      19.      25.
+                 6.       8.      11.      19.      15.      17.          157.
+ 
+  2017          11.      12.      15.      11.      13.       5.
+                 6.      13.       9.       9.      16.      13.          135.
+ 
+  2018          20.       8.      25.      52.      12.      12.
+                12.      11.      10.      11.      45.       4.          222.
+ 
+  2019          11.       8.       3.       8.       6.      22.
+                12.      15.      19.      13.       9.      14.          142.
+ 
+  2020           7.      14.       9.       5.      10.       5.
+                13.      11.      12.       7.       7.       6.          107.
+ 
+  2021          12.      10.       9.       8.       9.      52.
+                 7.       7.       5.       7.       7.      32.          167.
+ 
+  2022          12.      10.       7.      13.      13.      10.
+                13.      10.       9.      19.      12.      15.          142.
+ 
+  2023           6.      12.      13.       8.      13.      10.
+                 9.       9.      11.      10.       9.       4.          114.
+ 
+  AVGE          10.       9.      11.      11.      10.      15.
+                10.      10.      10.      11.      13.      12.
+
+  Table Total-        1331.   Mean-        11.   Std. Dev.-         8.
+                              Min -        -3.        Max -        52.
+        bps_permits 14100            PAGE  12, SERIES bps_permits_addi
+
+ D 12  Final trend cycle
+  From  2014.Jan to 2023.Dec
+  Observations        120
+  Trend filter    23-term Henderson moving average
+  I/C ratio        4.83
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec        TOTAL  
+ -----------------------------------------------------------------------------
+  2014           1.       1.       1.       1.       2.       2.
+                 2.       3.       3.       4.       5.       5.           30.
+ 
+  2015           6.       7.       8.       9.      10.      10.
+                10.      10.      10.      10.      10.      10.          112.
+ 
+  2016          10.      10.      11.      11.      12.      12.
+                13.      13.      14.      14.      14.      14.          147.
+ 
+  2017          13.      13.      12.      11.      11.      10.
+                10.      11.      11.      13.      14.      15.          144.
+ 
+  2018          16.      17.      17.      16.      15.      14.
+                13.      12.      11.      10.       9.       8.          157.
+ 
+  2019           8.       8.       9.       9.      10.      11.
+                12.      13.      13.      13.      13.      12.          132.
+ 
+  2020          11.      10.      10.       9.       9.       9.
+                 9.       9.       9.       9.       9.       9.          113.
+ 
+  2021           9.       9.       9.       9.       9.       9.
+                 9.       9.       9.       9.       9.       9.          109.
+ 
+  2022           9.      10.      10.      11.      11.      11.
+                11.      12.      12.      12.      12.      12.          132.
+ 
+  2023          11.      11.      11.      11.      11.      10.
+                10.      10.       9.       9.       8.       8.          119.
+ 
+  AVGE          10.      10.      10.      10.      10.      10.
+                10.      10.      10.      10.      10.      10.
+
+  Table Total-        1197.   Mean-        10.   Std. Dev.-         3.
+                              Min -         1.        Max -        17.
+        bps_permits 14100            PAGE  13, SERIES bps_permits_addi
+
+ D 13  Final irregular component
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         S.D.  
+ -----------------------------------------------------------------------------
+  2014           3.       2.      -2.       0.      -1.      -3.
+                 3.      -0.      -0.      -1.      -2.       2.            2.
+ 
+  2015           0.       2.      -4.       1.      -4.       2.
+                 5.       2.       0.      -2.      -1.      -0.            2.
+ 
+  2016          -4.      -2.      15.     -14.       8.      12.
+                -7.      -5.      -2.       6.       1.       4.            8.
+ 
+  2017          -2.      -1.       3.       0.       2.      -5.
+                -4.       3.      -2.      -3.       3.      -2.            3.
+ 
+  2018           4.      -9.       8.      36.      -4.      -3.
+                -1.      -1.      -1.       2.      36.      -4.           15.
+ 
+  2019           3.      -0.      -5.      -1.      -5.      11.
+                 0.       2.       6.      -0.      -3.       2.            4.
+ 
+  2020          -4.       4.      -1.      -4.       1.      -4.
+                 4.       2.       3.      -2.      -2.      -3.            3.
+ 
+  2021           3.       1.      -0.      -1.      -0.      43.
+                -2.      -2.      -4.      -2.      -2.      23.           14.
+ 
+  2022           3.      -0.      -4.       2.       2.      -2.
+                 1.      -1.      -2.       7.       0.       3.            3.
+ 
+  2023          -6.       0.       2.      -3.       2.      -0.
+                -1.      -0.       1.       1.       1.      -3.            2.
+ 
+  S.D.           3.       3.       6.      12.       3.      15.
+                 3.       2.       3.       3.      11.       8.
+
+  Table Total-         134.   Mean-         1.   Std. Dev.-         7.
+                              Min -       -14.        Max -        43.
+        bps_permits 14100            PAGE  14, SERIES bps_permits_addi
+  
+ D 16  Combined adjustment factors
+       (includes seasonal, holiday factors)
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014          -3.      -3.       2.       3.       1.       2.
+                -1.       1.      -2.       2.      -2.       0.           -0.
+ 
+  2015          -3.      -3.       2.       3.       1.       2.
+                -1.       1.      -2.       2.      -2.       0.            0.
+ 
+  2016          -3.      -3.     -14.      19.       1.       2.
+                -1.       1.      -1.       2.      -2.      -0.           -0.
+ 
+  2017          -3.      -3.       2.       2.       1.       3.
+                -0.       1.      -1.       2.      -2.      -0.           -0.
+ 
+  2018          -3.      -3.     -14.      18.       1.       3.
+                -0.       1.      -1.       2.      -3.      -1.            0.
+ 
+  2019          -3.      -3.       3.       1.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.            0.
+ 
+  2020          -3.      -3.       3.       0.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.           -0.
+ 
+  2021          -3.      -3.       3.      -0.       1.       5.
+                -0.       1.      -1.       2.      -2.      -1.            0.
+ 
+  2022          -3.      -3.       2.      -1.       1.       5.
+                 0.       1.      -0.       2.      -3.      -2.            0.
+ 
+  2023          -4.      -3.       2.      -1.       1.       6.
+                 1.       1.      -1.       2.      -3.      -1.            0.
+ 
+  AVGE          -3.      -3.      -1.       4.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.
+
+  Table Total-           0.   Mean-         0.   Std. Dev.-         4.
+                              Min -       -14.        Max -        19.
+
+ D 16.A  Combined adjustment component forecasts
+  From  2024.Jan to 2024.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2024          -4.      -3.     -15.      15.       2.       6.
+                 1.       0.      -1.       2.      -3.      -1.            0.
+ 
+        bps_permits 14100            PAGE  15, SERIES bps_permits_addi
+  
+ D 18  Combined calendar adjustment factors
+       (includes holiday factors)
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2015           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2016           0.       0.     -12.      12.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2017           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2018           0.       0.     -12.      12.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2019           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2020           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2021           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2022           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  2023           0.       0.       4.      -4.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+  AVGE           0.       0.       1.      -1.       0.       0.
+                 0.       0.       0.       0.       0.       0.
+
+  Table Total-           0.   Mean-         0.   Std. Dev.-         3.
+                              Min -       -12.        Max -        12.
+
+ D 18.A  Combined calendar adjustment component forecasts
+  From  2024.Jan to 2024.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2024           0.       0.     -12.      12.       0.       0.
+                 0.       0.       0.       0.       0.       0.            0.
+ 
+        bps_permits 14100            PAGE  16, SERIES bps_permits_addi
+
+ E 4  Differences of annual totals
+  From          2014 to 2023
+  Observations         10
+ -----------------------------------
+  Year       Unmodified     Modified
+                  (D11)         (E2)
+ -----------------------------------
+  2014              -0.          -0.
+ 
+  2015               0.           0.
+ 
+  2016              -0.          -0.
+ 
+  2017              -0.          -0.
+ 
+  2018               0.           0.
+ 
+  2019               0.           0.
+ 
+  2020              -0.          -0.
+ 
+  2021               0.           0.
+ 
+  2022               0.           0.
+ 
+  2023               0.           0.
+ 
+        bps_permits 14100            PAGE  17, SERIES bps_permits_addi
+
+ E 5  Month-to-month differences in the original series
+  From  2014.Feb to 2023.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014                   -1.       1.       4.      -3.      -1.
+                 3.      -1.      -2.       3.      -3.       7.            1.
+ 
+  2015          -4.       2.       1.       6.      -6.       7.
+                 0.      -1.      -4.       1.      -3.       3.            0.
+ 
+  2016          -7.       2.       6.       5.       4.       7.
+               -22.       4.       1.      11.      -8.       4.            1.
+ 
+  2017          -9.       1.       8.      -4.       1.      -6.
+                -2.       8.      -6.       3.       3.      -1.           -0.
+ 
+  2018           4.     -12.       6.      59.     -57.       2.
+                -3.       0.      -3.       4.      29.     -39.           -1.
+ 
+  2019           5.      -3.       1.       3.      -2.      19.
+               -14.       4.       2.      -3.      -8.       6.            1.
+ 
+  2020          -9.       7.       1.      -7.       6.      -2.
+                 4.      -1.      -1.      -2.      -4.       0.           -1.
+ 
+  2021           4.      -2.       5.      -4.       2.      47.
+               -50.       1.      -4.       5.      -4.      26.            2.
+ 
+  2022         -22.      -2.       2.       3.       2.       1.
+                -2.      -2.      -2.      12.     -12.       4.           -1.
+ 
+  2023         -11.       7.       6.      -8.       7.       2.
+                -6.       0.       0.       2.      -6.      -3.           -1.
+ 
+  AVGE          -5.      -0.       4.       6.      -5.       8.
+                -9.       1.      -2.       4.      -2.       1.
+
+  Table Total-           2.   Mean-         0.   Std. Dev.-        12.
+                              Min -       -57.        Max -        59.
+        bps_permits 14100            PAGE  18, SERIES bps_permits_addi
+
+ E 6  Month-to-month differences in seasonally adjusted series (D11)
+  From  2014.Feb to 2023.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014                   -1.      -4.       3.      -1.      -1.
+                 6.      -3.       1.      -1.       1.       5.            0.
+ 
+  2015          -1.       2.      -5.       6.      -4.       6.
+                 3.      -3.      -2.      -2.       1.       1.            0.
+ 
+  2016          -4.       2.      17.     -28.      22.       6.
+               -19.       2.       3.       8.      -4.       2.            1.
+ 
+  2017          -6.       1.       3.      -3.       2.      -8.
+                 1.       7.      -4.       0.       7.      -3.           -0.
+ 
+  2018           6.     -12.      17.      27.     -41.      -0.
+                 1.      -1.      -1.       1.      33.     -41.           -1.
+ 
+  2019           7.      -3.      -5.       5.      -3.      17.
+               -10.       3.       4.      -6.      -4.       4.            1.
+ 
+  2020          -7.       7.      -5.      -4.       5.      -5.
+                 9.      -2.       1.      -5.       0.      -1.           -1.
+ 
+  2021           6.      -2.      -1.      -1.       1.      43.
+               -45.       0.      -3.       2.       0.      25.            2.
+ 
+  2022         -20.      -2.      -3.       6.       0.      -3.
+                 3.      -2.      -1.      10.      -7.       3.           -1.
+ 
+  2023          -9.       6.       1.      -5.       5.      -2.
+                -1.       0.       1.      -1.      -1.      -4.           -1.
+ 
+  AVGE          -3.      -0.       2.       0.      -1.       5.
+                -5.       0.      -0.       1.       3.      -1.
+
+  Table Total-           1.   Mean-         0.   Std. Dev.-        11.
+                              Min -       -45.        Max -        43.
+        bps_permits 14100            PAGE  19, SERIES bps_permits_addi
+
+ E 7  Month-to-month differences in final trend cycle (D12)
+  From  2014.Feb to 2023.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014                   -0.       0.       0.       0.       0.
+                 0.       0.       1.       1.       1.       1.            0.
+ 
+  2015           1.       1.       1.       1.       1.       0.
+                 0.      -0.      -0.      -0.      -0.      -0.            0.
+ 
+  2016           0.       0.       0.       0.       1.       1.
+                 1.       0.       0.       0.       0.      -0.            0.
+ 
+  2017          -0.      -1.      -1.      -1.      -1.      -0.
+                -0.       0.       1.       1.       1.       1.            0.
+ 
+  2018           1.       1.       0.      -0.      -1.      -1.
+                -1.      -1.      -1.      -1.      -1.      -1.           -1.
+ 
+  2019          -0.       0.       1.       1.       1.       1.
+                 1.       1.       0.      -0.      -0.      -1.            0.
+ 
+  2020          -1.      -1.      -1.      -0.      -0.      -0.
+                 0.       0.       0.       0.       0.       0.           -0.
+ 
+  2021           0.       0.      -0.      -0.      -0.      -0.
+                -0.      -0.      -0.       0.       0.       0.           -0.
+ 
+  2022           0.       0.       0.       0.       0.       0.
+                 0.       0.       0.       0.      -0.      -0.            0.
+ 
+  2023          -0.      -0.      -0.      -0.      -0.      -0.
+                -0.      -0.      -0.      -0.      -0.      -0.           -0.
+ 
+  AVGE           0.       0.       0.       0.       0.       0.
+                 0.       0.       0.       0.       0.       0.
+
+  Table Total-           7.   Mean-         0.   Std. Dev.-         1.
+                              Min -        -1.        Max -         1.
+        bps_permits 14100            PAGE  20, SERIES bps_permits_addi
+
+ E 8  Month-to-month differences in original series adjusted for calendar factors (A18)
+  From  2014.Feb to 2023.Dec
+  Observations        119
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014                   -1.      -3.      13.      -7.      -1.
+                 3.      -1.      -2.       3.      -3.       7.            1.
+ 
+  2015          -4.       2.      -3.      15.     -10.       7.
+                 0.      -1.      -4.       1.      -3.       3.            0.
+ 
+  2016          -7.       2.      18.     -19.      16.       7.
+               -22.       4.       1.      11.      -8.       4.            1.
+ 
+  2017          -9.       1.       4.       5.      -3.      -6.
+                -2.       8.      -6.       3.       3.      -1.           -0.
+ 
+  2018           4.     -12.      18.      35.     -45.       2.
+                -3.       0.      -3.       4.      29.     -39.           -1.
+ 
+  2019           5.      -3.      -3.      12.      -6.      19.
+               -14.       4.       2.      -3.      -8.       6.            1.
+ 
+  2020          -9.       7.      -3.       2.       2.      -2.
+                 4.      -1.      -1.      -2.      -4.       0.           -1.
+ 
+  2021           4.      -2.       1.       5.      -2.      47.
+               -50.       1.      -4.       5.      -4.      26.            2.
+ 
+  2022         -22.      -2.      -2.      12.      -2.       1.
+                -2.      -2.      -2.      12.     -12.       4.           -1.
+ 
+  2023         -11.       7.       2.       1.       3.       2.
+                -6.       0.       0.       2.      -6.      -3.           -1.
+ 
+  AVGE          -5.      -0.       3.       8.      -6.       8.
+                -9.       1.      -2.       4.      -2.       1.
+
+  Table Total-           2.   Mean-         0.   Std. Dev.-        12.
+                              Min -       -50.        Max -        47.
+        bps_permits 14100            PAGE  21, SERIES bps_permits_addi
+
+ E 18  Final adjustment ratios
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014       25.554    0.000  -83.699  300.965  321.083 -125.602
+             78.202  123.521   31.949  163.456   33.540  104.861        81.153
+ 
+  2015       59.331   65.628  152.796  128.752  116.750  116.235
+             93.222  106.051   84.305  119.781   77.553  100.120       101.710
+ 
+  2016       51.706   62.595   43.858 -618.529  104.577  109.589
+             87.828  111.591   89.014  108.013   84.839   98.503        27.799
+ 
+  2017       74.054   75.791  115.263  114.805  107.229  150.758
+             94.275  107.310   87.492  116.515   85.008   96.846       102.112
+ 
+  2018       85.468   63.360   43.852  133.459  108.994  127.713
+             97.675  107.852   89.205  115.476   94.364   82.074        95.791
+ 
+  2019       71.803   62.432  171.600  108.970  124.550  116.708
+             96.281  104.584   94.428  115.476   74.614   93.735       102.932
+ 
+  2020       54.546   78.210  130.086  103.365  113.887  185.717
+             96.977  106.762   92.653  128.459   68.452   79.032       103.179
+ 
+  2021       73.553   69.589  129.828   97.608  112.682  108.871
+             98.716  109.927   84.858  128.419   67.874   95.445        98.114
+ 
+  2022       73.396   70.872  133.375   94.870  107.307  153.612
+            103.684  107.706   95.102  110.201   77.147   89.547       101.402
+ 
+  2023       35.270   76.879  114.169   88.158  110.392  155.960
+            107.880  106.451   94.697  119.549   67.869   67.733        95.417
+ 
+  AVGE       60.468   62.536   95.113   55.242  132.745  109.956
+             95.474  109.175   84.370  122.535   73.126   90.790
+
+  Table Total-       10915.   Mean-        91.   Std. Dev.-        81.
+                              Min -      -619.        Max -       321.
+
+ E 18.A  Final adjustment ratio forecasts
+  From  2024.Jan to 2024.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2024       45.451   50.630  -89.878  268.484  133.394  177.091
+            116.926  106.979   76.277  145.936   62.174   79.063        97.711
+ 
+        bps_permits 14100            PAGE  22, SERIES bps_permits_addi
+
+ E 18.B  Total adjustment factors
+  From  2014.Jan to 2023.Dec
+  Observations        120
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2014          -3.      -3.       2.       3.       1.       2.
+                -1.       1.      -2.       2.      -2.       0.           -0.
+ 
+  2015          -3.      -3.       2.       3.       1.       2.
+                -1.       1.      -2.       2.      -2.       0.            0.
+ 
+  2016          -3.      -3.     -14.      19.       1.       2.
+                -1.       1.      -1.       2.      -2.      -0.           -0.
+ 
+  2017          -3.      -3.       2.       2.       1.       3.
+                -0.       1.      -1.       2.      -2.      -0.           -0.
+ 
+  2018          -3.      -3.     -14.      18.       1.       3.
+                -0.       1.      -1.       2.      -3.      -1.            0.
+ 
+  2019          -3.      -3.       3.       1.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.            0.
+ 
+  2020          -3.      -3.       3.       0.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.           -0.
+ 
+  2021          -3.      -3.       3.      -0.       1.       5.
+                -0.       1.      -1.       2.      -2.      -1.            0.
+ 
+  2022          -3.      -3.       2.      -1.       1.       5.
+                 0.       1.      -0.       2.      -3.      -2.            0.
+ 
+  2023          -4.      -3.       2.      -1.       1.       6.
+                 1.       1.      -1.       2.      -3.      -1.            0.
+ 
+  AVGE          -3.      -3.      -1.       4.       1.       4.
+                -0.       1.      -1.       2.      -2.      -1.
+
+  Table Total-           0.   Mean-         0.   Std. Dev.-         4.
+                              Min -       -14.        Max -        19.
+
+ E 18.C  Total adjustment factor forecasts
+  From  2024.Jan to 2024.Dec
+  Observations         12
+ -----------------------------------------------------------------------------
+               Jan      Feb      Mar      Apr      May      Jun 
+               Jul      Aug      Sep      Oct      Nov      Dec         AVGE  
+ -----------------------------------------------------------------------------
+  2024          -4.      -3.     -15.      15.       2.       6.
+                 1.       0.      -1.       2.      -3.      -1.            0.
+ 
+
+  QS statistic for seasonality:
+  Original Series                                     0.50  (P-Value =     0.7770)
+  Original Series (EV adj)                            0.73  (P-Value =     0.6927)
+  Residuals                                           0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+
+  QS statistic for seasonality (starting 2016.Jan):
+  Original Series                                     0.43  (P-Value =     0.8068)
+  Original Series (EV adj)                            0.92  (P-Value =     0.6305)
+  Residuals                                           0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series                          0.00  (P-Value =     1.0000)
+  Seasonally Adjusted Series (EV adj)                 0.00  (P-Value =     1.0000)
+  Irregular Series                                    0.00  (P-Value =     1.0000)
+  Irregular Series (EV adj)                           0.00  (P-Value =     1.0000)
+
+
+ WARNING: Series should not be a candidate for seasonal adjustment
+          because the spectrum of the prior adjusted series (Table B1)
+          has no visually significant seasonal peaks.
+
+          If this is a component series of an indirectly adjusted
+          composite series, consider using type = trend or type = summary
+          in the x11 spec.
+        bps_permits 14100            PAGE  23, SERIES bps_permits_addi
+ G 0  10*LOG(SPECTRUM) of the differenced Prior Adjusted Series
+      (Table B1).  Spectrum estimated from 2016.Jan to 2023.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      29.82I                                                            SI     29.82
+           I                                                            SI
+           I                                                            SI
+           I                                                            SI
+      27.76I                                                      *     SI     27.76
+           I                                                      *     SI
+           I                                                      *    *SI
+           I                                  *            * *    *    *SI
+      25.71I                                  *            ***S   *    *SI     25.71
+           I                                 **   *        ***S   *    *SI
+           I                                 **   *       ****S  **    *SI
+           I                                 ***  *       ****S  **    *SI
+      23.65I                                 *** **       ****S* **    *SI     23.65
+           I                    S            *** ***      ****S* ***   *SI
+           I                    S *          *******      ****S*T***  **SI
+           I                    S**         ********     *****S*T***  **SI
+      21.60I                    S**         ********  T* *****S*T***  **SI     21.60
+           I                   *S**         ********S*T*******S*T***  **SI
+           I                   *S***        ********S*T*******S*T*** ***SI
+           I               *   *S***       *********S*T*******S*T*******SI
+      19.54I               **  *S***       *********S*T*******S*T*******SI     19.54
+           I               **  *S***       *********S*T*******S*T*******SI
+           I               **  *S***    **S*********S*T*******S*T*******SI
+           I               **  *S***    **S*********S*T*******S*T*******SI
+      17.48I               ** **S***   ***S*********S*T*******S*T*******SI     17.48
+           I               ** **S****  ***S*********S*T*******S*T*******SI
+           I           *   *****S****  ***S*********S*T*******S*T*******SI
+           I           *   *****S****  ***S*********S*T*******S*T*******SI
+      15.43I           *   *****S*********S*********S*T*******S*T*******SI     15.43
+           I           *   *****S*********S*********S*T*******S*T*******SI
+           I           *  ******S*********S*********S*T*******S*T*******SI
+           I          S*  ******S*********S*********S*T*******S*T*******SI
+      13.37I          S*  ******S*********S*********S*T*******S*T*******SI     13.37
+           I          S** ******S*********S*********S*T*******S*T*******SI
+           I          S** ******S*********S*********S*T*******S*T*******SI
+           I      *   S*********S*********S*********S*T*******S*T*******SI
+      11.31I      *   S*********S*********S*********S*T*******S*T*******SI     11.31
+           I      *   S*********S*********S*********S*T*******S*T*******SI
+           I      ** *S*********S*********S*********S*T*******S*T*******SI
+           I      ** *S*********S*********S*********S*T*******S*T*******SI
+       9.26I      ****S*********S*********S*********S*T*******S*T*******SI      9.26
+           I      ****S*********S*********S*********S*T*******S*T*******SI
+           I      ****S*********S*********S*********S*T*******S*T*******SI
+           I     *****S*********S*********S*********S*T*******S*T*******SI
+       7.20I     *****S*********S*********S*********S*T*******S*T*******SI      7.20
+           I     *****S*********S*********S*********S*T*******S*T*******SI
+           I     *****S*********S*********S*********S*T*******S*T*******SI
+           I     *****S*********S*********S*********S*T*******S*T*******SI
+       5.14I     *****S*********S*********S*********S*T*******S*T*******SI      5.14
+           I    ******S*********S*********S*********S*T*******S*T*******SI
+           I    ******S*********S*********S*********S*T*******S*T*******SI
+           I**  ******S*********S*********S*********S*T*******S*T*******SI
+       3.09I**********S*********S*********S*********S*T*******S*T*******SI      3.09
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 14100            PAGE  24, SERIES bps_permits_addi
+ G 1  10*LOG(SPECTRUM) of the differenced seasonally adjusted 
+      data (Table E2).  Spectrum estimated from 2016.Jan to 2023.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      22.85I                                                         *   I     22.85
+           I                                                         *   I
+           I                                                         *   I
+           I                                               *         *   I
+      20.88I                                               *         *   I     20.88
+           I                                               *         *   I
+           I                                               *         *   I
+           I                                               ***      **   I
+      18.91I                                  *        *   ***      **   I     18.91
+           I                                  *        *  ****      **   I
+           I                      *           *        *  ****      **   I
+           I                      *          **        *  ****S     **   I
+      16.95I                      *          **        *  ****S     **   I     16.95
+           I                      *          **        *  ****S     **   I
+           I                      *    *     **        *  ****S    ***   I
+           I                      *    *     **        ** ****S    ***   I
+      14.98I                      *    *     **        *******S    ***   I     14.98
+           I                      *   **     **        *******S   ****   I
+           I                      *   **     **       T*******S*  ****   I
+           I                     ***  **     **       T*******S*  ****   I
+      13.01I                     ***  **     **   *   T*******S*  ****   I     13.01
+           I       *             ***  **     **   **  T*******S* *****   I
+           I       *             ***  **    ****  **  T*******S*T******  I
+           I       *    *        ***  **    ****  **  T*******S*T******  I
+      11.04I       *    *       S***  **    ****  ** *T*******S*T******  I     11.04
+           I       *    *      *S********   ****  **S*T*******S*T******  I
+           I       *    *     **S********   **** ***S*T*******S*T******  I
+           I       *    *     **S********  *********S*T*******S*T******  I
+       9.07I       *    *    ***S********  *********S*T*******S*T******  I      9.07
+           I       *    *    ***S*********S*********S*T*******S*T******  I
+           I       *    *    ***S*********S*********S*T*******S*T******  I
+           I       *    **  ****S*********S*********S*T*******S*T******* I
+       7.10I      **    **  ****S*********S*********S*T*******S*T******* I      7.10
+           I      **    **  ****S*********S*********S*T*******S*T******* I
+           I      **   *** *****S*********S*********S*T*******S*T*******SI
+           I      **   *********S*********S*********S*T*******S*T*******SI
+       5.13I      **   *********S*********S*********S*T*******S*T*******SI      5.13
+           I      **   *********S*********S*********S*T*******S*T*******SI
+           I      **   *********S*********S*********S*T*******S*T*******SI
+           I   *  **   *********S*********S*********S*T*******S*T*******SI
+       3.16I   *  ***  *********S*********S*********S*T*******S*T*******SI      3.16
+           I   *  ***  *********S*********S*********S*T*******S*T*******SI
+           I   *  ***  *********S*********S*********S*T*******S*T*******SI
+           I  ******* S*********S*********S*********S*T*******S*T*******SI
+       1.20I  ******* S*********S*********S*********S*T*******S*T*******SI      1.20
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+      -0.77I  ********S*********S*********S*********S*T*******S*T*******SI     -0.77
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I *********S*********S*********S*********S*T*******S*T*******SI
+           I *********S*********S*********S*********S*T*******S*T*******SI
+      -2.74I**********S*********S*********S*********S*T*******S*T*******SI     -2.74
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 14100            PAGE  25, SERIES bps_permits_addi
+ G 2  10*LOG(SPECTRUM) of the Modified Irregular (Table E3).  
+      Spectrum estimated from 2016.Jan to 2023.Dec.
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+      17.72I                      *                                      I     17.72
+           I                      *                                      I
+           I                      *                                  *   I
+           I                      *                                  *   I
+      15.85I            *         *                                  *   I     15.85
+           I            *         *                        *         *   I
+           I            *         *           *            **        *   I
+           I            *         *           *            **        *   I
+      13.97I            *         *           *            **        *   I     13.97
+           I            *        **          **            ***      **   I
+           I       *    *        **          **        *  ****      **   I
+           I   *   *    *        ***  *      **        *  ****      **   I
+      12.10I   *   *    *        ***  **     **        *  ****      **   I     12.10
+           I   *   *    *      *S***  **     **        *  ****      **   I
+           I   *   *    *     **S***  **     **        *  ****      **   I
+           I   *   *    *   ****S***  **     **        *******S     **   I
+      10.22I   *   *    *   ****S***  **     **       T*******S     **   I     10.22
+           I   *   *    **  ****S***  **     **       T*******S     **   I
+           I   *   *    ** *****S*** ***     **       T*******S    ***   I
+           I   *   *    ** *****S*******     **       T*******S    ***   I
+       8.35I   *   *    ** *****S*******     ***  **  T*******S    ***   I      8.35
+           I   *   *    ********S********   ****  **  T*******S*  ****   I
+           I   *   *    ********S********   ****  ** *T*******S*  ****   I
+           I   *   *    ********S********   ****  **S*T*******S* *****   I
+       6.48I   *   *    ********S********   **** ***S*T*******S*T******  I      6.48
+           I   *   *   *********S********* *********S*T*******S*T******  I
+           I   *   *   *********S********* *********S*T*******S*T******  I
+           I   *   *   *********S*********S*********S*T*******S*T******  I
+       4.60I   *   *   *********S*********S*********S*T*******S*T******  I      4.60
+           I   *   **  *********S*********S*********S*T*******S*T******  I
+           I   *  ***  *********S*********S*********S*T*******S*T******  I
+           I   ** ***  *********S*********S*********S*T*******S*T******  I
+       2.73I   ** ***  *********S*********S*********S*T*******S*T******  I      2.73
+           I   ** ***  *********S*********S*********S*T*******S*T******* I
+           I   ** ***  *********S*********S*********S*T*******S*T******* I
+           I   ** *** S*********S*********S*********S*T*******S*T******* I
+       0.85I   *******S*********S*********S*********S*T*******S*T*******SI      0.85
+           I   *******S*********S*********S*********S*T*******S*T*******SI
+           I   *******S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+      -1.02I  ********S*********S*********S*********S*T*******S*T*******SI     -1.02
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+      -2.89I  ********S*********S*********S*********S*T*******S*T*******SI     -2.89
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+      -4.77I  ********S*********S*********S*********S*T*******S*T*******SI     -4.77
+           I  ********S*********S*********S*********S*T*******S*T*******SI
+           I *********S*********S*********S*********S*T*******S*T*******SI
+           I *********S*********S*********S*********S*T*******S*T*******SI
+      -6.64I**********S*********S*********S*********S*T*******S*T*******SI     -6.64
+ ++++++++++I+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++I
+            S=SEASONAL FREQUENCIES, T=TRADING DAY FREQUENCIES
+        bps_permits 14100            PAGE  26, SERIES bps_permits_addi
+
+  Peak probabilities for Tukey spectrum estimator
+  Spectrum estimated from 2016.Jan to 2023.Dec.
+
+                                          S1       S2       S3       S4       S5       S6       TD
+                                        ------   ------   ------   ------   ------   ------   ------
+  Model Residuals                        0.105    0.251    0.095    0.080    0.077    0.561    0.664  
+  Prior Adjusted Series (Table B1)       0.327    0.902*   0.094    0.129    0.528    0.883    0.328  
+  Seasonally adjusted series (E2)        0.062    0.055    0.089    0.875    0.359    0.070    0.994**
+  Modified Irregular (E3)                0.022    0.110    0.125    0.894    0.284    0.069    0.994**
+  ----------
+     ** - Peak Probability > 0.99,
+      * - 0.90 < Peak Probability < 0.99
+
+
