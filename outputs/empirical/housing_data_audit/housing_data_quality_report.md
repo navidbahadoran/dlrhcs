@@ -1,4 +1,0 @@
-# Housing Data Quality Report
-
-- BLS preliminary observation: 196
-- negative_seasonally_adjusted_permit_value: 605

@@ -1387,6 +1387,39 @@ def test_housing_all_homes_production_calls_preflight_and_estimator_once_and_pre
         assert (prod / "riesz_summary.json").exists()
         assert not (output / "smoke" / "housing_all_homes_results.json").exists()
         assert not (output / "pilots" / "tab_housing_riesz_pilots.csv").exists()
+        progress = json.loads((prod / "production_progress.json").read_text(encoding="utf-8"))
+        assert progress["status"] == "completed"
+        assert not (prod / "production_progress.json.part").exists()
+        log_text = (prod / "production.log").read_text(encoding="utf-8")
+        phases = [
+            "production requested",
+            "preflight started",
+            "preflight completed",
+            "input panel loading started",
+            "input panel loading completed",
+            "estimator started",
+            "estimator completed",
+            "production validation started",
+            "production validation completed",
+            "output writing started",
+            "output writing completed",
+            "production completed",
+        ]
+        pos = [log_text.index(p) for p in phases]
+        assert pos == sorted(pos)
+
+
+def test_housing_all_homes_progress_heartbeat_respects_interval():
+    with tempfile.TemporaryDirectory() as tmp:
+        out = housing_all_homes.Path(tmp)
+        progress = housing_all_homes.ProductionProgress(out, "abc", progress_every=999)
+        progress.emit("phase", "forced first", status="running")
+        progress.heartbeat("phase", "suppressed heartbeat", status="running")
+        text = (out / "production.log").read_text(encoding="utf-8")
+        assert "forced first" in text
+        assert "suppressed heartbeat" not in text
+        progress.emit("phase", "forced second", status="running")
+        assert "forced second" in (out / "production.log").read_text(encoding="utf-8")
 
 
 def test_housing_all_homes_failed_preflight_prevents_production_estimator():
@@ -1495,6 +1528,101 @@ def test_housing_all_homes_riesz_nonconvergence_marks_production_invalid():
         result = json.loads((output / "production" / "housing_all_homes_results.json").read_text(encoding="utf-8"))
         assert result["production_valid"] is False
         assert result["production_validation_failures"]
+        progress = json.loads((output / "production" / "production_progress.json").read_text(encoding="utf-8"))
+        assert progress["status"] == "failed"
+
+
+def test_housing_all_homes_checkpoint_resume_skips_completed_estimator_unit():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        _, panel_dir, config, output = _make_housing_fixture(repo)
+        prod = output / "production"
+        calls = {"estimate": 0}
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+            try:
+                housing_all_homes.run_estimation(
+                    panel_dir, prod, config, repo_root=repo, production=True,
+                    _testing_raise_after_estimator_checkpoint="exception",
+                )
+            except RuntimeError as exc:
+                assert "injected failure" in str(exc)
+            else:
+                raise AssertionError("injected checkpoint failure should raise")
+            assert calls["estimate"] == 1
+            assert not (prod / "housing_all_homes_results.json").exists()
+            housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("checkpoint resume must not recompute estimator"))
+            resumed = housing_all_homes.run_estimation(panel_dir, prod, config, repo_root=repo, production=True)
+            assert resumed["production_valid"] is True
+            assert calls["estimate"] == 1
+            manifest = json.loads((prod / "checkpoints" / "manifest.json").read_text(encoding="utf-8"))
+            assert manifest["status"] == "completed"
+            fresh_calls = {"estimate": 0}
+            housing_all_homes.estimate = _fake_housing_estimate_factory(fresh_calls)
+            fresh = housing_all_homes.run_estimation(
+                panel_dir, output / "fresh_production", config, repo_root=repo,
+                production=True,
+            )
+        finally:
+            housing_all_homes.estimate = original_estimate
+        for key in ["targets", "ranks", "q", "J", "riesz_diagnostics", "production_valid"]:
+            assert resumed[key] == fresh[key]
+
+
+def test_housing_all_homes_incompatible_and_corrupt_checkpoints_are_safe():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        _, panel_dir, config, output = _make_housing_fixture(repo)
+        prod = output / "production"
+        calls = {"estimate": 0}
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+            try:
+                housing_all_homes.run_estimation(
+                    panel_dir, prod, config, repo_root=repo, production=True, seed=2024,
+                    _testing_raise_after_estimator_checkpoint="exception",
+                )
+            except RuntimeError:
+                pass
+            try:
+                housing_all_homes.run_estimation(panel_dir, prod, config, repo_root=repo, production=True, seed=2025)
+            except SystemExit as exc:
+                assert "incompatible" in str(exc)
+            else:
+                raise AssertionError("incompatible checkpoint should be rejected")
+            assert calls["estimate"] == 1
+            (prod / "checkpoints" / "estimator_output.json").write_text("{not json", encoding="utf-8")
+            housing_all_homes.run_estimation(panel_dir, prod, config, repo_root=repo, production=True, seed=2024)
+            assert calls["estimate"] == 2
+        finally:
+            housing_all_homes.estimate = original_estimate
+
+
+def test_housing_all_homes_keyboard_interrupt_marks_progress_without_success():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        _, panel_dir, config, output = _make_housing_fixture(repo)
+        prod = output / "production"
+        calls = {"estimate": 0}
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+            try:
+                housing_all_homes.run_estimation(
+                    panel_dir, prod, config, repo_root=repo, production=True,
+                    _testing_raise_after_estimator_checkpoint="keyboard",
+                )
+            except KeyboardInterrupt:
+                pass
+            else:
+                raise AssertionError("KeyboardInterrupt should propagate from direct run_estimation")
+        finally:
+            housing_all_homes.estimate = original_estimate
+        assert not (prod / "housing_all_homes_results.json").exists()
+        progress = json.loads((prod / "production_progress.json").read_text(encoding="utf-8"))
+        assert progress["status"] == "interrupted"
 
 
 def test_housing_all_homes_production_signature_portable_across_roots():

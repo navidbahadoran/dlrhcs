@@ -63,6 +63,7 @@ BASELINE_EXPECTED_N = 169
 BASELINE_EXPECTED_T = 197
 BASELINE_EXPECTED_USABLE = 33124
 RIESZ_RESIDUAL_NUMERICAL_MARGIN = 1e-8
+PROGRESS_STATUS_VALUES = {"initializing", "running", "validating", "completed", "failed", "interrupted"}
 
 
 def month_index(ym: str) -> int:
@@ -96,6 +97,15 @@ def write_json(path: Path, obj: Mapping[str, object]) -> None:
     tmp = path.with_name(path.name + ".part")
     tmp.write_text(json.dumps(obj, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
     tmp.replace(path)
+
+
+def utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def signature_hash(signature: Mapping[str, object]) -> str:
+    payload = json.dumps(jsonable(signature), sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def sha256_file(path: Path) -> str:
@@ -629,6 +639,130 @@ def flatten_riesz_diagnostics(riesz_diag: Mapping[str, Mapping[str, object]]) ->
     return rows
 
 
+class ProductionProgress:
+    def __init__(self, out_dir: Path, run_signature_hash: str = "pending",
+                 progress_every: float = 30.0, overwrite_log: bool = False):
+        self.out_dir = out_dir
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.path = out_dir / "production_progress.json"
+        self.log_path = out_dir / "production.log"
+        self.run_signature_hash = str(run_signature_hash)
+        self.progress_every = max(float(progress_every), 0.0)
+        self.started_monotonic = time.perf_counter()
+        self.started_utc = utc_now()
+        self.last_emit = 0.0
+        if overwrite_log and self.log_path.exists():
+            self.log_path.write_text("", encoding="utf-8")
+
+    def set_signature_hash(self, run_signature_hash: str) -> None:
+        self.run_signature_hash = str(run_signature_hash)
+
+    def emit(self, phase: str, message: str, *, status: str = "running",
+             completed_units: Optional[int] = None, total_units: Optional[int] = None,
+             current_target: Optional[str] = None, current_fold: Optional[int] = None,
+             last_completed_checkpoint: Optional[str] = None, force: bool = True) -> None:
+        if status not in PROGRESS_STATUS_VALUES:
+            raise ValueError(f"unknown production progress status: {status}")
+        now = time.perf_counter()
+        if not force and (now - self.last_emit) < self.progress_every:
+            return
+        self.last_emit = now
+        elapsed = now - self.started_monotonic
+        updated = utc_now()
+        line = (
+            f"[{updated}] [housing-all-homes] [{self.run_signature_hash[:12]}] "
+            f"{status} phase={phase} elapsed={elapsed:.1f}s {message}"
+        )
+        print(line, flush=True)
+        with self.log_path.open("a", encoding="utf-8", newline="") as fh:
+            fh.write(line + "\n")
+        write_json(self.path, {
+            "schema_version": SCHEMA_VERSION,
+            "run_signature_hash": self.run_signature_hash,
+            "status": status,
+            "phase": phase,
+            "completed_units": completed_units,
+            "total_units": total_units,
+            "current_target": current_target,
+            "current_fold": current_fold,
+            "started_utc": self.started_utc,
+            "updated_utc": updated,
+            "elapsed_seconds": float(elapsed),
+            "last_completed_checkpoint": last_completed_checkpoint,
+            "message": message,
+        })
+
+    def heartbeat(self, phase: str, message: str, **kwargs) -> None:
+        self.emit(phase, message, force=False, **kwargs)
+
+
+def checkpoint_dir_for(out_dir: Path) -> Path:
+    return out_dir / "checkpoints"
+
+
+def checkpoint_manifest_path(out_dir: Path) -> Path:
+    return checkpoint_dir_for(out_dir) / "manifest.json"
+
+
+def estimator_checkpoint_path(out_dir: Path) -> Path:
+    return checkpoint_dir_for(out_dir) / "estimator_output.json"
+
+
+def write_checkpoint_manifest(out_dir: Path, run_hash: str, signature: Mapping[str, object],
+                              status: str, last_completed_checkpoint: str,
+                              message: str = "") -> None:
+    checkpoint_dir_for(out_dir).mkdir(parents=True, exist_ok=True)
+    write_json(checkpoint_manifest_path(out_dir), {
+        "schema_version": SCHEMA_VERSION,
+        "run_signature_hash": run_hash,
+        "run_signature": jsonable(signature),
+        "status": status,
+        "last_completed_checkpoint": last_completed_checkpoint,
+        "checkpoint_file": "estimator_output.json",
+        "updated_utc": utc_now(),
+        "message": message,
+    })
+
+
+def load_compatible_estimator_checkpoint(out_dir: Path, run_hash: str,
+                                         signature: Mapping[str, object],
+                                         *, overwrite: bool = False,
+                                         progress: Optional[ProductionProgress] = None) -> Optional[Dict[str, object]]:
+    manifest_path = checkpoint_manifest_path(out_dir)
+    ckpt_path = estimator_checkpoint_path(out_dir)
+    if not manifest_path.exists() and not ckpt_path.exists():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        if progress:
+            progress.emit("checkpoint", f"ignoring corrupt checkpoint manifest: {exc}", status="running")
+        return None
+    existing_hash = manifest.get("run_signature_hash")
+    if existing_hash != run_hash or manifest.get("run_signature") != jsonable(signature):
+        if overwrite:
+            if progress:
+                progress.emit("checkpoint", "overwriting incompatible checkpoint because --overwrite was supplied", status="running")
+            return None
+        raise SystemExit("refusing to reuse incompatible housing production checkpoint")
+    try:
+        checkpoint = json.loads(ckpt_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        if progress:
+            progress.emit("checkpoint", f"ignoring corrupt estimator checkpoint: {exc}", status="running")
+        return None
+    if checkpoint.get("run_signature_hash") != run_hash or checkpoint.get("run_signature") != jsonable(signature):
+        if overwrite:
+            return None
+        raise SystemExit("refusing to reuse estimator checkpoint with incompatible signature")
+    output = checkpoint.get("output")
+    if not isinstance(output, dict):
+        if progress:
+            progress.emit("checkpoint", "ignoring incomplete estimator checkpoint without output", status="running")
+        return None
+    return output
+
+
 def validate_production_output(output: Mapping[str, object],
                                targets: Sequence[Target],
                                tuning: Tuning) -> Tuple[bool, List[str]]:
@@ -969,12 +1103,17 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
                    select: bool = False, n_jobs: int = 1,
                    resume: bool = True, overwrite: bool = False,
                    production: bool = False,
+                   progress_every: float = 30.0,
+                   progress: Optional[ProductionProgress] = None,
                    riesz_maxiter: Optional[int] = None,
                    riesz_tol: Optional[float] = None,
                    riesz_ridge: Optional[float] = None,
-                   riesz_use_cached_scale: Optional[bool] = None) -> Dict[str, object]:
+                   riesz_use_cached_scale: Optional[bool] = None,
+                   _testing_raise_after_estimator_checkpoint: Optional[str] = None) -> Dict[str, object]:
     repo_root = repo_root or find_repo_root(start=__file__)
     out_dir.mkdir(parents=True, exist_ok=True)
+    if production and progress is None:
+        progress = ProductionProgress(out_dir, progress_every=progress_every, overwrite_log=overwrite)
     housing_root = out_dir.parent if out_dir.name == "smoke" else out_dir
     for child in ["tables", "figures", "audit"]:
         (housing_root / child).mkdir(parents=True, exist_ok=True)
@@ -983,16 +1122,28 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
     if smoke:
         first_n_msas = 20 if first_n_msas is None else first_n_msas
         first_t_usable = 60 if first_t_usable is None else first_t_usable
+    if progress:
+        progress.emit("input_loading", "input panel loading started", status="running")
     panel = load_estimation_panel(
         panel_dir,
         first_n_msas=first_n_msas,
         first_t_usable=first_t_usable,
     )
+    if progress:
+        progress.emit(
+            "input_loading",
+            f"input panel loading completed N={panel['Y'].shape[1]} T={panel['Y'].shape[0] + 1} usable={panel['Y'].size}",
+            status="running",
+            completed_units=1,
+            total_units=1,
+        )
     tuning = tuning_from_config(
         config_path, fixed_ranks=fixed_ranks, select=select, n_jobs=n_jobs,
         riesz_maxiter=riesz_maxiter, riesz_tol=riesz_tol,
         riesz_ridge=riesz_ridge, riesz_use_cached_scale=riesz_use_cached_scale,
     )
+    blocks = build_blocks(panel["Z"])
+    targets = housing_targets(blocks)
     input_identity = {
         "schema_version": panel["metadata"].get("schema_version"),
         "input_checksum": panel["panel_checksum"],
@@ -1026,80 +1177,153 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
             "start_date": panel["metadata"].get("start_date"),
             "end_date": panel["metadata"].get("end_date"),
         },
-        "targets": [t.name for t in housing_targets(build_blocks(panel["Z"]))],
+        "targets": [t.name for t in targets],
     })
+    run_hash = signature_hash(signature)
+    if progress:
+        progress.set_signature_hash(run_hash)
+        progress.emit(
+            "resolved_tuning",
+            (
+                f"N={panel['Y'].shape[1]} T={panel['Y'].shape[0] + 1} usable={panel['Y'].size} "
+                f"targets={[t.name for t in targets]} ranks={tuning.ranks} tuning={jsonable(dataclasses.asdict(tuning))}"
+            ),
+            status="running",
+        )
     if resume and not overwrite and result_path.exists() and meta_path.exists():
         old = json.loads(meta_path.read_text(encoding="utf-8"))
         old_sig = old.get("run_signature", {})
         if old_sig == signature:
-            return json.loads(result_path.read_text(encoding="utf-8"))
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+            if progress:
+                progress.emit("completed_output_reuse", "compatible completed production output reused", status="completed")
+            return result
         raise SystemExit(f"refusing to overwrite/resume incompatible housing output at {out_dir}")
 
-    t0 = time.perf_counter()
-    blocks = build_blocks(panel["Z"])
-    targets = housing_targets(blocks)
-    res = estimate(panel["Y"], panel["Z"], targets, tuning, P=1,
-                   rng=np.random.default_rng(seed), profile_timing=True)
-    elapsed = time.perf_counter() - t0
-    target_table = {}
-    for tg in targets:
-        target_table[tg.name] = {
-            "estimate": float(res.estimates[tg.name]),
-            "se_white": float(res.se[tg.name]),
-            "se_xs": float(res.se_xs[tg.name]),
-            "ci_white": [float(v) for v in res.ci[tg.name]],
-            "ci_xs": [float(v) for v in res.ci_xs[tg.name]],
-            "plugin": float(res.onestep.plugins.get(tg.name, float("nan"))),
-        }
-    riesz_diag = getattr(res.onestep, "riesz_diag", {}) or {}
-    riesz_rows = flatten_riesz_diagnostics(riesz_diag)
-    cg_iters = [int(x) for d in riesz_diag.values() for x in d.get("cg_iters", [])]
-    cg_conv = [bool(x) for d in riesz_diag.values() for x in d.get("converged", [])]
-    riesz_summary = {
-        "number_of_targets": len(targets),
-        "number_of_folds": int(res.J),
-        "total_riesz_solves": int(sum(len(d.get("cg_iters", [])) for d in riesz_diag.values())),
-        "cg_converged_fraction": float(np.mean(cg_conv)) if cg_conv else "",
-        "cg_iterations_mean": float(np.mean(cg_iters)) if cg_iters else "",
-        "cg_iterations_max": int(max(cg_iters)) if cg_iters else "",
-    }
-    riesz_summary.update(summarize_riesz_rows(riesz_rows))
     mode = "production" if production else ("pilot" if pilot_id else ("smoke" if smoke else "production_candidate"))
-    output = {
-        "schema_version": SCHEMA_VERSION,
-        "mode": mode,
-        "pilot_id": pilot_id,
-        "full_production_run": bool(production),
-        "input_panel": {
-            "repo_relative_path": repo_relative(panel_dir, repo_root),
-            "resolved_absolute_path_info": str(panel_dir.resolve()),
-            "checksum": panel["panel_checksum"],
-            "source_candidate_id": panel["metadata"].get("candidate_id"),
-            "source_start_date": panel["metadata"].get("start_date"),
-            "source_end_date": panel["metadata"].get("end_date"),
-        },
-        "N": int(panel["Y"].shape[1]),
-        "Tp": int(panel["Y"].shape[0]),
-        "level_T": int(panel["Y"].shape[0] + 1),
-        "usable_dynamic_observations": int(panel["Y"].size),
-        "months": panel["months"],
-        "cbsa_codes": panel["codes"],
-        "ranks": list(res.ranks),
-        "q": int(res.q),
-        "J": int(res.J),
-        "targets": target_table,
-        "diagnostics": jsonable(res.diagnostics),
-        "riesz_diagnostics": jsonable(riesz_summary),
-        "riesz_fold_diagnostics": jsonable(riesz_rows),
-        "target_names_unique": len({t.name for t in targets}) == len(targets),
-        "resolved_tuning": jsonable(dataclasses.asdict(tuning)),
-        "runtime_sec": float(elapsed),
-        "run_signature": signature,
-    }
+    t0 = time.perf_counter()
+    output: Optional[Dict[str, object]] = None
     if production:
+        output = load_compatible_estimator_checkpoint(
+            out_dir, run_hash, signature, overwrite=overwrite, progress=progress,
+        )
+        if output is not None and progress:
+            progress.emit(
+                "checkpoint_resume",
+                "resumed from completed estimator checkpoint; estimator will not be recomputed",
+                status="running",
+                completed_units=1,
+                total_units=1,
+                last_completed_checkpoint="estimator_output",
+            )
+    if output is None:
+        if progress:
+            progress.emit("estimator", "estimator started; internal ALS/fold/Riesz progress is not exposed by the estimator API", status="running")
+            progress.heartbeat("estimator", "estimator running; no completed internal unit yet", status="running")
+        res = estimate(panel["Y"], panel["Z"], targets, tuning, P=1,
+                       rng=np.random.default_rng(seed), profile_timing=True)
+        elapsed = time.perf_counter() - t0
+        if progress:
+            progress.emit("estimator", "estimator completed", status="running", completed_units=1, total_units=1)
+        target_table = {}
+        for tg in targets:
+            target_table[tg.name] = {
+                "estimate": float(res.estimates[tg.name]),
+                "se_white": float(res.se[tg.name]),
+                "se_xs": float(res.se_xs[tg.name]),
+                "ci_white": [float(v) for v in res.ci[tg.name]],
+                "ci_xs": [float(v) for v in res.ci_xs[tg.name]],
+                "plugin": float(res.onestep.plugins.get(tg.name, float("nan"))),
+            }
+        riesz_diag = getattr(res.onestep, "riesz_diag", {}) or {}
+        riesz_rows = flatten_riesz_diagnostics(riesz_diag)
+        cg_iters = [int(x) for d in riesz_diag.values() for x in d.get("cg_iters", [])]
+        cg_conv = [bool(x) for d in riesz_diag.values() for x in d.get("converged", [])]
+        riesz_summary = {
+            "number_of_targets": len(targets),
+            "number_of_folds": int(res.J),
+            "total_riesz_solves": int(sum(len(d.get("cg_iters", [])) for d in riesz_diag.values())),
+            "cg_converged_fraction": float(np.mean(cg_conv)) if cg_conv else "",
+            "cg_iterations_mean": float(np.mean(cg_iters)) if cg_iters else "",
+            "cg_iterations_max": int(max(cg_iters)) if cg_iters else "",
+        }
+        riesz_summary.update(summarize_riesz_rows(riesz_rows))
+        output = {
+            "schema_version": SCHEMA_VERSION,
+            "mode": mode,
+            "pilot_id": pilot_id,
+            "full_production_run": bool(production),
+            "input_panel": {
+                "repo_relative_path": repo_relative(panel_dir, repo_root),
+                "resolved_absolute_path_info": str(panel_dir.resolve()),
+                "checksum": panel["panel_checksum"],
+                "source_candidate_id": panel["metadata"].get("candidate_id"),
+                "source_start_date": panel["metadata"].get("start_date"),
+                "source_end_date": panel["metadata"].get("end_date"),
+            },
+            "N": int(panel["Y"].shape[1]),
+            "Tp": int(panel["Y"].shape[0]),
+            "level_T": int(panel["Y"].shape[0] + 1),
+            "usable_dynamic_observations": int(panel["Y"].size),
+            "months": panel["months"],
+            "cbsa_codes": panel["codes"],
+            "ranks": list(res.ranks),
+            "q": int(res.q),
+            "J": int(res.J),
+            "targets": target_table,
+            "diagnostics": jsonable(res.diagnostics),
+            "riesz_diagnostics": jsonable(riesz_summary),
+            "riesz_fold_diagnostics": jsonable(riesz_rows),
+            "target_names_unique": len({t.name for t in targets}) == len(targets),
+            "resolved_tuning": jsonable(dataclasses.asdict(tuning)),
+            "runtime_sec": float(elapsed),
+            "run_signature": signature,
+        }
+        if production:
+            if progress:
+                progress.emit("checkpoint", "writing completed-estimator checkpoint", status="running")
+            write_json(estimator_checkpoint_path(out_dir), {
+                "schema_version": SCHEMA_VERSION,
+                "run_signature_hash": run_hash,
+                "run_signature": signature,
+                "checkpoint": "estimator_output",
+                "updated_utc": utc_now(),
+                "output": output,
+            })
+            write_checkpoint_manifest(
+                out_dir, run_hash, signature, "running", "estimator_output",
+                "completed estimator output serialized",
+            )
+            if progress:
+                progress.emit("checkpoint", "completed-estimator checkpoint written", status="running",
+                              last_completed_checkpoint="estimator_output")
+            if _testing_raise_after_estimator_checkpoint == "keyboard":
+                if progress:
+                    progress.emit("interrupted", "interrupted after estimator checkpoint", status="interrupted",
+                                  last_completed_checkpoint="estimator_output")
+                raise KeyboardInterrupt()
+            if _testing_raise_after_estimator_checkpoint == "exception":
+                if progress:
+                    progress.emit("failed", "injected failure after estimator checkpoint", status="failed",
+                                  last_completed_checkpoint="estimator_output")
+                raise RuntimeError("injected failure after estimator checkpoint")
+    else:
+        riesz_rows = output.get("riesz_fold_diagnostics", []) or []
+        riesz_summary = output.get("riesz_diagnostics", {}) or {}
+    if production:
+        if progress:
+            progress.emit("validation", "production validation started", status="validating")
         production_valid, production_failures = validate_production_output(output, targets, tuning)
         output["production_valid"] = bool(production_valid)
         output["production_validation_failures"] = production_failures
+        if progress:
+            progress.emit(
+                "validation",
+                f"production validation completed production_valid={production_valid}",
+                status="validating",
+            )
+    if progress:
+        progress.emit("output_writing", "output writing started", status="running")
     write_json(result_path, output)
     if pilot_id or production:
         fields = [
@@ -1129,6 +1353,14 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
         "production_validation_failures": output.get("production_validation_failures", []),
     }
     write_json(meta_path, meta_output)
+    if production:
+        write_checkpoint_manifest(
+            out_dir, run_hash, signature, "completed", "estimator_output",
+            "production output completed",
+        )
+    if progress:
+        progress.emit("output_writing", "output writing completed", status="running",
+                      last_completed_checkpoint="estimator_output" if production else None)
     return output
 
 
@@ -1156,6 +1388,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--select", action="store_true")
     ap.add_argument("--n-jobs", type=int, default=1)
     ap.add_argument("--overwrite", action="store_true", help="replace an existing compatible smoke/output directory intentionally")
+    ap.add_argument("--progress-every", type=parse_positive_float, default=30.0,
+                    help="seconds between production heartbeat messages during long phases")
     ap.add_argument("--riesz-maxiter", type=parse_positive_int, default=None,
                     help="override Riesz CG max iterations for this housing run")
     ap.add_argument("--riesz-tol", type=parse_positive_float, default=None,
@@ -1240,53 +1474,74 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"  {name}: est={vals['estimate']:.6g} se_white={vals['se_white']:.6g} se_xs={vals['se_xs']:.6g}", flush=True)
         return 0
     if args.production:
-        report = preflight(
-            panel_dir, output_root, repo_root, config_path=config_path,
-            fixed_ranks=args.fixed_ranks, select=args.select, n_jobs=args.n_jobs,
-            riesz_maxiter=args.riesz_maxiter, riesz_tol=args.riesz_tol,
-            riesz_ridge=args.riesz_ridge,
-            riesz_use_cached_scale=args.riesz_use_cached_scale,
-        )
-        preflight_failures = []
-        if not report.get("ready_for_production"):
-            preflight_failures.append("ready_for_production is not True")
-        if int(report.get("N", -1)) != BASELINE_EXPECTED_N:
-            preflight_failures.append(f"N is {report.get('N')}, expected {BASELINE_EXPECTED_N}")
-        if int(report.get("T", -1)) != BASELINE_EXPECTED_T:
-            preflight_failures.append(f"T is {report.get('T')}, expected {BASELINE_EXPECTED_T}")
-        if int(report.get("usable_dynamic_observations", -1)) != BASELINE_EXPECTED_USABLE:
-            preflight_failures.append(
-                f"usable_dynamic_observations is {report.get('usable_dynamic_observations')}, "
-                f"expected {BASELINE_EXPECTED_USABLE}"
-            )
-        validation = report.get("validation", {})
-        if int(validation.get("preliminary_bls_observations", -1)) != 0:
-            preflight_failures.append("preliminary BLS observations are present")
-        if not report.get("portability_checks", {}).get("input_checksum_ok"):
-            preflight_failures.append("input checksums are invalid")
-        if preflight_failures:
-            print("[housing-all-homes] production preflight failed:", flush=True)
-            for failure in preflight_failures:
-                print(f"  - {failure}", flush=True)
-            return 1
         production_dir = output_root / "production"
-        result = run_estimation(
-            panel_dir, production_dir, config_path,
-            repo_root=repo_root,
-            smoke=False, production=True, seed=args.seed,
-            fixed_ranks=args.fixed_ranks, select=args.select,
-            n_jobs=args.n_jobs, overwrite=args.overwrite,
-            riesz_maxiter=args.riesz_maxiter, riesz_tol=args.riesz_tol,
-            riesz_ridge=args.riesz_ridge,
-            riesz_use_cached_scale=args.riesz_use_cached_scale,
-        )
-        if not result.get("production_valid", False):
-            print("[housing-all-homes] production completed with invalid diagnostics", flush=True)
-            for failure in result.get("production_validation_failures", []):
-                print(f"  - {failure}", flush=True)
-            print(f"[housing-all-homes] output directory: {repo_relative(production_dir, repo_root)}", flush=True)
+        progress = ProductionProgress(production_dir, progress_every=args.progress_every, overwrite_log=args.overwrite)
+        total_start = time.perf_counter()
+        try:
+            progress.emit("initializing", "production requested", status="initializing")
+            progress.emit("preflight", "preflight started", status="running")
+            report = preflight(
+                panel_dir, output_root, repo_root, config_path=config_path,
+                fixed_ranks=args.fixed_ranks, select=args.select, n_jobs=args.n_jobs,
+                riesz_maxiter=args.riesz_maxiter, riesz_tol=args.riesz_tol,
+                riesz_ridge=args.riesz_ridge,
+                riesz_use_cached_scale=args.riesz_use_cached_scale,
+            )
+            progress.emit("preflight", f"preflight completed ready_for_production={report.get('ready_for_production')}", status="running")
+            preflight_failures = []
+            if not report.get("ready_for_production"):
+                preflight_failures.append("ready_for_production is not True")
+            if int(report.get("N", -1)) != BASELINE_EXPECTED_N:
+                preflight_failures.append(f"N is {report.get('N')}, expected {BASELINE_EXPECTED_N}")
+            if int(report.get("T", -1)) != BASELINE_EXPECTED_T:
+                preflight_failures.append(f"T is {report.get('T')}, expected {BASELINE_EXPECTED_T}")
+            if int(report.get("usable_dynamic_observations", -1)) != BASELINE_EXPECTED_USABLE:
+                preflight_failures.append(
+                    f"usable_dynamic_observations is {report.get('usable_dynamic_observations')}, "
+                    f"expected {BASELINE_EXPECTED_USABLE}"
+                )
+            validation = report.get("validation", {})
+            if int(validation.get("preliminary_bls_observations", -1)) != 0:
+                preflight_failures.append("preliminary BLS observations are present")
+            if not report.get("portability_checks", {}).get("input_checksum_ok"):
+                preflight_failures.append("input checksums are invalid")
+            if preflight_failures:
+                progress.emit("preflight", "production preflight failed", status="failed")
+                print("[housing-all-homes] production preflight failed:", flush=True)
+                for failure in preflight_failures:
+                    print(f"  - {failure}", flush=True)
+                return 1
+            result = run_estimation(
+                panel_dir, production_dir, config_path,
+                repo_root=repo_root,
+                smoke=False, production=True, seed=args.seed,
+                fixed_ranks=args.fixed_ranks, select=args.select,
+                n_jobs=args.n_jobs, overwrite=args.overwrite,
+                progress_every=args.progress_every, progress=progress,
+                riesz_maxiter=args.riesz_maxiter, riesz_tol=args.riesz_tol,
+                riesz_ridge=args.riesz_ridge,
+                riesz_use_cached_scale=args.riesz_use_cached_scale,
+            )
+            if not result.get("production_valid", False):
+                progress.emit("validation", "production completed with invalid diagnostics", status="failed")
+                print("[housing-all-homes] production completed with invalid diagnostics", flush=True)
+                for failure in result.get("production_validation_failures", []):
+                    print(f"  - {failure}", flush=True)
+                print(f"[housing-all-homes] output directory: {repo_relative(production_dir, repo_root)}", flush=True)
+                return 1
+            rdiag = result.get("riesz_diagnostics", {})
+            total_elapsed = time.perf_counter() - total_start
+            progress.emit("completed", f"production completed total_elapsed={total_elapsed:.2f}s", status="completed",
+                          last_completed_checkpoint="estimator_output")
+        except KeyboardInterrupt:
+            progress.emit("interrupted", "production interrupted", status="interrupted")
             return 1
-        rdiag = result.get("riesz_diagnostics", {})
+        except SystemExit:
+            progress.emit("failed", "production aborted", status="failed")
+            raise
+        except Exception as exc:
+            progress.emit("failed", f"production failed: {exc}", status="failed")
+            return 1
         print("[housing-all-homes] production complete", flush=True)
         print(f"  N={result['N']}", flush=True)
         print(f"  T={result['level_T']}", flush=True)
