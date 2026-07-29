@@ -1,0 +1,785 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{4}{section.1}\protected@file@percent }
+\newlabel{sec:introduction}{{1}{4}{Introduction}{section.1}{}}
+\newlabel{sec:introduction@cref}{{[section][1][]1}{[1][4][]4}}
+\newlabel{eq:intro_dynamic_model}{{1.1}{4}{Introduction}{equation.1.1}{}}
+\newlabel{eq:intro_dynamic_model@cref}{{[equation][1][1]1.1}{[1][4][]4}}
+\@writefile{toc}{\contentsline {paragraph}{Organization of the maintained framework.}{5}{section*.3}\protected@file@percent }
+\citation{bai2002,bai2003}
+\citation{pesaran2006,moonweidner2015}
+\citation{andersonhsiao1981,andersonhsiao1982,arellanobond1991}
+\citation{swamy1970,pesaransmith1995}
+\citation{hpt1999}
+\citation{bonhommemanresa2015}
+\citation{chernozhukov2023}
+\citation{choi2024,choi2025}
+\citation{athey2021matrix,bai_ng2021matrix,agarwal2023causal}
+\citation{abbe2020entrywise,chen2019matrixcompletion,chen2020noisy,chen2021asymmetry}
+\citation{candesrecht2009,recht2010,koltchinskii2011}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Literature}{7}{section.2}\protected@file@percent }
+\newlabel{sec:literature}{{2}{7}{Related Literature}{section.2}{}}
+\newlabel{sec:literature@cref}{{[section][2][]2}{[1][7][]7}}
+\@writefile{toc}{\contentsline {paragraph}{Interactive-effects and dynamic panels.}{7}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Heterogeneous-coefficient panels.}{7}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Low-rank matrix inference and matrix-completion causal panels.}{7}{section*.7}\protected@file@percent }
+\citation{newey1990,newey1994}
+\citation{bickel1993}
+\citation{vaart1998}
+\citation{belloni2014inference,chernozhukov2018dml,semenova_chernozhukov2021}
+\citation{semenova_goldman_cher_taddy2018}
+\citation{arellanobond1991}
+\citation{pesaransmith1995}
+\citation{bonhommemanresa2015}
+\citation{moonweidner2015}
+\citation{chernozhukov2023}
+\citation{athey2021matrix}
+\citation{agarwal2023causal}
+\citation{choi2025}
+\@writefile{toc}{\contentsline {paragraph}{Debiased and orthogonalized inference.}{8}{section*.8}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces High-level comparison with the most closely related work.}}{8}{table.1}\protected@file@percent }
+\newlabel{tab:lit_compare}{{1}{8}{High-level comparison with the most closely related work}{table.1}{}}
+\newlabel{tab:lit_compare@cref}{{[table][1][]1}{[1][8][]8}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Model, Targets, and the Estimation Idea}{9}{section.3}\protected@file@percent }
+\newlabel{sec:model}{{3}{9}{Model, Targets, and the Estimation Idea}{section.3}{}}
+\newlabel{sec:model@cref}{{[section][3][]3}{[1][9][]9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}The model and the objects of interest}{9}{subsection.3.1}\protected@file@percent }
+\newlabel{subsec:model_objects}{{3.1}{9}{The model and the objects of interest}{subsection.3.1}{}}
+\newlabel{subsec:model_objects@cref}{{[subsection][1][3]3.1}{[1][9][]9}}
+\newlabel{eq:model}{{3.1}{9}{The model and the objects of interest}{equation.3.1}{}}
+\newlabel{eq:model@cref}{{[equation][1][3]3.1}{[1][9][]9}}
+\newlabel{eq:companion_matrix}{{3.2}{9}{The model and the objects of interest}{equation.3.2}{}}
+\newlabel{eq:companion_matrix@cref}{{[equation][2][3]3.2}{[1][9][]9}}
+\newlabel{rem:generalP}{{1}{10}{The lag order is general}{remark.1}{}}
+\newlabel{rem:generalP@cref}{{[remark][1][]1}{[1][10][]10}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The leading case: one lag and one regressor}{10}{subsection.3.2}\protected@file@percent }
+\newlabel{subsec:leading_case}{{3.2}{10}{The leading case: one lag and one regressor}{subsection.3.2}{}}
+\newlabel{subsec:leading_case@cref}{{[subsection][2][3]3.2}{[1][10][]10}}
+\@writefile{toc}{\contentsline {paragraph}{The model.}{10}{section*.9}\protected@file@percent }
+\newlabel{eq:leading_case_model}{{3.3}{10}{The model}{equation.3.3}{}}
+\newlabel{eq:leading_case_model@cref}{{[equation][3][3]3.3}{[1][10][]10}}
+\@writefile{toc}{\contentsline {paragraph}{The three difficulties, concretely.}{11}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 1: first-stage fit.}{11}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 0 (done first in practice): how many components?}{11}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 2: why the first stage alone is not enough.}{12}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 3: the debiasing weights.}{12}{section*.14}\protected@file@percent }
+\newlabel{eq:leading_case_riesz}{{3.4}{12}{Step 3: the debiasing weights}{equation.3.4}{}}
+\newlabel{eq:leading_case_riesz@cref}{{[equation][4][3]3.4}{[1][12][]12}}
+\@writefile{toc}{\contentsline {paragraph}{Step 4: cross-fitting with a space--time exclusion buffer.}{12}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 5: the estimator and its confidence interval.}{12}{section*.16}\protected@file@percent }
+\citation{bonhommemanresa2015}
+\@writefile{toc}{\contentsline {paragraph}{The same construction for every other linear target.}{13}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Why low rank, rather than unrestricted or nonparametric heterogeneity?}{13}{subsection.3.3}\protected@file@percent }
+\newlabel{subsec:why_lowrank}{{3.3}{13}{Why low rank, rather than unrestricted or nonparametric heterogeneity?}{subsection.3.3}{}}
+\newlabel{subsec:why_lowrank@cref}{{[subsection][3][3]3.3}{[1][13][]13}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Operator form, local geometry, and debiasing weights}{13}{subsection.3.4}\protected@file@percent }
+\newlabel{subsec:operator_form}{{3.4}{13}{Operator form, local geometry, and debiasing weights}{subsection.3.4}{}}
+\newlabel{subsec:operator_form@cref}{{[subsection][4][3]3.4}{[1][13][]13}}
+\newlabel{subsec:framework}{{3.4}{13}{Operator form, local geometry, and debiasing weights}{subsection.3.4}{}}
+\newlabel{subsec:framework@cref}{{[subsection][4][3]3.4}{[1][13][]13}}
+\newlabel{eq:exogenous_frame}{{3.5}{14}{Operator form, local geometry, and debiasing weights}{equation.3.5}{}}
+\newlabel{eq:exogenous_frame@cref}{{[equation][5][3]3.5}{[1][14][]14}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}What identifies the model}{15}{subsection.3.5}\protected@file@percent }
+\newlabel{subsec:economic_identification}{{3.5}{15}{What identifies the model}{subsection.3.5}{}}
+\newlabel{subsec:economic_identification@cref}{{[subsection][5][3]3.5}{[1][15][]15}}
+\newlabel{eq:obs_tangent_image}{{3.6}{15}{What identifies the model}{equation.3.6}{}}
+\newlabel{eq:obs_tangent_image@cref}{{[equation][6][3]3.6}{[1][15][]15}}
+\newlabel{eq:local_null_dynamic}{{3.7}{15}{What identifies the model}{equation.3.7}{}}
+\newlabel{eq:local_null_dynamic@cref}{{[equation][7][3]3.7}{[1][15][]15}}
+\@writefile{toc}{\contentsline {paragraph}{Local collinearity.}{15}{section*.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why lagged outcomes are mechanically factor-laden, and where identification comes from.}{15}{section*.19}\protected@file@percent }
+\newlabel{eq:dyn_strong_factor_decomp}{{3.8}{15}{Why lagged outcomes are mechanically factor-laden, and where identification comes from}{equation.3.8}{}}
+\newlabel{eq:dyn_strong_factor_decomp@cref}{{[equation][8][3]3.8}{[1][15][]15}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}How informative is a target? Leverage}{16}{subsection.3.6}\protected@file@percent }
+\newlabel{subsec:leverage}{{3.6}{16}{How informative is a target? Leverage}{subsection.3.6}{}}
+\newlabel{subsec:leverage@cref}{{[subsection][6][3]3.6}{[1][16][]16}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Assumptions}{16}{section.4}\protected@file@percent }
+\newlabel{sec:assumptions}{{4}{16}{Assumptions}{section.4}{}}
+\newlabel{sec:assumptions@cref}{{[section][4][]4}{[1][16][]16}}
+\newlabel{a:stab}{{1}{16}{Stable dynamics and stochastic predetermined regressors}{assumption.1}{}}
+\newlabel{a:stab@cref}{{[assumption][1][]1}{[1][16][]16}}
+\newlabel{ass:dynamic}{{1}{16}{Stable dynamics and stochastic predetermined regressors}{assumption.1}{}}
+\newlabel{ass:dynamic@cref}{{[assumption][1][]1}{[1][16][]16}}
+\newlabel{a:exog}{{2}{18}{Weak exogeneity and temporal error structure}{assumption.2}{}}
+\newlabel{a:exog@cref}{{[assumption][2][]2}{[1][18][]18}}
+\newlabel{ass:weak_exogeneity}{{2}{18}{Weak exogeneity and temporal error structure}{assumption.2}{}}
+\newlabel{ass:weak_exogeneity@cref}{{[assumption][2][]2}{[1][18][]18}}
+\newlabel{eq:weak_exogeneity}{{4.1}{18}{Weak exogeneity and temporal error structure}{equation.4.1}{}}
+\newlabel{eq:weak_exogeneity@cref}{{[equation][1][4]4.1}{[1][18][]18}}
+\newlabel{a:moments}{{3}{18}{Moments and weak cross-sectional dependence}{assumption.3}{}}
+\newlabel{a:moments@cref}{{[assumption][3][]3}{[1][18][]18}}
+\newlabel{ass:moments}{{3}{18}{Moments and weak cross-sectional dependence}{assumption.3}{}}
+\newlabel{ass:moments@cref}{{[assumption][3][]3}{[1][18][]18}}
+\newlabel{a:crossdep}{{3}{18}{Moments and weak cross-sectional dependence}{assumption.3}{}}
+\newlabel{a:crossdep@cref}{{[assumption][3][]3}{[1][18][]18}}
+\newlabel{ass:dependent}{{3}{18}{Moments and weak cross-sectional dependence}{assumption.3}{}}
+\newlabel{ass:dependent@cref}{{[assumption][3][]3}{[1][18][]18}}
+\newlabel{cond:dependent}{{3}{18}{Moments and weak cross-sectional dependence}{assumption.3}{}}
+\newlabel{cond:dependent@cref}{{[assumption][3][]3}{[1][18][]18}}
+\@writefile{toc}{\contentsline {paragraph}{Tail envelopes.}{18}{section*.20}\protected@file@percent }
+\newlabel{eq:spatial_tail_envelopes}{{4.2}{18}{Tail envelopes}{equation.4.2}{}}
+\newlabel{eq:spatial_tail_envelopes@cref}{{[equation][2][4]4.2}{[1][18][]18}}
+\newlabel{a:signal}{{4}{19}{Pervasive, well-spread low-rank signal}{assumption.4}{}}
+\newlabel{a:signal@cref}{{[assumption][4][]4}{[1][19][]19}}
+\newlabel{ass:signal}{{4}{19}{Pervasive, well-spread low-rank signal}{assumption.4}{}}
+\newlabel{ass:signal@cref}{{[assumption][4][]4}{[1][19][]19}}
+\newlabel{eq:fixed_candidate_box}{{4.3}{19}{Tail envelopes}{equation.4.3}{}}
+\newlabel{eq:fixed_candidate_box@cref}{{[equation][3][4]4.3}{[1][19][]19}}
+\newlabel{a:re}{{5}{20}{Population identification and local curvature}{assumption.5}{}}
+\newlabel{a:re@cref}{{[assumption][5][]5}{[1][19][]20}}
+\newlabel{ass:secant}{{5}{20}{Population identification and local curvature}{assumption.5}{}}
+\newlabel{ass:secant@cref}{{[assumption][5][]5}{[1][19][]20}}
+\newlabel{eq:population_secant_re}{{4.4}{20}{Population identification and local curvature}{equation.4.4}{}}
+\newlabel{eq:population_secant_re@cref}{{[equation][4][4]4.4}{[1][20][]20}}
+\newlabel{a:target}{{6}{21}{Target regularity}{assumption.6}{}}
+\newlabel{a:target@cref}{{[assumption][6][]6}{[1][20][]21}}
+\newlabel{ass:target}{{6}{21}{Target regularity}{assumption.6}{}}
+\newlabel{ass:target@cref}{{[assumption][6][]6}{[1][20][]21}}
+\newlabel{cond:target}{{6}{21}{Target regularity}{assumption.6}{}}
+\newlabel{cond:target@cref}{{[assumption][6][]6}{[1][20][]21}}
+\newlabel{eq:target_influence_dispersion}{{4.5}{21}{Target regularity}{equation.4.5}{}}
+\newlabel{eq:target_influence_dispersion@cref}{{[equation][5][4]4.5}{[1][21][]21}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Choosing the Ranks}{22}{section.5}\protected@file@percent }
+\newlabel{sec:rank_selection}{{5}{22}{Choosing the Ranks}{section.5}{}}
+\newlabel{sec:rank_selection@cref}{{[section][5][]5}{[1][21][]22}}
+\newlabel{eq:finite_moment_rates_main}{{5.1}{22}{Choosing the Ranks}{equation.5.1}{}}
+\newlabel{eq:finite_moment_rates_main@cref}{{[equation][1][5]5.1}{[1][22][]22}}
+\newlabel{eq:crossfit_rate_regime}{{5.2}{22}{Choosing the Ranks}{equation.5.2}{}}
+\newlabel{eq:crossfit_rate_regime@cref}{{[equation][2][5]5.2}{[1][22][]22}}
+\newlabel{eq:fold_floor_rule}{{5.3}{22}{Choosing the Ranks}{equation.5.3}{}}
+\newlabel{eq:fold_floor_rule@cref}{{[equation][3][5]5.3}{[1][22][]22}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}A cross-fitted rank criterion}{23}{subsection.5.1}\protected@file@percent }
+\newlabel{eq:rank_pop_risk}{{5.4}{23}{A cross-fitted rank criterion}{equation.5.4}{}}
+\newlabel{eq:rank_pop_risk@cref}{{[equation][4][5]5.4}{[1][23][]23}}
+\newlabel{eq:rank_cv_loss}{{5.5}{23}{A cross-fitted rank criterion}{equation.5.5}{}}
+\newlabel{eq:rank_cv_loss@cref}{{[equation][5][5]5.5}{[1][23][]23}}
+\newlabel{eq:rank_dimension}{{5.6}{23}{A cross-fitted rank criterion}{equation.5.6}{}}
+\newlabel{eq:rank_dimension@cref}{{[equation][6][5]5.6}{[1][23][]23}}
+\newlabel{eq:explicit_rank_penalty}{{5.7}{23}{A cross-fitted rank criterion}{equation.5.7}{}}
+\newlabel{eq:explicit_rank_penalty@cref}{{[equation][7][5]5.7}{[1][23][]23}}
+\newlabel{eq:rank_selector}{{5.8}{24}{A cross-fitted rank criterion}{equation.5.8}{}}
+\newlabel{eq:rank_selector@cref}{{[equation][8][5]5.8}{[1][24][]24}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}A practical roadmap to implementation}{24}{subsection.5.2}\protected@file@percent }
+\newlabel{subsec:rank_roadmap}{{5.2}{24}{A practical roadmap to implementation}{subsection.5.2}{}}
+\newlabel{subsec:rank_roadmap@cref}{{[subsection][2][5]5.2}{[1][24][]24}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Estimation}{24}{section.6}\protected@file@percent }
+\newlabel{sec:estimation}{{6}{24}{Estimation}{section.6}{}}
+\newlabel{sec:estimation@cref}{{[section][6][]6}{[1][24][]24}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Step 1: Folds and space--time buffers}{26}{subsection.6.1}\protected@file@percent }
+\newlabel{subsec:folds_condition}{{6.1}{26}{Step 1: Folds and space--time buffers}{subsection.6.1}{}}
+\newlabel{subsec:folds_condition@cref}{{[subsection][1][6]6.1}{[1][26][]26}}
+\newlabel{eq:purged_training}{{6.1}{26}{Step 1: Folds and space--time buffers}{equation.6.1}{}}
+\newlabel{eq:purged_training@cref}{{[equation][1][6]6.1}{[1][26][]26}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Step 2: Fitting the low-rank coefficient matrices}{26}{subsection.6.2}\protected@file@percent }
+\newlabel{subsec:factor_ridge}{{6.2}{26}{Step 2: Fitting the low-rank coefficient matrices}{subsection.6.2}{}}
+\newlabel{subsec:factor_ridge@cref}{{[subsection][2][6]6.2}{[1][26][]26}}
+\newlabel{eq:factor_ridge_objective}{{6.2}{26}{Step 2: Fitting the low-rank coefficient matrices}{equation.6.2}{}}
+\newlabel{eq:factor_ridge_objective@cref}{{[equation][2][6]6.2}{[1][26][]26}}
+\@writefile{toc}{\contentsline {paragraph}{Computation.}{27}{section*.21}\protected@file@percent }
+\newlabel{eq:row_update}{{6.3}{27}{Computation}{equation.6.3}{}}
+\newlabel{eq:row_update@cref}{{[equation][3][6]6.3}{[1][27][]27}}
+\newlabel{eq:col_update}{{6.4}{27}{Computation}{equation.6.4}{}}
+\newlabel{eq:col_update@cref}{{[equation][4][6]6.4}{[1][27][]27}}
+\@writefile{toc}{\contentsline {paragraph}{Implementation requirement for a finite nonconvex iterate.}{27}{section*.22}\protected@file@percent }
+\newlabel{eq:numerical_objective_gap}{{6.5}{27}{Implementation requirement for a finite nonconvex iterate}{equation.6.5}{}}
+\newlabel{eq:numerical_objective_gap@cref}{{[equation][5][6]6.5}{[1][27][]27}}
+\@writefile{toc}{\contentsline {paragraph}{Why the global and rowwise rates follow.}{27}{section*.23}\protected@file@percent }
+\citation{doukhan1994mixing}
+\newlabel{eq:rowwise_envelope_ass}{{6.6}{28}{Why the global and rowwise rates follow}{equation.6.6}{}}
+\newlabel{eq:rowwise_envelope_ass@cref}{{[equation][6][6]6.6}{[1][28][]28}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Step 3: Tangent spaces and debiasing weights}{28}{subsection.6.3}\protected@file@percent }
+\newlabel{eq:feasible_fold_gram}{{6.7}{28}{Step 3: Tangent spaces and debiasing weights}{equation.6.7}{}}
+\newlabel{eq:feasible_fold_gram@cref}{{[equation][7][6]6.7}{[1][28][]28}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Step 4: The cross-fitted one-step estimator}{29}{subsection.6.4}\protected@file@percent }
+\newlabel{eq:onestep}{{6.8}{29}{Step 4: The cross-fitted one-step estimator}{equation.6.8}{}}
+\newlabel{eq:onestep@cref}{{[equation][8][6]6.8}{[1][29][]29}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Step 5: Standard errors and sensitivity intervals}{29}{subsection.6.5}\protected@file@percent }
+\newlabel{eq:variance_estimator}{{6.9}{30}{Step 5: Standard errors and sensitivity intervals}{equation.6.9}{}}
+\newlabel{eq:variance_estimator@cref}{{[equation][9][6]6.9}{[1][29][]30}}
+\newlabel{eq:variance_estimator_diag}{{6.10}{30}{Step 5: Standard errors and sensitivity intervals}{equation.6.10}{}}
+\newlabel{eq:variance_estimator_diag@cref}{{[equation][10][6]6.10}{[1][30][]30}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Asymptotic Theory}{30}{section.7}\protected@file@percent }
+\newlabel{sec:asymptotic}{{7}{30}{Asymptotic Theory}{section.7}{}}
+\newlabel{sec:asymptotic@cref}{{[section][7][]7}{[1][30][]30}}
+\newlabel{eq:main_remainder_envelope}{{7.1}{32}{Asymptotic Theory}{equation.7.1}{}}
+\newlabel{eq:main_remainder_envelope@cref}{{[equation][1][7]7.1}{[1][32][]32}}
+\newlabel{thm:benchmark_oracle_main}{{1}{32}{Infeasible-benchmark influence representation}{theorem.1}{}}
+\newlabel{thm:benchmark_oracle_main@cref}{{[theorem][1][]1}{[1][32][]32}}
+\@writefile{toc}{\contentsline {paragraph}{Comment.}{32}{section*.24}\protected@file@percent }
+\newlabel{thm:first_stage_main}{{2}{32}{Rank and first-stage verification}{theorem.2}{}}
+\newlabel{thm:first_stage_main@cref}{{[theorem][2][]2}{[1][32][]32}}
+\@writefile{toc}{\contentsline {paragraph}{Comment.}{33}{section*.25}\protected@file@percent }
+\newlabel{thm:riesz_main}{{3}{33}{Feasible Riesz-weight replacement}{theorem.3}{}}
+\newlabel{thm:riesz_main@cref}{{[theorem][3][]3}{[1][33][]33}}
+\newlabel{eq:main_riesz_replacement}{{7.2}{33}{Feasible Riesz-weight replacement}{equation.7.2}{}}
+\newlabel{eq:main_riesz_replacement@cref}{{[equation][2][7]7.2}{[1][33][]33}}
+\newlabel{eq:main_riesz_remainder}{{7.3}{33}{Feasible Riesz-weight replacement}{equation.7.3}{}}
+\newlabel{eq:main_riesz_remainder@cref}{{[equation][3][7]7.3}{[1][33][]33}}
+\@writefile{toc}{\contentsline {paragraph}{Comment.}{33}{section*.26}\protected@file@percent }
+\newlabel{thm:feasible}{{4}{33}{Feasible central limit theorem}{theorem.4}{}}
+\newlabel{thm:feasible@cref}{{[theorem][4][]4}{[1][33][]33}}
+\@writefile{toc}{\contentsline {paragraph}{Comment.}{33}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Studentization rate requirement.}{34}{section*.28}\protected@file@percent }
+\newlabel{eq:kernel_rate_regime}{{7.4}{34}{Studentization rate requirement}{equation.7.4}{}}
+\newlabel{eq:kernel_rate_regime@cref}{{[equation][4][7]7.4}{[1][33][]34}}
+\newlabel{thm:xs_dependence}{{5}{34}{Dependence-robust studentization}{theorem.5}{}}
+\newlabel{thm:xs_dependence@cref}{{[theorem][5][]5}{[1][34][]34}}
+\@writefile{toc}{\contentsline {paragraph}{Comment.}{34}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What is theorem-backed.}{34}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Monte Carlo Experiments}{35}{section.8}\protected@file@percent }
+\newlabel{sec:MC}{{8}{35}{Monte Carlo Experiments}{section.8}{}}
+\newlabel{sec:MC@cref}{{[section][8][]8}{[1][35][]35}}
+\newlabel{eq:sim_dgp}{{8.1}{35}{Monte Carlo Experiments}{equation.8.1}{}}
+\newlabel{eq:sim_dgp@cref}{{[equation][1][8]8.1}{[1][35][]35}}
+\@writefile{toc}{\contentsline {paragraph}{DGP 1: Independent heteroskedastic errors.}{35}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{DGP 2: Spatially dependent heteroskedastic errors.}{35}{section*.32}\protected@file@percent }
+\newlabel{eq:sim_dgp_x_exog}{{8.2}{36}{DGP 2: Spatially dependent heteroskedastic errors}{equation.8.2}{}}
+\newlabel{eq:sim_dgp_x_exog@cref}{{[equation][2][8]8.2}{[1][36][]36}}
+\@writefile{toc}{\contentsline {paragraph}{DGP 3: Predetermined covariates.}{36}{section*.33}\protected@file@percent }
+\newlabel{eq:sim_dgp_x_predetermined}{{8.3}{36}{DGP 3: Predetermined covariates}{equation.8.3}{}}
+\newlabel{eq:sim_dgp_x_predetermined@cref}{{[equation][3][8]8.3}{[1][36][]36}}
+\@writefile{toc}{\contentsline {paragraph}{Reported Monte Carlo quantities.}{37}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Finite fold floors.}{37}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Simulation tables.}{37}{section*.36}\protected@file@percent }
+\gdef \LT@i {\LT@entry 
+    {4}{27.00006pt}\LT@entry 
+    {4}{27.00006pt}\LT@entry 
+    {4}{34.77786pt}\LT@entry 
+    {4}{38.11119pt}\LT@entry 
+    {1}{40.88896pt}\LT@entry 
+    {1}{52.61119pt}\LT@entry 
+    {4}{34.77786pt}\LT@entry 
+    {1}{48.97229pt}}
+\gdef \LT@ii {\LT@entry 
+    {4}{27.00006pt}\LT@entry 
+    {4}{27.00006pt}\LT@entry 
+    {4}{34.77786pt}\LT@entry 
+    {4}{38.11119pt}\LT@entry 
+    {1}{40.88896pt}\LT@entry 
+    {1}{52.61119pt}\LT@entry 
+    {4}{34.77786pt}\LT@entry 
+    {1}{48.97229pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{Monte Carlo fixed-rank inference performance: DGP 1.}}{38}{table.2}\protected@file@percent }
+\newlabel{tab:mc_perf_dgp1}{{2}{38}{Monte Carlo fixed-rank inference performance: DGP 1}{table.2}{}}
+\newlabel{tab:mc_perf_dgp1@cref}{{[table][2][]2}{[1][37][]38}}
+\newlabel{tab:mc_main_summary}{{2}{38}{Monte Carlo fixed-rank inference performance: DGP 1}{table.2}{}}
+\newlabel{tab:mc_main_summary@cref}{{[table][2][]2}{[1][37][]38}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{Monte Carlo fixed-rank inference performance: DGP 2.}}{38}{table.3}\protected@file@percent }
+\newlabel{tab:mc_perf_dgp2}{{3}{38}{Monte Carlo fixed-rank inference performance: DGP 2}{table.3}{}}
+\newlabel{tab:mc_perf_dgp2@cref}{{[table][3][]3}{[1][38][]38}}
+\gdef \LT@iii {\LT@entry 
+    {4}{27.00006pt}\LT@entry 
+    {4}{27.00006pt}\LT@entry 
+    {4}{34.77786pt}\LT@entry 
+    {4}{38.11119pt}\LT@entry 
+    {1}{40.88896pt}\LT@entry 
+    {1}{52.61119pt}\LT@entry 
+    {4}{34.77786pt}\LT@entry 
+    {1}{48.97229pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{Monte Carlo fixed-rank inference performance: DGP 3.}}{39}{table.4}\protected@file@percent }
+\newlabel{tab:mc_perf_dgp3}{{4}{39}{Monte Carlo fixed-rank inference performance: DGP 3}{table.4}{}}
+\newlabel{tab:mc_perf_dgp3@cref}{{[table][4][]4}{[1][38][]39}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Monte Carlo rank-selection accuracy.}}{39}{table.5}\protected@file@percent }
+\newlabel{tab:mc_rank}{{5}{39}{Monte Carlo rank-selection accuracy}{table.5}{}}
+\newlabel{tab:mc_rank@cref}{{[table][5][]5}{[1][39][]39}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Monte Carlo coefficient and signal summaries.}}{39}{table.6}\protected@file@percent }
+\newlabel{tab:mc_coeff_summary}{{6}{39}{Monte Carlo coefficient and signal summaries}{table.6}{}}
+\newlabel{tab:mc_coeff_summary@cref}{{[table][6][]6}{[1][39][]39}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Fold counts and retained training shares for completed production cells.}}{40}{table.7}\protected@file@percent }
+\newlabel{tab:mc_folds}{{7}{40}{Fold counts and retained training shares for completed production cells}{table.7}{}}
+\newlabel{tab:mc_folds@cref}{{[table][7][]7}{[1][39][]40}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Monte Carlo optimization diagnostics.}}{40}{table.8}\protected@file@percent }
+\newlabel{tab:mc_opt}{{8}{40}{Monte Carlo optimization diagnostics}{table.8}{}}
+\newlabel{tab:mc_opt@cref}{{[table][8][]8}{[1][39][]40}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Empirical Application}{41}{section.9}\protected@file@percent }
+\newlabel{sec:application}{{9}{41}{Empirical Application}{section.9}{}}
+\newlabel{sec:application@cref}{{[section][9][]9}{[1][41][]41}}
+\@writefile{toc}{\contentsline {paragraph}{Regional unemployment.}{41}{section*.37}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Idiosyncratic persistence in metro unemployment.}}{41}{table.9}\protected@file@percent }
+\newlabel{tab:emp_unemp_main}{{9}{41}{Idiosyncratic persistence in metro unemployment}{table.9}{}}
+\newlabel{tab:emp_unemp_main@cref}{{[table][9][]9}{[1][41][]41}}
+\@writefile{toc}{\contentsline {paragraph}{House-price momentum.}{41}{section*.38}\protected@file@percent }
+\citation{conley1999gmm}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces House-price dynamics in the metro house-price panel.}}{42}{table.10}\protected@file@percent }
+\newlabel{tab:emp_housing_main}{{10}{42}{House-price dynamics in the metro house-price panel}{table.10}{}}
+\newlabel{tab:emp_housing_main@cref}{{[table][10][]10}{[1][42][]42}}
+\@writefile{toc}{\contentsline {paragraph}{Theorem-aligned geographic spatial-kernel inference.}{42}{section*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Samples, seasonality, and estimation settings.}{42}{section*.40}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Geographic spatial-kernel standard errors for both applications.}}{43}{table.11}\protected@file@percent }
+\newlabel{tab:emp_spatial}{{11}{43}{Geographic spatial-kernel standard errors for both applications}{table.11}{}}
+\newlabel{tab:emp_spatial@cref}{{[table][11][]11}{[1][42][]43}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{44}{section.10}\protected@file@percent }
+\newlabel{sec:conclusion}{{10}{44}{Conclusion}{section.10}{}}
+\newlabel{sec:conclusion@cref}{{[section][10][]10}{[1][44][]44}}
+\bibcite{abbe2020entrywise}{{1}{2020}{{Abbe et~al.}}{{}}}
+\bibcite{agarwal2023causal}{{2}{2023}{{Agarwal et~al.}}{{}}}
+\bibcite{andersonhsiao1981}{{3}{1981}{{Anderson and Hsiao}}{{}}}
+\bibcite{andersonhsiao1982}{{4}{1982}{{Anderson and Hsiao}}{{}}}
+\bibcite{arellanobond1991}{{5}{1991}{{Arellano and Bond}}{{}}}
+\bibcite{athey2021matrix}{{6}{2021}{{Athey et~al.}}{{}}}
+\bibcite{bai2003}{{7}{2003}{{Bai}}{{}}}
+\bibcite{bai2009}{{8}{2009}{{Bai}}{{}}}
+\bibcite{bai2002}{{9}{2002}{{Bai and Ng}}{{}}}
+\bibcite{bai_ng2021matrix}{{10}{2021}{{Bai and Ng}}{{}}}
+\bibcite{belloni2014inference}{{11}{2014}{{Belloni et~al.}}{{}}}
+\bibcite{bickel1993}{{12}{1993}{{Bickel et~al.}}{{}}}
+\bibcite{bonhommemanresa2015}{{13}{2015}{{Bonhomme and Manresa}}{{}}}
+\bibcite{cameronmiller2015}{{14}{2015}{{Cameron and Miller}}{{}}}
+\@writefile{toc}{\contentsline {section}{References}{46}{section.10}\protected@file@percent }
+\bibcite{candesrecht2009}{{15}{2009}{{Cand\`es and Recht}}{{}}}
+\bibcite{chen2021asymmetry}{{16}{2021}{{Chen et~al.}}{{}}}
+\bibcite{chen2020noisy}{{17}{2020}{{Chen et~al.}}{{}}}
+\bibcite{bolthausen1982randomfield}{{18}{1982}{{Bolthausen}}{{}}}
+\bibcite{chen2019matrixcompletion}{{19}{2019}{{Chen et~al.}}{{}}}
+\bibcite{chernozhukov2018dml}{{20}{2018}{{Chernozhukov et~al.}}{{}}}
+\bibcite{chernozhukov2023}{{21}{2023}{{Chernozhukov et~al.}}{{}}}
+\bibcite{choi2024}{{22}{2024}{{Choi et~al.}}{{}}}
+\bibcite{choi2025}{{23}{2025}{{Choi et~al.}}{{}}}
+\bibcite{conley1999gmm}{{24}{1999}{{Conley}}{{}}}
+\bibcite{davis_kahan_1970}{{25}{1970}{{Davis and Kahan}}{{}}}
+\bibcite{wedin1972}{{26}{1972}{{Wedin}}{{}}}
+\bibcite{yu2015davis_kahan}{{27}{2015}{{Yu et~al.}}{{}}}
+\bibcite{doukhan1994mixing}{{28}{1994}{{Doukhan}}{{}}}
+\bibcite{hallheyde1980}{{29}{1980}{{Hall and Heyde}}{{}}}
+\bibcite{hpt1999}{{30}{1999}{{Hsiao et~al.}}{{}}}
+\bibcite{jenishprucha2009}{{31}{2009}{{Jenish and Prucha}}{{}}}
+\bibcite{koltchinskii2011}{{32}{2011}{{Koltchinskii et~al.}}{{}}}
+\bibcite{liangzeger1986}{{33}{1986}{{Liang and Zeger}}{{}}}
+\bibcite{moonweidner2015}{{34}{2015}{{Moon and Weidner}}{{}}}
+\bibcite{moon2015dynamic}{{35}{2017}{{Moon and Weidner}}{{}}}
+\bibcite{newey1990}{{36}{1990}{{Newey}}{{}}}
+\bibcite{newey1994}{{37}{1994}{{Newey}}{{}}}
+\bibcite{pesaran2006}{{38}{2006}{{Pesaran}}{{}}}
+\bibcite{pesaransmith1995}{{39}{1995}{{Pesaran and Smith}}{{}}}
+\bibcite{recht2010}{{40}{2010}{{Recht et~al.}}{{}}}
+\bibcite{rudelsonvershynin2013}{{41}{2013}{{Rudelson and Vershynin}}{{}}}
+\bibcite{semenova_goldman_cher_taddy2018}{{42}{2018}{{Semenova et~al.}}{{}}}
+\bibcite{semenova_chernozhukov2021}{{43}{2021}{{Semenova and Chernozhukov}}{{}}}
+\bibcite{statulevicius1972}{{44}{1988}{{Statulevi\v {c}ius and Jakimavi\v {c}ius}}{{}}}
+\bibcite{swamy1970}{{45}{1970}{{Swamy}}{{}}}
+\bibcite{talagrand2014}{{46}{2014}{{Talagrand}}{{}}}
+\bibcite{tropp2011freedman}{{47}{2011}{{Tropp}}{{}}}
+\bibcite{tropp2015introduction}{{48}{2015}{{Tropp}}{{}}}
+\bibcite{uschmajew2015}{{49}{2015}{{Uschmajew}}{{}}}
+\bibcite{vaart1998}{{50}{1998}{{van der Vaart}}{{}}}
+\citation{hallheyde1980}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Mathematical Appendix}{50}{appendix.A}\protected@file@percent }
+\newlabel{app:math}{{A}{50}{Mathematical Appendix}{appendix.A}{}}
+\newlabel{app:math@cref}{{[appendix][1][2147483647]A}{[1][50][]50}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Proofs of the Five Main Theorems}{50}{subsection.A.1}\protected@file@percent }
+\newlabel{app:main_proofs}{{A.1}{50}{Proofs of the Five Main Theorems}{subsection.A.1}{}}
+\newlabel{app:main_proofs@cref}{{[subappendix][1][2147483647,1]A.1}{[1][50][]50}}
+\citation{doukhan1994mixing}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Assumptions, rate regimes, and notation}{53}{subsection.A.2}\protected@file@percent }
+\newlabel{app:assumptions_notation}{{A.2}{53}{Assumptions, rate regimes, and notation}{subsection.A.2}{}}
+\newlabel{app:assumptions_notation@cref}{{[subappendix][2][2147483647,1]A.2}{[1][53][]53}}
+\newlabel{app:assumption_discussion}{{A.2}{53}{Assumptions, rate regimes, and notation}{subsection.A.2}{}}
+\newlabel{app:assumption_discussion@cref}{{[subappendix][2][2147483647,1]A.2}{[1][53][]53}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.1}Identification check}{53}{subsubsection.A.2.1}\protected@file@percent }
+\newlabel{prop:canonical_re_check}{{1}{53}{Canonical sufficient check for Assumption~\ref {a:re}}{proposition.1}{}}
+\newlabel{prop:canonical_re_check@cref}{{[proposition][1][2147483647]1}{[1][53][]53}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.2}Assumption roles}{54}{subsubsection.A.2.2}\protected@file@percent }
+\gdef \LT@iv {\LT@entry 
+    {1}{31.83308pt}\LT@entry 
+    {1}{108.30063pt}\LT@entry 
+    {1}{91.85748pt}\LT@entry 
+    {1}{236.18253pt}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.3}Assumption details}{56}{subsubsection.A.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Assumption 1: stable dynamics and stochastic predetermined covariates.}{56}{section*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Assumption 2: weak exogeneity and temporal error structure.}{56}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Assumption 3: finite moments and weak contemporaneous dependence.}{56}{section*.44}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Assumption 4: pervasive, well-spread low-rank signal.}{56}{section*.45}\protected@file@percent }
+\citation{liangzeger1986,cameronmiller2015}
+\@writefile{toc}{\contentsline {paragraph}{Assumption 5: population identification and local curvature.}{57}{section*.46}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Scattered space--time-buffered cross-fitting.}{57}{section*.47}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Regular targets.}{57}{section*.48}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.4}Known-cluster alternative}{57}{subsubsection.A.2.4}\protected@file@percent }
+\newlabel{app:cluster_alternative}{{A.2.4}{57}{Known-cluster alternative}{subsubsection.A.2.4}{}}
+\newlabel{app:cluster_alternative@cref}{{[subsubappendix][4][2147483647,1,2]A.2.4}{[1][57][]57}}
+\newlabel{ass:cluster_stab}{{A.2.4}{57}{Known-cluster alternative}{subsubsection.A.2.4}{}}
+\newlabel{ass:cluster_stab@cref}{{[subsubappendix][4][2147483647,1,2]A.2.4}{[1][57][]57}}
+\newlabel{eq:cluster_weak_exogeneity}{{A.1}{58}{Known-cluster alternative}{equation.A.1}{}}
+\newlabel{eq:cluster_weak_exogeneity@cref}{{[equation][1][2147483647,1]A.1}{[1][58][]58}}
+\newlabel{ass:cluster_dep}{{A.2.4}{58}{Known-cluster alternative}{equation.A.1}{}}
+\newlabel{ass:cluster_dep@cref}{{[subsubappendix][4][2147483647,1,2]A.2.4}{[1][58][]58}}
+\@writefile{toc}{\contentsline {paragraph}{Cluster target dispersion.}{59}{section*.49}\protected@file@percent }
+\newlabel{eq:cluster_target_dispersion}{{A.2}{59}{Cluster target dispersion}{equation.A.2}{}}
+\newlabel{eq:cluster_target_dispersion@cref}{{[equation][2][2147483647,1]A.2}{[1][59][]59}}
+\@writefile{toc}{\contentsline {paragraph}{Cluster buffer and cluster studentizer.}{59}{section*.50}\protected@file@percent }
+\newlabel{eq:cluster_variance_estimator}{{A.3}{59}{Cluster buffer and cluster studentizer}{equation.A.3}{}}
+\newlabel{eq:cluster_variance_estimator@cref}{{[equation][3][2147483647,1]A.3}{[1][59][]59}}
+\newlabel{prop:cluster_alternative}{{2}{60}{Known-cluster alternative to spatial mixing}{proposition.2}{}}
+\newlabel{prop:cluster_alternative@cref}{{[proposition][2][2147483647]2}{[1][60][]60}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.5}Derived requirements}{60}{subsubsection.A.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.6}Feasible rates}{60}{subsubsection.A.2.6}\protected@file@percent }
+\newlabel{app:discharge}{{A.2.6}{60}{Feasible rates}{subsubsection.A.2.6}{}}
+\newlabel{app:discharge@cref}{{[subsubappendix][6][2147483647,1,2]A.2.6}{[1][60][]60}}
+\newlabel{app:primitive_consequences}{{A.2.6}{60}{Feasible rates}{subsubsection.A.2.6}{}}
+\newlabel{app:primitive_consequences@cref}{{[subsubappendix][6][2147483647,1,2]A.2.6}{[1][60][]60}}
+\newlabel{subsec:rate_regime}{{A.2.6}{60}{Feasible rates}{subsubsection.A.2.6}{}}
+\newlabel{subsec:rate_regime@cref}{{[subsubappendix][6][2147483647,1,2]A.2.6}{[1][60][]60}}
+\@writefile{toc}{\contentsline {paragraph}{Rate-regime feasibility check.}{61}{section*.51}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.7}Implementation notes}{61}{subsubsection.A.2.7}\protected@file@percent }
+\newlabel{app:roadmap}{{A.2.7}{61}{Implementation notes}{subsubsection.A.2.7}{}}
+\newlabel{app:roadmap@cref}{{[subsubappendix][7][2147483647,1,2]A.2.7}{[1][61][]61}}
+\newlabel{rem:small_folds}{{2}{61}{Finite fold floors and growing \(J_{NT}\)}{remark.2}{}}
+\newlabel{rem:small_folds@cref}{{[remark][2][2147483647]2}{[1][61][]61}}
+\@writefile{toc}{\contentsline {paragraph}{Step 0: preliminary stable fit and a one-sided persistence safeguard.}{62}{section*.52}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 1: length of the space--time exclusion buffer.}{62}{section*.53}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 2: number of scattered folds.}{63}{section*.54}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 3: fixed candidate box with spectral ordering.}{63}{section*.55}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 4: penalty constant.}{63}{section*.56}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Step 5: solve and diagnose.}{63}{section*.57}\protected@file@percent }
+\newlabel{alg:rank}{{1}{63}{Data-driven rank, fold, and exclusion-window selection}{algorithm.1}{}}
+\newlabel{alg:rank@cref}{{[algorithm][1][2147483647]1}{[1][63][]63}}
+\newlabel{def:rank_stability}{{1}{64}{Rank stability diagnostic}{definition.1}{}}
+\newlabel{def:rank_stability@cref}{{[definition][1][2147483647]1}{[1][64][]64}}
+\@writefile{toc}{\contentsline {paragraph}{Computational cost.}{64}{section*.58}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Overselection robustness.}{64}{section*.59}\protected@file@percent }
+\gdef \LT@v {\LT@entry 
+    {1}{134.13371pt}\LT@entry 
+    {1}{312.64291pt}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.2.8}Notation}{65}{subsubsection.A.2.8}\protected@file@percent }
+\newlabel{app:glossary}{{A.2.8}{65}{Notation}{subsubsection.A.2.8}{}}
+\newlabel{app:glossary@cref}{{[subsubappendix][8][2147483647,1,2]A.2.8}{[1][65][]65}}
+\newlabel{sec:notation_glossary}{{A.2.8}{65}{Notation}{subsubsection.A.2.8}{}}
+\newlabel{sec:notation_glossary@cref}{{[subsubappendix][8][2147483647,1,2]A.2.8}{[1][65][]65}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{Notation glossary.}}{65}{table.13}\protected@file@percent }
+\newlabel{tab:notation}{{13}{65}{Notation glossary}{table.13}{}}
+\newlabel{tab:notation@cref}{{[table][13][2147483647]13}{[1][65][]65}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Rank selection, first-stage recovery, fold transport, and Riesz replacement}{66}{subsection.A.3}\protected@file@percent }
+\newlabel{app:rank}{{A.3}{66}{Rank selection, first-stage recovery, fold transport, and Riesz replacement}{subsection.A.3}{}}
+\newlabel{app:rank@cref}{{[subappendix][3][2147483647,1]A.3}{[1][66][]66}}
+\newlabel{app:first_stage}{{A.3}{66}{Rank selection, first-stage recovery, fold transport, and Riesz replacement}{subsection.A.3}{}}
+\newlabel{app:first_stage@cref}{{[subappendix][3][2147483647,1]A.3}{[1][66][]66}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.3.1}Operators and identification}{66}{subsubsection.A.3.1}\protected@file@percent }
+\newlabel{app:operator}{{A.3.1}{66}{Operators and identification}{subsubsection.A.3.1}{}}
+\newlabel{app:operator@cref}{{[subsubappendix][1][2147483647,1,3]A.3.1}{[1][66][]66}}
+\newlabel{prop:adjoint}{{3}{66}{Operator identities, identification, entropy, and local information}{proposition.3}{}}
+\newlabel{prop:adjoint@cref}{{[proposition][3][2147483647]3}{[1][66][]66}}
+\@writefile{toc}{\contentsline {paragraph}{Fitted-value no-cancellation condition.}{67}{section*.60}\protected@file@percent }
+\newlabel{eq:image_coherence_ass}{{A.4}{67}{Fitted-value no-cancellation condition}{equation.A.4}{}}
+\newlabel{eq:image_coherence_ass@cref}{{[equation][4][2147483647,1]A.4}{[1][67][]67}}
+\@writefile{toc}{\contentsline {paragraph}{Residual identifying-variation condition.}{67}{section*.61}\protected@file@percent }
+\newlabel{eq:residual_tangent_energy_dyn}{{A.5}{67}{Residual identifying-variation condition}{equation.A.5}{}}
+\newlabel{eq:residual_tangent_energy_dyn@cref}{{[equation][5][2147483647,1]A.5}{[1][67][]67}}
+\newlabel{eq:residual_common_angle_dyn}{{A.6}{68}{Residual identifying-variation condition}{equation.A.6}{}}
+\newlabel{eq:residual_common_angle_dyn@cref}{{[equation][6][2147483647,1]A.6}{[1][67][]68}}
+\newlabel{lem:fold_balance_retention}{{1}{68}{Fold balance, local dependence, and norm transport}{lemma.1}{}}
+\newlabel{lem:fold_balance_retention@cref}{{[lemma][1][2147483647]1}{[1][68][]68}}
+\newlabel{eq:fold_balance_derived}{{A.7}{69}{Fold balance, local dependence, and norm transport}{equation.A.7}{}}
+\newlabel{eq:fold_balance_derived@cref}{{[equation][7][2147483647,1]A.7}{[1][69][]69}}
+\newlabel{eq:fold_retention_derived}{{A.8}{69}{Fold balance, local dependence, and norm transport}{equation.A.8}{}}
+\newlabel{eq:fold_retention_derived@cref}{{[equation][8][2147483647,1]A.8}{[1][69][]69}}
+\citation{tropp2011freedman}
+\citation{tropp2015introduction}
+\citation{doukhan1994mixing}
+\@writefile{toc}{\contentsline {paragraph}{Matrix concentration under local fold dependence.}{70}{section*.62}\protected@file@percent }
+\newlabel{prop:fold_transport_sufficient}{{4}{70}{Fold-information transport from auxiliary randomization}{proposition.4}{}}
+\newlabel{prop:fold_transport_sufficient@cref}{{[proposition][4][2147483647]4}{[1][70][]70}}
+\newlabel{eq:derived_slice_transport}{{A.9}{70}{Fold-information transport from auxiliary randomization}{equation.A.9}{}}
+\newlabel{eq:derived_slice_transport@cref}{{[equation][9][2147483647,1]A.9}{[1][70][]70}}
+\newlabel{eq:tangent_feature_bound}{{A.10}{70}{Matrix concentration under local fold dependence}{equation.A.10}{}}
+\newlabel{eq:tangent_feature_bound@cref}{{[equation][10][2147483647,1]A.10}{[1][70][]70}}
+\newlabel{eq:population_projection_inequality}{{A.11}{72}{Population projection inequality}{equation.A.11}{}}
+\newlabel{eq:population_projection_inequality@cref}{{[equation][11][2147483647,1]A.11}{[1][72][]72}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.3.2}Folds and local information}{72}{subsubsection.A.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Derived fold operators.}{72}{section*.63}\protected@file@percent }
+\newlabel{eq:derived_finite_moment_rates}{{A.12}{72}{Derived fold operators}{equation.A.12}{}}
+\newlabel{eq:derived_finite_moment_rates@cref}{{[equation][12][2147483647,1]A.12}{[1][72][]72}}
+\newlabel{eq:slice_transport_ass}{{A.13}{73}{Derived fold operators}{equation.A.13}{}}
+\newlabel{eq:slice_transport_ass@cref}{{[equation][13][2147483647,1]A.13}{[1][73][]73}}
+\@writefile{toc}{\contentsline {paragraph}{Local collinearity diagnostic.}{73}{section*.64}\protected@file@percent }
+\newlabel{lem:rank_risk}{{2}{73}{Cross-fitted risk expansion, rank selection, and fast rates}{lemma.2}{}}
+\newlabel{lem:rank_risk@cref}{{[lemma][2][2147483647]2}{[1][73][]73}}
+\newlabel{eq:rank_risk_expansion}{{A.14}{73}{Cross-fitted risk expansion, rank selection, and fast rates}{equation.A.14}{}}
+\newlabel{eq:rank_risk_expansion@cref}{{[equation][14][2147483647,1]A.14}{[1][73][]73}}
+\newlabel{prop:rank_consistency}{{5}{73}{Rank consistency and first-stage rates}{proposition.5}{}}
+\newlabel{prop:rank_consistency@cref}{{[proposition][5][2147483647]5}{[1][73][]73}}
+\newlabel{eq:first_stage_prediction}{{A.15}{73}{First-stage and rowwise rates}{equation.A.15}{}}
+\newlabel{eq:first_stage_prediction@cref}{{[equation][15][2147483647,1]A.15}{[1][73][]73}}
+\newlabel{eq:first_stage_parameter}{{A.16}{73}{First-stage and rowwise rates}{equation.A.16}{}}
+\newlabel{eq:first_stage_parameter@cref}{{[equation][16][2147483647,1]A.16}{[1][73][]73}}
+\newlabel{eq:first_stage_subspace}{{A.17}{73}{First-stage and rowwise rates}{equation.A.17}{}}
+\newlabel{eq:first_stage_subspace@cref}{{[equation][17][2147483647,1]A.17}{[1][73][]73}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.3.3}Rank selection}{74}{subsubsection.A.3.3}\protected@file@percent }
+\newlabel{eq:purge_loss_ass}{{A.18}{74}{Buffered and validation norm transport}{equation.A.18}{}}
+\newlabel{eq:purge_loss_ass@cref}{{[equation][18][2147483647,1]A.18}{[1][74][]74}}
+\citation{tropp2011freedman}
+\citation{doukhan1994mixing}
+\newlabel{eq:secant_emp_ass}{{A.19}{75}{Localized finite-moment noise process over fixed-rank secants}{equation.A.19}{}}
+\newlabel{eq:secant_emp_ass@cref}{{[equation][19][2147483647,1]A.19}{[1][75][]75}}
+\newlabel{eq:oracle_prediction_candidate}{{A.20}{75}{Candidate-risk consistency and fast rates on classes containing the truth}{equation.A.20}{}}
+\newlabel{eq:oracle_prediction_candidate@cref}{{[equation][20][2147483647,1]A.20}{[1][75][]75}}
+\newlabel{eq:candidate_population_consistency}{{A.21}{75}{Candidate-risk consistency and fast rates on classes containing the truth}{equation.A.21}{}}
+\newlabel{eq:candidate_population_consistency@cref}{{[equation][21][2147483647,1]A.21}{[1][75][]75}}
+\newlabel{eq:oracle_validation_prediction}{{A.22}{75}{Candidate-risk consistency and fast rates on classes containing the truth}{equation.A.22}{}}
+\newlabel{eq:oracle_validation_prediction@cref}{{[equation][22][2147483647,1]A.22}{[1][75][]75}}
+\citation{vaart1998}
+\newlabel{eq:rank_crossfit_score_ass}{{A.23}{76}{Aggregate validation-score bound}{equation.A.23}{}}
+\newlabel{eq:rank_crossfit_score_ass@cref}{{[equation][23][2147483647,1]A.23}{[1][76][]76}}
+\citation{tropp2011freedman}
+\citation{davis_kahan_1970}
+\citation{wedin1972}
+\citation{yu2015davis_kahan}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.3.4}First-stage recovery}{77}{subsubsection.A.3.4}\protected@file@percent }
+\newlabel{app:first_stage_compact}{{A.3.4}{77}{First-stage recovery}{subsubsection.A.3.4}{}}
+\newlabel{app:first_stage_compact@cref}{{[subsubappendix][4][2147483647,1,3]A.3.4}{[1][77][]77}}
+\newlabel{prop:als_optimization}{{6}{77}{Local optimization, row/column concentration, and rowwise recovery}{proposition.6}{}}
+\newlabel{prop:als_optimization@cref}{{[proposition][6][2147483647]6}{[1][77][]77}}
+\citation{vaart1998}
+\citation{tropp2011freedman}
+\citation{davis_kahan_1970}
+\citation{wedin1972}
+\citation{yu2015davis_kahan}
+\citation{doukhan1994mixing}
+\@writefile{toc}{\contentsline {paragraph}{Underfitting gap and balanced incoherent designs.}{79}{section*.65}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.3.5}Geometry and Riesz weights}{79}{subsubsection.A.3.5}\protected@file@percent }
+\newlabel{app:verification}{{A.3.5}{79}{Geometry and Riesz weights}{subsubsection.A.3.5}{}}
+\newlabel{app:verification@cref}{{[subsubappendix][5][2147483647,1,3]A.3.5}{[1][79][]79}}
+\newlabel{app:framework}{{A.3.5}{79}{Geometry and Riesz weights}{subsubsection.A.3.5}{}}
+\newlabel{app:framework@cref}{{[subsubappendix][5][2147483647,1,3]A.3.5}{[1][79][]79}}
+\newlabel{subsec:matrix_form_detail}{{A.3.5}{79}{Matrix form: regressor matrices and the design map}{section*.66}{}}
+\newlabel{subsec:matrix_form_detail@cref}{{[subsubappendix][5][2147483647,1,3]A.3.5}{[1][79][]79}}
+\@writefile{toc}{\contentsline {paragraph}{Matrix form: regressor matrices and the design map}{79}{section*.66}\protected@file@percent }
+\newlabel{eq:theta_def}{{A.24}{79}{Matrix form: regressor matrices and the design map}{equation.A.24}{}}
+\newlabel{eq:theta_def@cref}{{[equation][24][2147483647,1]A.24}{[1][79][]79}}
+\newlabel{eq:prod_inner}{{A.25}{79}{Matrix form: regressor matrices and the design map}{equation.A.25}{}}
+\newlabel{eq:prod_inner@cref}{{[equation][25][2147483647,1]A.25}{[1][79][]79}}
+\newlabel{eq:operator_model}{{A.26}{80}{Matrix form: regressor matrices and the design map}{equation.A.26}{}}
+\newlabel{eq:operator_model@cref}{{[equation][26][2147483647,1]A.26}{[1][79][]80}}
+\newlabel{eq:operator_A}{{A.27}{80}{Matrix form: regressor matrices and the design map}{equation.A.27}{}}
+\newlabel{eq:operator_A@cref}{{[equation][27][2147483647,1]A.27}{[1][80][]80}}
+\newlabel{eq:operator_adjoint}{{A.28}{80}{Matrix form: regressor matrices and the design map}{equation.A.28}{}}
+\newlabel{eq:operator_adjoint@cref}{{[equation][28][2147483647,1]A.28}{[1][80][]80}}
+\newlabel{subsec:targets}{{A.3.5}{80}{Targets as linear functionals}{section*.67}{}}
+\newlabel{subsec:targets@cref}{{[subsubappendix][5][2147483647,1,3]A.3.5}{[1][80][]80}}
+\@writefile{toc}{\contentsline {paragraph}{Targets as linear functionals}{80}{section*.67}\protected@file@percent }
+\newlabel{eq:group_weight}{{A.29}{80}{Targets as linear functionals}{equation.A.29}{}}
+\newlabel{eq:group_weight@cref}{{[equation][29][2147483647,1]A.29}{[1][80][]80}}
+\newlabel{eq:generic_target}{{A.30}{81}{Targets as linear functionals}{equation.A.30}{}}
+\newlabel{eq:generic_target@cref}{{[equation][30][2147483647,1]A.30}{[1][80][]81}}
+\newlabel{subsec:local_geometry}{{A.3.5}{81}{Local geometry: admissible perturbations and the information map}{section*.68}{}}
+\newlabel{subsec:local_geometry@cref}{{[subsubappendix][5][2147483647,1,3]A.3.5}{[1][81][]81}}
+\@writefile{toc}{\contentsline {paragraph}{Local geometry: admissible perturbations and the information map}{81}{section*.68}\protected@file@percent }
+\newlabel{eq:full_gram}{{A.31}{81}{Local geometry: admissible perturbations and the information map}{equation.A.31}{}}
+\newlabel{eq:full_gram@cref}{{[equation][31][2147483647,1]A.31}{[1][81][]81}}
+\newlabel{subsec:folds}{{A.3.5}{81}{Debiasing weights, cross-fitting, and the space--time exclusion buffer}{section*.69}{}}
+\newlabel{subsec:folds@cref}{{[subsubappendix][5][2147483647,1,3]A.3.5}{[1][81][]81}}
+\@writefile{toc}{\contentsline {paragraph}{Debiasing weights, cross-fitting, and the space--time exclusion buffer}{81}{section*.69}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Scattered cross-fitting folds.}{82}{section*.70}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The space--time exclusion buffer.}{82}{section*.71}\protected@file@percent }
+\newlabel{eq:purged_training_appx}{{A.32}{82}{The space--time exclusion buffer}{equation.A.32}{}}
+\newlabel{eq:purged_training_appx@cref}{{[equation][32][2147483647,1]A.32}{[1][82][]82}}
+\@writefile{toc}{\contentsline {paragraph}{Subsample-specific weights: the infeasible benchmark.}{83}{section*.72}\protected@file@percent }
+\newlabel{eq:fold_causal_coupling}{{A.33}{83}{Subsample-specific weights: the infeasible benchmark}{equation.A.33}{}}
+\newlabel{eq:fold_causal_coupling@cref}{{[equation][33][2147483647,1]A.33}{[1][83][]83}}
+\newlabel{eq:fold_oracle_q}{{A.34}{83}{Subsample-specific weights: the infeasible benchmark}{equation.A.34}{}}
+\newlabel{eq:fold_oracle_q@cref}{{[equation][34][2147483647,1]A.34}{[1][83][]83}}
+\newlabel{eq:effective_oracle_weight}{{A.35}{83}{Subsample-specific weights: the infeasible benchmark}{equation.A.35}{}}
+\newlabel{eq:effective_oracle_weight@cref}{{[equation][35][2147483647,1]A.35}{[1][83][]83}}
+\newlabel{eq:fold_riesz_property}{{A.36}{84}{Subsample-specific weights: the infeasible benchmark}{equation.A.36}{}}
+\newlabel{eq:fold_riesz_property@cref}{{[equation][36][2147483647,1]A.36}{[1][83][]84}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.3.6}Feasible Riesz replacement}{84}{subsubsection.A.3.6}\protected@file@percent }
+\newlabel{prop:riesz_replacement}{{7}{84}{Cross-fitted nuisance products, Riesz replacement, and dynamic leakage}{proposition.7}{}}
+\newlabel{prop:riesz_replacement@cref}{{[proposition][7][2147483647]7}{[1][84][]84}}
+\newlabel{eq:cf_product_rate_ass}{{A.37}{84}{Cross-fitted nuisance products, Riesz replacement, and dynamic leakage}{equation.A.37}{}}
+\newlabel{eq:cf_product_rate_ass@cref}{{[equation][37][2147483647,1]A.37}{[1][84][]84}}
+\newlabel{eq:riesz_weight_replacement}{{A.38}{84}{Feasible Riesz-weight replacement}{equation.A.38}{}}
+\newlabel{eq:riesz_weight_replacement@cref}{{[equation][38][2147483647,1]A.38}{[1][84][]84}}
+\newlabel{eq:normal_leakage}{{A.39}{85}{Feasible Riesz-weight replacement}{equation.A.39}{}}
+\newlabel{eq:normal_leakage@cref}{{[equation][39][2147483647,1]A.39}{[1][84][]85}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.3.7}Dynamic leakage control}{85}{subsubsection.A.3.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Buffered local-replacement bound.}{85}{section*.73}\protected@file@percent }
+\newlabel{eq:buffered_local_operator_explicit}{{A.40}{85}{Buffered local-replacement bound}{equation.A.40}{}}
+\newlabel{eq:buffered_local_operator_explicit@cref}{{[equation][40][2147483647,1]A.40}{[1][85][]85}}
+\newlabel{eq:buffered_local_rhs_explicit}{{A.41}{85}{Buffered local-replacement bound}{equation.A.41}{}}
+\newlabel{eq:buffered_local_rhs_explicit@cref}{{[equation][41][2147483647,1]A.41}{[1][85][]85}}
+\newlabel{eq:buffered_local_full_tail}{{A.42}{85}{Buffered local-replacement bound}{equation.A.42}{}}
+\newlabel{eq:buffered_local_full_tail@cref}{{[equation][42][2147483647,1]A.42}{[1][85][]85}}
+\newlabel{eq:dynamic_design_coupling}{{A.43}{86}{Buffered local-replacement bound}{equation.A.43}{}}
+\newlabel{eq:dynamic_design_coupling@cref}{{[equation][43][2147483647,1]A.43}{[1][86][]86}}
+\citation{doukhan1994mixing}
+\newlabel{eq:dynamic_operator_coupling}{{A.44}{87}{Buffered local-replacement bound}{equation.A.44}{}}
+\newlabel{eq:dynamic_operator_coupling@cref}{{[equation][44][2147483647,1]A.44}{[1][87][]87}}
+\newlabel{eq:dynamic_weight_gap_L2}{{A.45}{87}{Buffered local-replacement bound}{equation.A.45}{}}
+\newlabel{eq:dynamic_weight_gap_L2@cref}{{[equation][45][2147483647,1]A.45}{[1][87][]87}}
+\newlabel{eq:dynamic_predictable_score}{{A.46}{88}{Buffered local-replacement bound}{equation.A.46}{}}
+\newlabel{eq:dynamic_predictable_score@cref}{{[equation][46][2147483647,1]A.46}{[1][87][]88}}
+\newlabel{eq:dynamic_centered_score}{{A.47}{88}{Buffered local-replacement bound}{equation.A.47}{}}
+\newlabel{eq:dynamic_centered_score@cref}{{[equation][47][2147483647,1]A.47}{[1][88][]88}}
+\newlabel{eq:proof_target_projection_bound}{{A.48}{88}{Buffered local-replacement bound}{equation.A.48}{}}
+\newlabel{eq:proof_target_projection_bound@cref}{{[equation][48][2147483647,1]A.48}{[1][88][]88}}
+\newlabel{eq:proof_gram_perturbation}{{A.49}{88}{Buffered local-replacement bound}{equation.A.49}{}}
+\newlabel{eq:proof_gram_perturbation@cref}{{[equation][49][2147483647,1]A.49}{[1][88][]88}}
+\newlabel{eq:proof_resolvent_bound}{{A.50}{88}{Buffered local-replacement bound}{equation.A.50}{}}
+\newlabel{eq:proof_resolvent_bound@cref}{{[equation][50][2147483647,1]A.50}{[1][88][]88}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}CLT, studentization, and target-specific verification}{89}{subsection.A.4}\protected@file@percent }
+\newlabel{app:clt}{{A.4}{89}{CLT, studentization, and target-specific verification}{subsection.A.4}{}}
+\newlabel{app:clt@cref}{{[subappendix][4][2147483647,1]A.4}{[1][89][]89}}
+\newlabel{app:proof_headline}{{A.4}{89}{CLT, studentization, and target-specific verification}{subsection.A.4}{}}
+\newlabel{app:proof_headline@cref}{{[subappendix][4][2147483647,1]A.4}{[1][89][]89}}
+\newlabel{subsec:benchmark_clt}{{A.4}{89}{CLT, studentization, and target-specific verification}{subsection.A.4}{}}
+\newlabel{subsec:benchmark_clt@cref}{{[subappendix][4][2147483647,1]A.4}{[1][89][]89}}
+\newlabel{lem:oracle_clt}{{3}{89}{Predictability, buffer decoupling, and benchmark CLT}{lemma.3}{}}
+\newlabel{lem:oracle_clt@cref}{{[lemma][3][2147483647]3}{[1][89][]89}}
+\citation{bolthausen1982randomfield}
+\citation{jenishprucha2009}
+\newlabel{eq:conditional_spatial_cf}{{A.51}{91}{Conditional weighted spatial-slice Gaussian approximation}{equation.A.51}{}}
+\newlabel{eq:conditional_spatial_cf@cref}{{[equation][51][2147483647,1]A.51}{[1][91][]91}}
+\newlabel{eq:global_cell_lindeberg}{{A.52}{93}{Conditional variance regularity and global Lindeberg bounds}{equation.A.52}{}}
+\newlabel{eq:global_cell_lindeberg@cref}{{[equation][52][2147483647,1]A.52}{[1][93][]93}}
+\@writefile{toc}{\contentsline {paragraph}{Primitive variance-field sufficient condition.}{93}{section*.74}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Predictable-variance stabilization fact.}{94}{section*.75}\protected@file@percent }
+\newlabel{eq:high_date_cf_revised}{{A.53}{95}{Predictable-variance stabilization fact}{equation.A.53}{}}
+\newlabel{eq:high_date_cf_revised@cref}{{[equation][53][2147483647,1]A.53}{[1][95][]95}}
+\newlabel{eq:low_date_cf_revised}{{A.54}{95}{Predictable-variance stabilization fact}{equation.A.54}{}}
+\newlabel{eq:low_date_cf_revised@cref}{{[equation][54][2147483647,1]A.54}{[1][95][]95}}
+\newlabel{eq:conditional_cf_error_sum}{{A.55}{95}{Predictable-variance stabilization fact}{equation.A.55}{}}
+\newlabel{eq:conditional_cf_error_sum@cref}{{[equation][55][2147483647,1]A.55}{[1][95][]95}}
+\newlabel{prop:onestep_expansion}{{8}{96}{One-step expansion}{proposition.8}{}}
+\newlabel{prop:onestep_expansion@cref}{{[proposition][8][2147483647]8}{[1][96][]96}}
+\citation{bolthausen1982randomfield}
+\citation{jenishprucha2009}
+\citation{conley1999gmm}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.4.1}Studentization}{97}{subsubsection.A.4.1}\protected@file@percent }
+\newlabel{app:studentization}{{A.4.1}{97}{Studentization}{subsubsection.A.4.1}{}}
+\newlabel{app:studentization@cref}{{[subsubappendix][1][2147483647,1,4]A.4.1}{[1][96][]97}}
+\newlabel{prop:spatial_kernel_consistency}{{9}{97}{Spatial-kernel covariance consistency with generated weights}{proposition.9}{}}
+\newlabel{prop:spatial_kernel_consistency@cref}{{[proposition][9][2147483647]9}{[1][96][]97}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {A.4.2}Target verification}{97}{subsubsection.A.4.2}\protected@file@percent }
+\newlabel{app:leverage}{{A.4.2}{97}{Target verification}{subsubsection.A.4.2}{}}
+\newlabel{app:leverage@cref}{{[subsubappendix][2][2147483647,1,4]A.4.2}{[1][97][]97}}
+\newlabel{sec:means}{{A.4.2}{97}{Target verification}{subsubsection.A.4.2}{}}
+\newlabel{sec:means@cref}{{[subsubappendix][2][2147483647,1,4]A.4.2}{[1][97][]97}}
+\newlabel{prop:standard_linear_targets}{{10}{97}{Standard linear targets}{proposition.10}{}}
+\newlabel{prop:standard_linear_targets@cref}{{[proposition][10][2147483647]10}{[1][97][]97}}
+\newlabel{eq:means_leverage_decomp}{{A.56}{98}{Target verification}{equation.A.56}{}}
+\newlabel{eq:means_leverage_decomp@cref}{{[equation][56][2147483647,1]A.56}{[1][98][]98}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Additional Simulation Results}{98}{appendix.B}\protected@file@percent }
+\newlabel{app:numerical}{{B}{98}{Additional Simulation Results}{appendix.B}{}}
+\newlabel{app:numerical@cref}{{[appendix][2][2147483647]B}{[1][98][]98}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.1}Infeasible benchmark with true tangent spaces}{98}{subsection.B.1}\protected@file@percent }
+\newlabel{subsec:sim_oracle}{{B.1}{98}{Infeasible benchmark with true tangent spaces}{subsection.B.1}{}}
+\newlabel{subsec:sim_oracle@cref}{{[subappendix][1][2147483647,2]B.1}{[1][98][]98}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.2}Feasible convergence study}{98}{subsection.B.2}\protected@file@percent }
+\newlabel{subsec:sim_convergence}{{B.2}{98}{Feasible convergence study}{subsection.B.2}{}}
+\newlabel{subsec:sim_convergence@cref}{{[subappendix][2][2147483647,2]B.2}{[1][98][]98}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.3}Forward-exclusion-window sensitivity}{99}{subsection.B.3}\protected@file@percent }
+\newlabel{subsec:sim_purge}{{B.3}{99}{Forward-exclusion-window sensitivity}{subsection.B.3}{}}
+\newlabel{subsec:sim_purge@cref}{{[subappendix][3][2147483647,2]B.3}{[1][99][]99}}
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Feasible convergence.}}{100}{table.14}\protected@file@percent }
+\newlabel{tab:sim_convergence}{{14}{100}{Feasible convergence}{table.14}{}}
+\newlabel{tab:sim_convergence@cref}{{[table][14][2147483647]14}{[1][98][]100}}
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Coverage and RMSE by target type.}}{100}{table.15}\protected@file@percent }
+\newlabel{tab:sim_target_type}{{15}{100}{Coverage and RMSE by target type}{table.15}{}}
+\newlabel{tab:sim_target_type@cref}{{[table][15][2147483647]15}{[1][98][]100}}
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Plug-in versus debiased estimates at $T=N=400$.}}{101}{table.16}\protected@file@percent }
+\newlabel{tab:sim_plugin}{{16}{101}{Plug-in versus debiased estimates at $T=N=400$}{table.16}{}}
+\newlabel{tab:sim_plugin@cref}{{[table][16][2147483647]16}{[1][98][]101}}
+\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Infeasible oracle (true tangent spaces) versus the feasible estimator at $T=N=100$.}}{101}{table.17}\protected@file@percent }
+\newlabel{tab:sim_oracle}{{17}{101}{Infeasible oracle (true tangent spaces) versus the feasible estimator at $T=N=100$}{table.17}{}}
+\newlabel{tab:sim_oracle@cref}{{[table][17][2147483647]17}{[1][98][]101}}
+\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Purge-radius sensitivity.}}{101}{table.18}\protected@file@percent }
+\newlabel{tab:sim_purge}{{18}{101}{Purge-radius sensitivity}{table.18}{}}
+\newlabel{tab:sim_purge@cref}{{[table][18][2147483647]18}{[1][99][]101}}
+\newlabel{rem:capped_purge}{{3}{101}{Forward exclusion window for the minimal-variance targets}{remark.3}{}}
+\newlabel{rem:capped_purge@cref}{{[remark][3][2147483647]3}{[1][101][]101}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Purge-radius sensitivity.}}{102}{figure.1}\protected@file@percent }
+\newlabel{fig:purge_sensitivity}{{1}{102}{Purge-radius sensitivity}{figure.1}{}}
+\newlabel{fig:purge_sensitivity@cref}{{[figure][1][2147483647]1}{[1][99][]102}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.4}Theorem-justification experiments}{102}{subsection.B.4}\protected@file@percent }
+\newlabel{subsec:sim_theorems}{{B.4}{102}{Theorem-justification experiments}{subsection.B.4}{}}
+\newlabel{subsec:sim_theorems@cref}{{[subappendix][4][2147483647,2]B.4}{[1][102][]102}}
+\@writefile{toc}{\contentsline {paragraph}{Rank consistency.}{102}{section*.76}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why the scattered, purged folds are necessary.}{102}{section*.77}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Cross-sectional dependence.}{102}{section*.78}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.5}Stress tests}{103}{subsection.B.5}\protected@file@percent }
+\newlabel{subsec:sim_stress}{{B.5}{103}{Stress tests}{subsection.B.5}{}}
+\newlabel{subsec:sim_stress@cref}{{[subappendix][5][2147483647,2]B.5}{[1][103][]103}}
+\@writefile{toc}{\contentsline {paragraph}{Fold-floor sensitivity.}{103}{section*.79}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Fold-floor sensitivity and retained training share (lag full mean, \(T=N=100\)).}}{103}{table.19}\protected@file@percent }
+\newlabel{tab:stress_J}{{19}{103}{Fold-floor sensitivity and retained training share (lag full mean, \(T=N=100\))}{table.19}{}}
+\newlabel{tab:stress_J@cref}{{[table][19][2147483647]19}{[1][103][]103}}
+\@writefile{toc}{\contentsline {paragraph}{No-buffer and insufficient-buffer failure.}{103}{section*.80}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Rank misspecification.}{104}{section*.81}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {20}{\ignorespaces Rank misspecification (true lag rank \(2\), lag full mean, \(T=N=100\)).}}{104}{table.20}\protected@file@percent }
+\newlabel{tab:stress_rank}{{20}{104}{Rank misspecification (true lag rank \(2\), lag full mean, \(T=N=100\))}{table.20}{}}
+\newlabel{tab:stress_rank@cref}{{[table][20][2147483647]20}{[1][103][]104}}
+\@writefile{toc}{\contentsline {paragraph}{Cross-sectional dependence and the variance estimators.}{104}{section*.82}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {21}{\ignorespaces Cross-sectional-dependence stress (lag full mean coverage).}}{104}{table.21}\protected@file@percent }
+\newlabel{tab:stress_xs}{{21}{104}{Cross-sectional-dependence stress (lag full mean coverage)}{table.21}{}}
+\newlabel{tab:stress_xs@cref}{{[table][21][2147483647]21}{[1][104][]104}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Empirical Appendix}{104}{appendix.C}\protected@file@percent }
+\newlabel{app:empirical}{{C}{104}{Empirical Appendix}{appendix.C}{}}
+\newlabel{app:empirical@cref}{{[appendix][3][2147483647]C}{[1][104][]104}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.1}Data construction}{104}{subsection.C.1}\protected@file@percent }
+\newlabel{subsec:emp_data}{{C.1}{104}{Data construction}{subsection.C.1}{}}
+\newlabel{subsec:emp_data@cref}{{[subappendix][1][2147483647,3]C.1}{[1][104][]104}}
+\@writefile{toc}{\contentsline {paragraph}{Sources, frequency, and coverage.}{105}{section*.83}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stationarity transforms.}{106}{section*.84}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Covariate construction and frequency matching.}{106}{section*.85}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Group definitions.}{106}{section*.86}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Folds $J$ and buffer windows.}{107}{section*.87}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Cross-sectional dependence and the two standard errors.}{107}{section*.88}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.2}Empirical robustness and diagnostics}{107}{subsection.C.2}\protected@file@percent }
+\newlabel{sec:empirical}{{C.2}{107}{Empirical robustness and diagnostics}{subsection.C.2}{}}
+\newlabel{sec:empirical@cref}{{[subappendix][2][2147483647,3]C.2}{[1][107][]107}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {C.2.1}Idiosyncratic persistence in a regional unemployment panel}{107}{subsubsection.C.2.1}\protected@file@percent }
+\newlabel{subsec:emp_macro}{{C.2.1}{107}{Idiosyncratic persistence in a regional unemployment panel}{subsubsection.C.2.1}{}}
+\newlabel{subsec:emp_macro@cref}{{[subsubappendix][1][2147483647,3,2]C.2.1}{[1][107][]107}}
+\@writefile{lot}{\contentsline {table}{\numberline {22}{\ignorespaces Idiosyncratic persistence in metro unemployment.}}{109}{table.22}\protected@file@percent }
+\newlabel{tab:emp_unemp}{{22}{109}{Idiosyncratic persistence in metro unemployment}{table.22}{}}
+\newlabel{tab:emp_unemp@cref}{{[table][22][2147483647]22}{[1][108][]109}}
+\@writefile{lot}{\contentsline {table}{\numberline {23}{\ignorespaces Unemployment persistence across specifications.}}{110}{table.23}\protected@file@percent }
+\newlabel{tab:emp_unemp_robust}{{23}{110}{Unemployment persistence across specifications}{table.23}{}}
+\newlabel{tab:emp_unemp_robust@cref}{{[table][23][2147483647]23}{[1][109][]110}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {C.2.2}House-price momentum and a price-tier contrast}{110}{subsubsection.C.2.2}\protected@file@percent }
+\newlabel{subsec:emp_housing}{{C.2.2}{110}{House-price momentum and a price-tier contrast}{subsubsection.C.2.2}{}}
+\newlabel{subsec:emp_housing@cref}{{[subsubappendix][2][2147483647,3,2]C.2.2}{[1][110][]110}}
+\@writefile{lot}{\contentsline {table}{\numberline {24}{\ignorespaces Rank selection and interactive-rank robustness, unemployment.}}{111}{table.24}\protected@file@percent }
+\newlabel{tab:emp_unemp_ranks}{{24}{111}{Rank selection and interactive-rank robustness, unemployment}{table.24}{}}
+\newlabel{tab:emp_unemp_ranks@cref}{{[table][24][2147483647]24}{[1][110][]111}}
+\@writefile{lot}{\contentsline {table}{\numberline {25}{\ignorespaces House-price dynamics in the metro house-price panel.}}{112}{table.25}\protected@file@percent }
+\newlabel{tab:emp_housing}{{25}{112}{House-price dynamics in the metro house-price panel}{table.25}{}}
+\newlabel{tab:emp_housing@cref}{{[table][25][2147483647]25}{[1][111][]112}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {C.2.3}Estimator diagnostics}{112}{subsubsection.C.2.3}\protected@file@percent }
+\newlabel{subsec:emp_diag}{{C.2.3}{112}{Estimator diagnostics}{subsubsection.C.2.3}{}}
+\newlabel{subsec:emp_diag@cref}{{[subsubappendix][3][2147483647,3,2]C.2.3}{[1][112][]112}}
+\@writefile{toc}{\contentsline {paragraph}{Geographic spatial-kernel standard errors.}{112}{section*.89}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Heterogeneity of the estimated lag-1 coefficient.}}{113}{figure.2}\protected@file@percent }
+\newlabel{fig:emp_hist}{{2}{113}{Heterogeneity of the estimated lag-1 coefficient}{figure.2}{}}
+\newlabel{fig:emp_hist@cref}{{[figure][2][2147483647]2}{[1][112][]113}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Estimated impulse-response paths.}}{114}{figure.3}\protected@file@percent }
+\newlabel{fig:emp_irf}{{3}{114}{Estimated impulse-response paths}{figure.3}{}}
+\newlabel{fig:emp_irf@cref}{{[figure][3][2147483647]3}{[1][112][]114}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Time path of the average dynamic persistence.}}{115}{figure.4}\protected@file@percent }
+\newlabel{fig:emp_coefpath}{{4}{115}{Time path of the average dynamic persistence}{figure.4}{}}
+\newlabel{fig:emp_coefpath@cref}{{[figure][4][2147483647]4}{[1][112][]115}}
+\@writefile{lot}{\contentsline {table}{\numberline {26}{\ignorespaces House-price dynamics across specifications.}}{116}{table.26}\protected@file@percent }
+\newlabel{tab:emp_housing_robust}{{26}{116}{House-price dynamics across specifications}{table.26}{}}
+\newlabel{tab:emp_housing_robust@cref}{{[table][26][2147483647]26}{[1][111][]116}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Geographic heterogeneity of the estimated dynamic persistence.}}{116}{figure.5}\protected@file@percent }
+\newlabel{fig:emp_hetmap}{{5}{116}{Geographic heterogeneity of the estimated dynamic persistence}{figure.5}{}}
+\newlabel{fig:emp_hetmap@cref}{{[figure][5][2147483647]5}{[1][112][]116}}
+\@writefile{lot}{\contentsline {table}{\numberline {27}{\ignorespaces Plug-in versus debiased estimates.}}{117}{table.27}\protected@file@percent }
+\newlabel{tab:emp_plugin}{{27}{117}{Plug-in versus debiased estimates}{table.27}{}}
+\newlabel{tab:emp_plugin@cref}{{[table][27][2147483647]27}{[1][112][]117}}
+\@writefile{lot}{\contentsline {table}{\numberline {28}{\ignorespaces Goodness of fit and residual adequacy.}}{117}{table.28}\protected@file@percent }
+\newlabel{tab:emp_fit}{{28}{117}{Goodness of fit and residual adequacy}{table.28}{}}
+\newlabel{tab:emp_fit@cref}{{[table][28][2147483647]28}{[1][117][]117}}
+\@writefile{lot}{\contentsline {table}{\numberline {29}{\ignorespaces Covariate forced-rank robustness (spec C).}}{118}{table.29}\protected@file@percent }
+\newlabel{tab:emp_covrobust}{{29}{118}{Covariate forced-rank robustness (spec C)}{table.29}{}}
+\newlabel{tab:emp_covrobust@cref}{{[table][29][2147483647]29}{[1][117][]118}}
+\@writefile{lot}{\contentsline {table}{\numberline {30}{\ignorespaces Homogeneous benchmark versus the heterogeneous estimator.}}{119}{table.30}\protected@file@percent }
+\newlabel{tab:emp_homog}{{30}{119}{Homogeneous benchmark versus the heterogeneous estimator}{table.30}{}}
+\newlabel{tab:emp_homog@cref}{{[table][30][2147483647]30}{[1][118][]119}}
+\@writefile{lot}{\contentsline {table}{\numberline {31}{\ignorespaces Optimization diagnostics (headline unemployment specification).}}{119}{table.31}\protected@file@percent }
+\newlabel{tab:emp_solver}{{31}{119}{Optimization diagnostics (headline unemployment specification)}{table.31}{}}
+\newlabel{tab:emp_solver@cref}{{[table][31][2147483647]31}{[1][118][]119}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {C.2.4}What the two illustrations establish}{119}{subsubsection.C.2.4}\protected@file@percent }
+\newlabel{subsec:emp_summary}{{C.2.4}{119}{What the two illustrations establish}{subsubsection.C.2.4}{}}
+\newlabel{subsec:emp_summary@cref}{{[subsubappendix][4][2147483647,3,2]C.2.4}{[1][119][]119}}
+\gdef \@abspage@last{120}
