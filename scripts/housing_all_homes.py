@@ -62,6 +62,7 @@ RECORDED_CHECKSUM_FILES = [
 BASELINE_EXPECTED_N = 169
 BASELINE_EXPECTED_T = 197
 BASELINE_EXPECTED_USABLE = 33124
+RIESZ_RESIDUAL_NUMERICAL_MARGIN = 1e-8
 
 
 def month_index(ym: str) -> int:
@@ -583,7 +584,7 @@ def package_checks() -> Dict[str, object]:
 
 def output_dirs_writable(output_root: Path) -> Dict[str, bool]:
     checks = {}
-    for sub in ["", "tables", "figures", "runtime", "smoke"]:
+    for sub in ["", "tables", "figures", "runtime", "smoke", "production"]:
         d = output_root / sub if sub else output_root
         d.mkdir(parents=True, exist_ok=True)
         probe = d / ".write_test"
@@ -626,6 +627,63 @@ def flatten_riesz_diagnostics(riesz_diag: Mapping[str, Mapping[str, object]]) ->
             out["target_name"] = target_name
             rows.append(out)
     return rows
+
+
+def validate_production_output(output: Mapping[str, object],
+                               targets: Sequence[Target],
+                               tuning: Tuning) -> Tuple[bool, List[str]]:
+    failures: List[str] = []
+    target_names = [t.name for t in targets]
+    if len(set(target_names)) != len(target_names):
+        failures.append("requested target names are duplicated")
+    target_table = output.get("targets", {})
+    missing_targets = [name for name in target_names if name not in target_table]
+    if missing_targets:
+        failures.append(f"requested target(s) absent from output: {missing_targets}")
+    for name in target_names:
+        vals = target_table.get(name, {}) if isinstance(target_table, Mapping) else {}
+        for field in ["estimate", "se_white", "se_xs"]:
+            try:
+                value = float(vals[field])
+            except Exception:
+                failures.append(f"{name}.{field} is missing or nonnumeric")
+                continue
+            if not math.isfinite(value):
+                failures.append(f"{name}.{field} is nonfinite")
+
+    riesz_summary = output.get("riesz_diagnostics", {})
+    try:
+        conv_frac = float(riesz_summary.get("convergence_fraction", "nan"))
+    except Exception:
+        conv_frac = float("nan")
+    if not math.isfinite(conv_frac) or conv_frac < 1.0:
+        failures.append(f"Riesz convergence fraction is below 1.0: {conv_frac}")
+    if int(riesz_summary.get("number_containing_nonfinite_values", 0) or 0) > 0:
+        failures.append("at least one Riesz solution contains nonfinite values")
+    if int(riesz_summary.get("number_reaching_maxiter", 0) or 0) > 0:
+        failures.append("at least one Riesz solve reached maxiter")
+    try:
+        max_rel = float(riesz_summary.get("relative_residual_max", "nan"))
+    except Exception:
+        max_rel = float("nan")
+    residual_limit = float(tuning.riesz_tol) * (1.0 + RIESZ_RESIDUAL_NUMERICAL_MARGIN)
+    if not math.isfinite(max_rel) or max_rel > residual_limit:
+        failures.append(
+            f"maximum Riesz relative residual {max_rel} exceeds tolerance "
+            f"{tuning.riesz_tol} with margin {RIESZ_RESIDUAL_NUMERICAL_MARGIN}"
+        )
+    for row in output.get("riesz_fold_diagnostics", []) or []:
+        if bool(row.get("contains_nonfinite", False)):
+            failures.append(f"Riesz fold contains nonfinite values: {row.get('target_name')} fold {row.get('fold_id')}")
+        if int(row.get("iterations", 0) or 0) >= int(row.get("maxiter", 0) or 0) and not bool(row.get("converged", False)):
+            failures.append(f"Riesz fold reached maxiter without convergence: {row.get('target_name')} fold {row.get('fold_id')}")
+        try:
+            rel = float(row.get("achieved_relative_residual", "nan"))
+        except Exception:
+            rel = float("nan")
+        if not math.isfinite(rel) or rel > residual_limit:
+            failures.append(f"Riesz fold residual exceeds tolerance: {row.get('target_name')} fold {row.get('fold_id')}")
+    return len(failures) == 0, failures
 
 
 def preflight(panel_dir: Path, output_root: Path, repo_root: Path,
@@ -910,6 +968,7 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
                    fixed_ranks: Optional[Tuple[int, ...]] = (1, 1, 1, 2),
                    select: bool = False, n_jobs: int = 1,
                    resume: bool = True, overwrite: bool = False,
+                   production: bool = False,
                    riesz_maxiter: Optional[int] = None,
                    riesz_tol: Optional[float] = None,
                    riesz_ridge: Optional[float] = None,
@@ -937,6 +996,7 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
     input_identity = {
         "schema_version": panel["metadata"].get("schema_version"),
         "input_checksum": panel["panel_checksum"],
+        "candidate_id": panel["metadata"].get("candidate_id"),
         "N_source": int(panel["metadata"].get("N", 0)),
         "T_source": int(panel["metadata"].get("T", 0)),
         "start_date": panel["metadata"].get("start_date"),
@@ -948,6 +1008,9 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
     signature = jsonable({
         "schema_version": SCHEMA_VERSION,
         "input_identity": input_identity,
+        "mode": "production" if production else ("pilot" if pilot_id else ("smoke" if smoke else "production_candidate")),
+        "full_production_run": bool(production),
+        "panel_id": panel["metadata"].get("candidate_id"),
         "smoke": bool(smoke),
         "pilot_id": pilot_id,
         "first_n_msas": first_n_msas,
@@ -958,6 +1021,11 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
         "resolved_tuning": dataclasses.asdict(tuning),
         "N": int(panel["Y"].shape[1]),
         "Tp": int(panel["Y"].shape[0]),
+        "level_T": int(panel["Y"].shape[0] + 1),
+        "date_range": {
+            "start_date": panel["metadata"].get("start_date"),
+            "end_date": panel["metadata"].get("end_date"),
+        },
         "targets": [t.name for t in housing_targets(build_blocks(panel["Z"]))],
     })
     if resume and not overwrite and result_path.exists() and meta_path.exists():
@@ -996,11 +1064,12 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
         "cg_iterations_max": int(max(cg_iters)) if cg_iters else "",
     }
     riesz_summary.update(summarize_riesz_rows(riesz_rows))
+    mode = "production" if production else ("pilot" if pilot_id else ("smoke" if smoke else "production_candidate"))
     output = {
         "schema_version": SCHEMA_VERSION,
-        "mode": "pilot" if pilot_id else ("smoke" if smoke else "production_candidate"),
+        "mode": mode,
         "pilot_id": pilot_id,
-        "full_production_run": False,
+        "full_production_run": bool(production),
         "input_panel": {
             "repo_relative_path": repo_relative(panel_dir, repo_root),
             "resolved_absolute_path_info": str(panel_dir.resolve()),
@@ -1027,8 +1096,12 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
         "runtime_sec": float(elapsed),
         "run_signature": signature,
     }
+    if production:
+        production_valid, production_failures = validate_production_output(output, targets, tuning)
+        output["production_valid"] = bool(production_valid)
+        output["production_validation_failures"] = production_failures
     write_json(result_path, output)
-    if pilot_id:
+    if pilot_id or production:
         fields = [
             "target_name", "fold_id", "solver_name", "convergence_info_code",
             "converged", "iterations", "maxiter", "requested_tolerance",
@@ -1039,7 +1112,7 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
         ]
         write_csv(out_dir / "riesz_diagnostics.csv", riesz_rows, fields)
         write_json(out_dir / "riesz_summary.json", riesz_summary)
-    write_json(meta_path, {
+    meta_output = {
         "schema_version": SCHEMA_VERSION,
         "run_signature": signature,
         "result_path": str(result_path),
@@ -1050,8 +1123,12 @@ def run_estimation(panel_dir: Path, out_dir: Path, config_path: Path, *,
         "resolved_input_path_info": str(panel_dir.resolve()),
         "resolved_tuning": jsonable(dataclasses.asdict(tuning)),
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "full_production_run": False,
-    })
+        "mode": mode,
+        "full_production_run": bool(production),
+        "production_valid": output.get("production_valid"),
+        "production_validation_failures": output.get("production_validation_failures", []),
+    }
+    write_json(meta_path, meta_output)
     return output
 
 
@@ -1065,6 +1142,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     help="legacy alias for --prepare-panel; prepare and validate the baseline input panel only")
     ap.add_argument("--preflight", action="store_true", help="validate production readiness without estimation")
     ap.add_argument("--run-riesz-pilots", action="store_true", help="run matched no-production Riesz diagnostic pilots")
+    ap.add_argument("--production", action="store_true", help="run the validated full housing production estimator")
     ap.add_argument("--panel-id", default="start_2010",
                     help="final-only candidate id for preflight/preparation; baseline is start_2010")
     ap.add_argument("--smoke", action="store_true", help="run deterministic first-20-MSA/first-60-month smoke test")
@@ -1100,7 +1178,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = resolve_repo_path(args.out_dir, repo_root)
     config_path = resolve_repo_path(args.config, repo_root)
 
-    if args.prepare_panel or args.prepare_only:
+    prepare_mode = bool(args.prepare_panel or args.prepare_only)
+    mode_count = sum(bool(x) for x in [
+        prepare_mode,
+        args.preflight,
+        args.run_riesz_pilots,
+        args.smoke,
+        args.production,
+    ])
+    if mode_count > 1:
+        raise SystemExit(
+            "choose exactly one mode: --prepare-panel/--prepare-only, "
+            "--preflight, --run-riesz-pilots, --smoke, or --production"
+        )
+
+    if prepare_mode:
         panel_meta = prepare_estimation_panel(candidate_root, panel_dir, repo_root=repo_root)
         write_second_laptop_checklist(output_root.parent / "housing_data_audit" / "second_laptop_production_checklist.md")
         print(
@@ -1108,8 +1200,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"N={panel_meta['N']} T={panel_meta['T']} usable={panel_meta['usable_dynamic_observations']}",
             flush=True,
         )
-        if args.prepare_only and not (args.preflight or args.run_riesz_pilots or args.smoke):
-            return 0
+        return 0
     if args.preflight:
         report = preflight(
             panel_dir, output_root, repo_root, config_path=config_path,
@@ -1130,8 +1221,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         print(f"[housing-all-homes] Riesz pilots complete rows={len(rows)}", flush=True)
         return 0
-    if args.prepare_panel and not args.smoke:
-        return 0
     if args.smoke:
         result = run_estimation(
             panel_dir, out_dir, config_path,
@@ -1149,8 +1238,74 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         for name, vals in result["targets"].items():
             print(f"  {name}: est={vals['estimate']:.6g} se_white={vals['se_white']:.6g} se_xs={vals['se_xs']:.6g}", flush=True)
+        return 0
+    if args.production:
+        report = preflight(
+            panel_dir, output_root, repo_root, config_path=config_path,
+            fixed_ranks=args.fixed_ranks, select=args.select, n_jobs=args.n_jobs,
+            riesz_maxiter=args.riesz_maxiter, riesz_tol=args.riesz_tol,
+            riesz_ridge=args.riesz_ridge,
+            riesz_use_cached_scale=args.riesz_use_cached_scale,
+        )
+        preflight_failures = []
+        if not report.get("ready_for_production"):
+            preflight_failures.append("ready_for_production is not True")
+        if int(report.get("N", -1)) != BASELINE_EXPECTED_N:
+            preflight_failures.append(f"N is {report.get('N')}, expected {BASELINE_EXPECTED_N}")
+        if int(report.get("T", -1)) != BASELINE_EXPECTED_T:
+            preflight_failures.append(f"T is {report.get('T')}, expected {BASELINE_EXPECTED_T}")
+        if int(report.get("usable_dynamic_observations", -1)) != BASELINE_EXPECTED_USABLE:
+            preflight_failures.append(
+                f"usable_dynamic_observations is {report.get('usable_dynamic_observations')}, "
+                f"expected {BASELINE_EXPECTED_USABLE}"
+            )
+        validation = report.get("validation", {})
+        if int(validation.get("preliminary_bls_observations", -1)) != 0:
+            preflight_failures.append("preliminary BLS observations are present")
+        if not report.get("portability_checks", {}).get("input_checksum_ok"):
+            preflight_failures.append("input checksums are invalid")
+        if preflight_failures:
+            print("[housing-all-homes] production preflight failed:", flush=True)
+            for failure in preflight_failures:
+                print(f"  - {failure}", flush=True)
+            return 1
+        production_dir = output_root / "production"
+        result = run_estimation(
+            panel_dir, production_dir, config_path,
+            repo_root=repo_root,
+            smoke=False, production=True, seed=args.seed,
+            fixed_ranks=args.fixed_ranks, select=args.select,
+            n_jobs=args.n_jobs, overwrite=args.overwrite,
+            riesz_maxiter=args.riesz_maxiter, riesz_tol=args.riesz_tol,
+            riesz_ridge=args.riesz_ridge,
+            riesz_use_cached_scale=args.riesz_use_cached_scale,
+        )
+        if not result.get("production_valid", False):
+            print("[housing-all-homes] production completed with invalid diagnostics", flush=True)
+            for failure in result.get("production_validation_failures", []):
+                print(f"  - {failure}", flush=True)
+            print(f"[housing-all-homes] output directory: {repo_relative(production_dir, repo_root)}", flush=True)
+            return 1
+        rdiag = result.get("riesz_diagnostics", {})
+        print("[housing-all-homes] production complete", flush=True)
+        print(f"  N={result['N']}", flush=True)
+        print(f"  T={result['level_T']}", flush=True)
+        print(f"  J={result['J']}", flush=True)
+        print(f"  ranks={result['ranks']}", flush=True)
+        print(f"  runtime={result['runtime_sec']:.2f}s", flush=True)
+        print(f"  Riesz convergence fraction={rdiag.get('convergence_fraction')}", flush=True)
+        print(f"  maximum Riesz iterations={rdiag.get('iterations_max')}", flush=True)
+        print(f"  maximum relative residual={rdiag.get('relative_residual_max')}", flush=True)
+        print(f"  output directory={repo_relative(production_dir, repo_root)}", flush=True)
+        for name, vals in result["targets"].items():
+            print(f"  {name}: est={vals['estimate']:.6g} se_white={vals['se_white']:.6g} se_xs={vals['se_xs']:.6g}", flush=True)
+        return 0
     else:
-        print("[housing-all-homes] production estimation was not run; pass --smoke for the deterministic smoke test.", flush=True)
+        print(
+            "[housing-all-homes] no mode selected; no estimation or panel preparation was run. "
+            "Use --preflight to validate, --smoke for the deterministic smoke test, or --production for the full run.",
+            flush=True,
+        )
     return 0
 
 

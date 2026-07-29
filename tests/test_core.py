@@ -10,6 +10,7 @@ import csv
 import json
 import math
 import tempfile
+from types import SimpleNamespace
 
 # make `import dlrhcs` work when run directly (python tests/test_core.py) from a
 # clean checkout, without requiring PYTHONPATH or an editable install.
@@ -952,6 +953,89 @@ def _file_state(paths):
     }
 
 
+def _with_housing_expected(n, t, usable):
+    old_expected = (
+        housing_all_homes.BASELINE_EXPECTED_N,
+        housing_all_homes.BASELINE_EXPECTED_T,
+        housing_all_homes.BASELINE_EXPECTED_USABLE,
+    )
+    housing_all_homes.BASELINE_EXPECTED_N = n
+    housing_all_homes.BASELINE_EXPECTED_T = t
+    housing_all_homes.BASELINE_EXPECTED_USABLE = usable
+    return old_expected
+
+
+def _restore_housing_expected(old_expected):
+    (
+        housing_all_homes.BASELINE_EXPECTED_N,
+        housing_all_homes.BASELINE_EXPECTED_T,
+        housing_all_homes.BASELINE_EXPECTED_USABLE,
+    ) = old_expected
+
+
+def _fake_housing_estimate_factory(calls, *, converged=True, rel_resid=1e-6):
+    def fake_estimate(Y, Z, targets, tuning, P=1, rng=None, profile_timing=False):
+        calls["estimate"] = calls.get("estimate", 0) + 1
+        estimates = {t.name: 0.1 + i for i, t in enumerate(targets)}
+        se = {t.name: 0.01 + i * 0.001 for i, t in enumerate(targets)}
+        se_xs = {t.name: 0.02 + i * 0.001 for i, t in enumerate(targets)}
+        ci = {t.name: [estimates[t.name] - 0.1, estimates[t.name] + 0.1] for t in targets}
+        plugins = {t.name: 0.0 for t in targets}
+        riesz_diag = {}
+        for t in targets:
+            iterations = 4 if converged else int(tuning.riesz_maxiter)
+            maxiter = int(tuning.riesz_maxiter)
+            row = {
+                "target_name": t.name,
+                "fold_id": 0,
+                "solver_name": "fake-cg",
+                "convergence_info_code": 0 if converged else maxiter,
+                "converged": bool(converged),
+                "iterations": iterations,
+                "maxiter": maxiter,
+                "requested_tolerance": float(tuning.riesz_tol),
+                "achieved_absolute_residual": float(rel_resid),
+                "achieved_relative_residual": float(rel_resid),
+                "rhs_norm": 1.0,
+                "solution_norm": 1.0,
+                "maximum_absolute_solution_entry": 0.5,
+                "riesz_ridge": float(tuning.riesz_ridge),
+                "scaling_value": 1.0,
+                "cached_scale": bool(tuning.riesz_use_cached_scale),
+                "elapsed_seconds": 0.001,
+                "contains_nonfinite": False,
+            }
+            riesz_diag[t.name] = {
+                "cg_iters": [iterations],
+                "converged": [bool(converged)],
+                "min_eig": [1.0],
+                "folds": [row],
+            }
+        return SimpleNamespace(
+            estimates=estimates,
+            se=se,
+            se_xs=se_xs,
+            ci=ci,
+            ci_xs=ci,
+            onestep=SimpleNamespace(plugins=plugins, riesz_diag=riesz_diag),
+            ranks=(1, 1, 1, 2),
+            q=int(tuning.q),
+            J=2,
+            diagnostics={"retained_nonvalidation": 0.8, "retained_total": 0.7},
+        )
+    return fake_estimate
+
+
+def _make_housing_fixture(repo, *, n=3, t=5):
+    cand_root = housing_all_homes.Path(repo) / "data" / "zillow" / "processed" / "candidate_panels_final_only"
+    _write_all_homes_candidate(cand_root, "start_2010", n=n, t=t)
+    panel_dir = housing_all_homes.Path(repo) / "data" / "zillow" / "processed" / "estimation_panels" / "housing_baseline_2010_final"
+    housing_all_homes.prepare_estimation_panel(cand_root, panel_dir, repo_root=housing_all_homes.Path(repo))
+    config = _write_all_homes_config(housing_all_homes.Path(repo) / "configs" / "full.json")
+    output = housing_all_homes.Path(repo) / "outputs" / "empirical" / "housing_all_homes"
+    return cand_root, panel_dir, config, output
+
+
 def test_housing_all_homes_transformations_and_exact_lags_no_bridge():
     rows = [
         {"cbsa_code": "10001", "msa_title": "A", "date": "2020-01-01", "zhvi_all_homes_sa": "100", "permits_units_sa": "-2", "employment_thousands_sa": "50", "bls_preliminary_flag": "0"},
@@ -1250,6 +1334,191 @@ def test_housing_all_homes_production_loads_existing_and_prepare_mode_is_explici
         ])
         assert code == 0
         assert (panel_dir / "housing_estimation_panel.csv").exists()
+
+
+def test_housing_all_homes_no_mode_performs_no_estimation():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("no mode must not estimate"))
+            code = housing_all_homes.main(["--repo-root", str(repo)])
+        finally:
+            housing_all_homes.estimate = original_estimate
+        assert code == 0
+
+
+def test_housing_all_homes_production_calls_preflight_and_estimator_once_and_preserves_panel():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        cand_root, panel_dir, config, output = _make_housing_fixture(repo)
+        files = [panel_dir / name for name in housing_all_homes.REQUIRED_PANEL_FILES]
+        before = _file_state(files)
+        calls = {"estimate": 0}
+        old_expected = _with_housing_expected(3, 5, 12)
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+            code = housing_all_homes.main([
+                "--production",
+                "--repo-root", str(repo),
+                "--panel-dir", str(panel_dir),
+                "--candidate-root", str(cand_root),
+                "--output-root", str(output),
+                "--config", str(config),
+                "--seed", "2024",
+                "--n-jobs", "1",
+            ])
+        finally:
+            housing_all_homes.estimate = original_estimate
+            _restore_housing_expected(old_expected)
+        after = _file_state(files)
+        assert code == 0
+        assert calls["estimate"] == 1
+        assert before == after
+        prod = output / "production"
+        result = json.loads((prod / "housing_all_homes_results.json").read_text(encoding="utf-8"))
+        meta = json.loads((prod / "metadata.json").read_text(encoding="utf-8"))
+        assert result["mode"] == "production"
+        assert result["full_production_run"] is True
+        assert result["production_valid"] is True
+        assert meta["full_production_run"] is True
+        assert (prod / "riesz_diagnostics.csv").exists()
+        assert (prod / "riesz_summary.json").exists()
+        assert not (output / "smoke" / "housing_all_homes_results.json").exists()
+        assert not (output / "pilots" / "tab_housing_riesz_pilots.csv").exists()
+
+
+def test_housing_all_homes_failed_preflight_prevents_production_estimator():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        _, panel_dir, config, output = _make_housing_fixture(repo)
+        original_preflight = housing_all_homes.preflight
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.preflight = lambda *args, **kwargs: {
+                "ready_for_production": False,
+                "N": 3,
+                "T": 5,
+                "usable_dynamic_observations": 12,
+                "validation": {"preliminary_bls_observations": 0},
+                "portability_checks": {"input_checksum_ok": True},
+            }
+            housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("failed preflight must not estimate"))
+            code = housing_all_homes.main([
+                "--production",
+                "--repo-root", str(repo),
+                "--panel-dir", str(panel_dir),
+                "--output-root", str(output),
+                "--config", str(config),
+            ])
+        finally:
+            housing_all_homes.preflight = original_preflight
+            housing_all_homes.estimate = original_estimate
+        assert code == 1
+
+
+def test_housing_all_homes_smoke_and_pilot_outputs_are_not_full_production():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        _, panel_dir, config, output = _make_housing_fixture(repo)
+        calls = {"estimate": 0}
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+            smoke = housing_all_homes.run_estimation(
+                panel_dir, output / "smoke", config, repo_root=repo, smoke=True,
+                first_n_msas=2, first_t_usable=2, overwrite=True,
+            )
+            pilot = housing_all_homes.run_estimation(
+                panel_dir, output / "pilots" / "fixture", config, repo_root=repo,
+                pilot_id="fixture", first_n_msas=2, first_t_usable=2, overwrite=True,
+            )
+        finally:
+            housing_all_homes.estimate = original_estimate
+        assert smoke["mode"] == "smoke"
+        assert smoke["full_production_run"] is False
+        assert pilot["mode"] == "pilot"
+        assert pilot["full_production_run"] is False
+
+
+def test_housing_all_homes_production_resume_reuse_refuse_and_overwrite():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        cand_root, panel_dir, config, output = _make_housing_fixture(repo)
+        calls = {"estimate": 0}
+        old_expected = _with_housing_expected(3, 5, 12)
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+            base_args = [
+                "--production", "--repo-root", str(repo), "--panel-dir", str(panel_dir),
+                "--candidate-root", str(cand_root), "--output-root", str(output),
+                "--config", str(config), "--seed", "2024",
+            ]
+            assert housing_all_homes.main(base_args) == 0
+            assert calls["estimate"] == 1
+            assert housing_all_homes.main(base_args) == 0
+            assert calls["estimate"] == 1
+            try:
+                housing_all_homes.main(base_args + ["--seed", "2025"])
+            except SystemExit as exc:
+                assert "incompatible" in str(exc)
+            else:
+                raise AssertionError("incompatible production signature should be rejected")
+            assert calls["estimate"] == 1
+            assert housing_all_homes.main(base_args + ["--seed", "2025", "--overwrite"]) == 0
+            assert calls["estimate"] == 2
+        finally:
+            housing_all_homes.estimate = original_estimate
+            _restore_housing_expected(old_expected)
+
+
+def test_housing_all_homes_riesz_nonconvergence_marks_production_invalid():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        cand_root, panel_dir, config, output = _make_housing_fixture(repo)
+        calls = {"estimate": 0}
+        old_expected = _with_housing_expected(3, 5, 12)
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = _fake_housing_estimate_factory(calls, converged=False, rel_resid=1e-2)
+            code = housing_all_homes.main([
+                "--production", "--repo-root", str(repo), "--panel-dir", str(panel_dir),
+                "--candidate-root", str(cand_root), "--output-root", str(output),
+                "--config", str(config),
+            ])
+        finally:
+            housing_all_homes.estimate = original_estimate
+            _restore_housing_expected(old_expected)
+        assert code == 1
+        result = json.loads((output / "production" / "housing_all_homes_results.json").read_text(encoding="utf-8"))
+        assert result["production_valid"] is False
+        assert result["production_validation_failures"]
+
+
+def test_housing_all_homes_production_signature_portable_across_roots():
+    signatures = []
+    with tempfile.TemporaryDirectory() as tmp:
+        original_estimate = housing_all_homes.estimate
+        old_expected = _with_housing_expected(3, 5, 12)
+        try:
+            for name in ["repo A", "repo B"]:
+                repo = _make_repo_root_fixture(tmp, name)
+                cand_root, panel_dir, config, output = _make_housing_fixture(repo)
+                calls = {"estimate": 0}
+                housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+                assert housing_all_homes.main([
+                    "--production", "--repo-root", str(repo), "--panel-dir", str(panel_dir),
+                    "--candidate-root", str(cand_root), "--output-root", str(output),
+                    "--config", str(config), "--seed", "2024",
+                ]) == 0
+                meta = json.loads((output / "production" / "metadata.json").read_text(encoding="utf-8"))
+                signatures.append(meta["run_signature"])
+        finally:
+            housing_all_homes.estimate = original_estimate
+            _restore_housing_expected(old_expected)
+    assert signatures[0] == signatures[1]
 
 
 def test_housing_all_homes_preflight_substantive_report_portable_across_roots():
