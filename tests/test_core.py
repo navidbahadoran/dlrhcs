@@ -28,7 +28,13 @@ from dlrhcs.pipeline import Tuning
 from dlrhcs.targets import (entry_direction, project_block, project_tangent,
                             riesz_weights, Target, cg_converged_from_status)
 from dlrhcs import housing_data
-from scripts import sim_report, run_mc_batches, report_housing_data, housing_all_homes
+from scripts import (
+    sim_report,
+    run_mc_batches,
+    report_housing_data,
+    housing_all_homes,
+    report_housing_all_homes,
+)
 
 
 def _panel(Tp=24, N=20, seed=0, sigma_u=0.30):
@@ -1036,6 +1042,28 @@ def _make_housing_fixture(repo, *, n=3, t=5):
     return cand_root, panel_dir, config, output
 
 
+def _make_housing_production_fixture(repo, *, n=3, t=5):
+    cand_root, panel_dir, config, output = _make_housing_fixture(repo, n=n, t=t)
+    calls = {"estimate": 0}
+    old_expected = _with_housing_expected(n, t, n * (t - 1))
+    original_estimate = housing_all_homes.estimate
+    try:
+        housing_all_homes.estimate = _fake_housing_estimate_factory(calls)
+        result = housing_all_homes.run_estimation(
+            panel_dir,
+            output / "production",
+            config,
+            repo_root=repo,
+            production=True,
+            overwrite=True,
+        )
+    finally:
+        housing_all_homes.estimate = original_estimate
+        _restore_housing_expected(old_expected)
+    assert calls["estimate"] == 1
+    return panel_dir, output / "production", output / "report", result
+
+
 def test_housing_all_homes_transformations_and_exact_lags_no_bridge():
     rows = [
         {"cbsa_code": "10001", "msa_title": "A", "date": "2020-01-01", "zhvi_all_homes_sa": "100", "permits_units_sa": "-2", "employment_thousands_sa": "50", "bls_preliminary_flag": "0"},
@@ -1623,6 +1651,112 @@ def test_housing_all_homes_keyboard_interrupt_marks_progress_without_success():
         assert not (prod / "housing_all_homes_results.json").exists()
         progress = json.loads((prod / "production_progress.json").read_text(encoding="utf-8"))
         assert progress["status"] == "interrupted"
+
+
+def test_housing_all_homes_publication_report_validates_and_never_estimates():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        panel_dir, prod, report_root, result = _make_housing_production_fixture(repo)
+        source_files = [
+            prod / "housing_all_homes_results.json",
+            prod / "metadata.json",
+            prod / "riesz_summary.json",
+            prod / "riesz_diagnostics.csv",
+        ]
+        panel_files = [panel_dir / name for name in housing_all_homes.REQUIRED_PANEL_FILES]
+        before_sources = _file_state(source_files)
+        before_panel = _file_state(panel_files)
+        original_estimate = housing_all_homes.estimate
+        try:
+            housing_all_homes.estimate = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("reporter must not estimate"))
+            built = report_housing_all_homes.build_report(repo, prod, report_root)
+        finally:
+            housing_all_homes.estimate = original_estimate
+        assert built["status"] == "written"
+        assert before_sources == _file_state(source_files)
+        assert before_panel == _file_state(panel_files)
+        required = [
+            report_root / "tables" / "tab_housing_all_homes_main.csv",
+            report_root / "tables" / "tab_housing_all_homes_main.tex",
+            report_root / "tables" / "tab_housing_all_homes_sample.csv",
+            report_root / "tables" / "tab_housing_all_homes_sample.tex",
+            report_root / "tables" / "tab_housing_all_homes_diagnostics.csv",
+            report_root / "tables" / "tab_housing_all_homes_diagnostics.tex",
+            report_root / "housing_all_homes_report.md",
+            report_root / "report_manifest.json",
+        ]
+        assert all(p.exists() for p in required)
+        assert not list(report_root.rglob("*.part"))
+        rows = list(csv.DictReader((report_root / "tables" / "tab_housing_all_homes_main.csv").open(encoding="utf-8")))
+        by_label = {r["estimand"]: r for r in rows}
+        assert set(by_label) == {
+            "Mean coefficient on lagged log ZHVI",
+            "Mean coefficient on lagged asinh building permits",
+            "Mean coefficient on lagged log payroll employment",
+        }
+        assert by_label["Mean coefficient on lagged log ZHVI"]["estimate"] == report_housing_all_homes.fmt_num(
+            result["targets"]["lag_log_zhvi_mean"]["estimate"]
+        )
+        tex = (report_root / "tables" / "tab_housing_all_homes_main.tex").read_text(encoding="utf-8")
+        md = (report_root / "housing_all_homes_report.md").read_text(encoding="utf-8")
+        assert "\\label{tab:housing-all-homes-main}" in tex
+        assert by_label["Mean coefficient on lagged asinh building permits"]["estimate"] in tex
+        assert by_label["Mean coefficient on lagged log payroll employment"]["estimate"] in md
+        assert "all controls enter with one monthly lag" in tex
+        manifest = json.loads((report_root / "report_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["report_schema_version"] == report_housing_all_homes.REPORT_SCHEMA_VERSION
+        assert manifest["production_run_signature_hash"] == housing_all_homes.signature_hash(result["run_signature"])
+
+
+def test_housing_all_homes_publication_report_rejects_invalid_without_tables():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        _, prod, report_root, _ = _make_housing_production_fixture(repo)
+        result_path = prod / "housing_all_homes_results.json"
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        result["production_valid"] = False
+        housing_all_homes.write_json(result_path, result)
+        try:
+            report_housing_all_homes.build_report(repo, prod, report_root)
+        except ValueError as exc:
+            assert "production_valid" in str(exc)
+        else:
+            raise AssertionError("invalid production output should be rejected")
+        assert not (report_root / "tables" / "tab_housing_all_homes_main.csv").exists()
+
+
+def test_housing_all_homes_publication_report_reuse_and_overwrite_rules():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = _make_repo_root_fixture(tmp, "repo")
+        _, prod, report_root, _ = _make_housing_production_fixture(repo)
+        first = report_housing_all_homes.build_report(repo, prod, report_root)
+        assert first["status"] == "written"
+        second = report_housing_all_homes.build_report(repo, prod, report_root)
+        assert second["status"] == "reused"
+        manifest_path = report_root / "report_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["production_run_signature_hash"] = "changed"
+        housing_all_homes.write_json(manifest_path, manifest)
+        try:
+            report_housing_all_homes.build_report(repo, prod, report_root)
+        except SystemExit as exc:
+            assert "incompatible" in str(exc)
+        else:
+            raise AssertionError("incompatible report should require --overwrite")
+        overwritten = report_housing_all_homes.build_report(repo, prod, report_root, overwrite=True)
+        assert overwritten["status"] == "written"
+
+
+def test_housing_all_homes_publication_report_identity_portable_across_roots():
+    identities = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for name in ["repo A", "repo B"]:
+            repo = _make_repo_root_fixture(tmp, name)
+            _, prod, report_root, _ = _make_housing_production_fixture(repo)
+            report_housing_all_homes.build_report(repo, prod, report_root)
+            manifest = json.loads((report_root / "report_manifest.json").read_text(encoding="utf-8"))
+            identities.append(manifest["report_identity"])
+    assert identities[0] == identities[1]
 
 
 def test_housing_all_homes_production_signature_portable_across_roots():
