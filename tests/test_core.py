@@ -2139,6 +2139,457 @@ def test_unemployment_pilot_missing_transform_values_are_not_filled():
     assert maps["permits_asinh_sa"][("11500", "2020-01")] == math.asinh(-2.0)
 
 
+def test_unemployment_ces_history_api_batching_dates_and_classification():
+    ids = [f"S{i:03d}" for i in range(101)]
+    batches = unemployment_raw_sa_pilot.batch_series_ids(ids, 50)
+    assert [len(b) for b in batches] == [50, 50, 1]
+    payload = unemployment_raw_sa_pilot.build_bls_api_payload(batches[0], 2007, 2026, "KEY")
+    assert payload["startyear"] == "2007"
+    assert payload["endyear"] == "2026"
+    assert payload["registrationkey"] == "KEY"
+    assert unemployment_raw_sa_pilot.bls_api_version("https://api.bls.gov/publicAPI/v2/timeseries/data/") == "v2"
+    quota = {"status": "REQUEST_NOT_PROCESSED", "message": ["daily threshold for queries has been reached"]}
+    absent = {"status": "REQUEST_NOT_PROCESSED", "message": ["invalid series"]}
+    assert unemployment_raw_sa_pilot.classify_bls_api_response(quota) == "quota"
+    assert unemployment_raw_sa_pilot.classify_bls_api_response(absent) == "absent_series"
+    truncated = {
+        "status": "REQUEST_SUCCEEDED",
+        "message": ["Year range has been reduced to the system maximum."],
+        "Results": {"series": [{"data": [{"year": str(y), "period": "M01", "value": "1"} for y in range(2007, 2017)]}]},
+    }
+    assert unemployment_raw_sa_pilot.detect_ten_year_truncation(truncated, 2007, 2026)
+    with tempfile.TemporaryDirectory() as tmp:
+        sm_txt = housing_data.Path(tmp) / "sm.txt"
+        sm_txt.write_text(
+            "sm.data.0.Current - current\n"
+            "sm.data.1.Alabama - state\n"
+            "sm.data.5c.California - state\n"
+            "sm.data.54.TotalNonFarm.All - rollup\n",
+            encoding="utf-8",
+        )
+        assert unemployment_raw_sa_pilot.discover_ces_state_partition_files(sm_txt) == [
+            "sm.data.1.Alabama",
+            "sm.data.5c.California",
+        ]
+
+
+def test_unemployment_ces_history_selects_unadjusted_and_excludes_m13():
+    with tempfile.TemporaryDirectory() as tmp:
+        raw = housing_data.Path(tmp)
+        (raw / "sm.area").write_text("area_code\tarea_name\n11500\tAnniston-Oxford-Oxford, AL\n", encoding="utf-8")
+        (raw / "sm.series").write_text(
+            "series_id\tstate_code\tarea_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\tbenchmark_year\tfootnote_codes\tbegin_year\tbegin_period\tend_year\tend_period\n"
+            "SMU01115000500000002\t01\t11500\t05\t05000000\t02\tU\t2025\t\t2007\tM01\t2026\tM06\n"
+            "SMS01115000500000002\t01\t11500\t05\t05000000\t02\tS\t2025\t\t2007\tM01\t2026\tM06\n",
+            encoding="utf-8",
+        )
+        selected, diag = unemployment_raw_sa_pilot.select_ces_hours_series(raw)
+        assert sorted(selected) == ["SMU01115000500000002"]
+        assert diag[-1]["selected_series_count"] == 1
+        data = raw / "sm.data.56.TotalPrivate.Current"
+        data.write_text(
+            "series_id\tyear\tperiod\tvalue\tfootnote_codes\n"
+            "SMU01115000500000002\t2020\tM01\t34.5\t\n"
+            "SMU01115000500000002\t2020\tM13\t35.0\t\n",
+            encoding="utf-8",
+        )
+        rows = unemployment_raw_sa_pilot.parse_ces_data_file(data, selected)
+        assert len(rows) == 1
+        assert rows[0]["date"] == "2020-01-01"
+
+
+def test_unemployment_ces_history_series_coverage_duplicate_and_missing_flags():
+    selected = {
+        "S1": {
+            "series_id": "S1", "cbsa_code": "11500", "area_name": "Area",
+            "seasonal": "U", "industry_code": "05000000", "data_type_code": "02",
+            "begin_year": "2020", "begin_period": "M01", "end_year": "2020", "end_period": "M04",
+        }
+    }
+    rows = [
+        {"ces_series_id": "S1", "cbsa_code": "11500", "date": "2020-01-01", "hours_raw": 1.0, "preliminary_flag": 0, "source_file": "a", "source_sha256": "h"},
+        {"ces_series_id": "S1", "cbsa_code": "11500", "date": "2020-01-01", "hours_raw": 1.0, "preliminary_flag": 1, "source_file": "a", "source_sha256": "h"},
+        {"ces_series_id": "S1", "cbsa_code": "11500", "date": "2020-03-01", "hours_raw": -1.0, "preliminary_flag": 0, "source_file": "a", "source_sha256": "h"},
+    ]
+    cov = unemployment_raw_sa_pilot.ces_series_coverage(rows, selected, requested_start="2020-01", requested_end="2020-03")
+    assert cov[0]["duplicate_month_count"] == 1
+    assert cov[0]["missing_month_count"] == 1
+    assert cov[0]["preliminary_count"] == 1
+    assert cov[0]["negative_count"] == 1
+    assert cov[0]["coverage_complete_requested_window"] == 0
+
+
+def test_unemployment_ces_history_x13_split_and_candidate_effective_start():
+    adjusted = [
+        {"variable": "ces_hours", "x13_mode": "log_additive", "x13_status": "ok", "cbsa_code": "11500", "date": "2020-02-01", "adjusted_value": 10},
+        {"variable": "bps_permits", "x13_mode": "additive_level", "x13_status": "ok", "cbsa_code": "11500", "date": "2020-02-01", "adjusted_value": 3},
+        {"variable": "bps_permits", "x13_mode": "additive_level", "x13_status": "ok", "cbsa_code": "11500", "date": "2020-03-01", "adjusted_value": 4},
+    ]
+    diag = [
+        {"variable": "ces_hours", "cbsa_code": "11500", "x13_status": "ok", "warning_or_error": ""},
+        {"variable": "bps_permits", "cbsa_code": "11500", "x13_status": "failed:1", "warning_or_error": "error"},
+    ]
+    x13 = unemployment_raw_sa_pilot.summarize_x13_coverage(adjusted, diag, [{"cbsa_code": "11500"}], [{"cbsa_code": "11500"}])
+    by_var = {r["variable"]: r for r in x13}
+    assert by_var["ces_hours"]["successful_adjusted_series_count"] == 1
+    assert by_var["bps_permits"]["failed_series_count"] == 1
+    inv = [{"candidate_start": "2020-01", "transformation": "lagged_levels", "raw_months": 3, "common_msas": 1, "missing_observations": 0, "x13_failures": 0}]
+    panel = [{"candidate_start": "2020-01", "transformation": "lagged_levels", "cbsa_code": "11500", "date": "2020-03-01"}]
+    revised = unemployment_raw_sa_pilot.build_revised_candidate_inventory(
+        inv, panel, ces_history_complete=False, ces_loss_reason="api_ten_year_truncation_detected"
+    )
+    assert revised[0]["requested_start"] == "2020-01"
+    assert revised[0]["effective_common_start"] == "2020-03"
+    assert revised[0]["freeze_allowed"] == 0
+
+
+def test_unemployment_final_source_manifest_hash_and_missing_root_refusal():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = housing_data.Path(tmp)
+        (repo / "dlrhcs").mkdir()
+        (repo / "scripts").mkdir()
+        src = repo / "data" / "unemployment" / "raw" / "ces_metro"
+        src.mkdir(parents=True)
+        f = src / "sm.series"
+        f.write_text("series_id\tarea_code\nS1\t11500\n", encoding="utf-8")
+        rows = unemployment_raw_sa_pilot.source_file_manifest(src, repo)
+        assert rows[0]["filename"] == "sm.series"
+        assert rows[0]["byte_size"] == f.stat().st_size
+        assert rows[0]["sha256"] == housing_data.sha256_file(f)
+        assert rows[0]["relative_path"].replace("\\", "/") == "data/unemployment/raw/ces_metro/sm.series"
+
+        code = unemployment_raw_sa_pilot.main([
+            "--repo-root", str(repo),
+            "--validate-final-ces-source",
+            "--ces-source-root", "data/unemployment/raw/missing",
+            "--final-out-root", "out",
+        ])
+        assert code == 2
+        val = json.loads((repo / "out" / "final_source_manifest.json").read_text(encoding="utf-8"))["validation"]
+        assert val["status"] == "failed_missing_ces_source_root"
+        assert not val["continuation_allowed"]
+
+
+def test_unemployment_final_source_metadata_coverage_and_m13_exclusion():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = housing_data.Path(tmp)
+        (src / "sm.area").write_text(
+            "area_code\tarea_name\n11500\tAnniston-Oxford, AL\n16980\tChicago-Naperville-Arlington Heights, IL Metropolitan Division\n",
+            encoding="utf-8",
+        )
+        (src / "sm.series").write_text(
+            "series_id\tstate_code\tarea_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\tbenchmark_year\tfootnote_codes\tbegin_year\tbegin_period\tend_year\tend_period\n"
+            "SMU01115000500000002\t01\t11500\t05\t05000000\t02\tU\t2026\t\t2007\tM01\t2007\tM03\n"
+            "SMS01115000500000002\t01\t11500\t05\t05000000\t02\tS\t2026\t\t2007\tM01\t2007\tM03\n"
+            "SMU01169800500000002\t01\t16980\t05\t05000000\t02\tU\t2026\t\t2007\tM01\t2007\tM03\n",
+            encoding="utf-8",
+        )
+        data = src / "sm.data.56.TotalPrivate.Current"
+        data.write_text(
+            "series_id\tyear\tperiod\tvalue\tfootnote_codes\n"
+            "SMU01115000500000002\t2007\tM01\t34.1\t\n"
+            "SMU01115000500000002\t2007\tM02\t34.2\t\n"
+            "SMU01115000500000002\t2007\tM03\t34.3\tP\n"
+            "SMU01115000500000002\t2007\tM13\t34.9\t\n",
+            encoding="utf-8",
+        )
+        selected, diag = unemployment_raw_sa_pilot.parse_ces_metadata_from_source(src)
+        assert list(selected) == ["SMU01115000500000002"]
+        assert diag[0]["excluded_metropolitan_division"] == 1
+        rows = unemployment_raw_sa_pilot.parse_ces_source_data_files(src, selected)
+        assert len(rows) == 3
+        coverage = unemployment_raw_sa_pilot.ces_series_coverage(rows, selected, requested_start="2007-01", requested_end="2007-03")
+        complete, reasons = unemployment_raw_sa_pilot.validate_complete_ces_history(coverage, required_start="2007-01", required_end="2007-03")
+        assert complete
+        assert reasons == []
+        assert coverage[0]["preliminary_count"] == 1
+        assert coverage[0]["source_hashes"] == housing_data.sha256_file(data)
+
+
+def _write_minimal_final_ces_metadata(src):
+    (src / "sm.area").write_text(
+        "area_code\tarea_name\n11500\tAnniston-Oxford, AL\n",
+        encoding="utf-8",
+    )
+    (src / "sm.series").write_text(
+        "series_id\tstate_code\tarea_code\tsupersector_code\tindustry_code\tdata_type_code\tseasonal\tbenchmark_year\tfootnote_codes\tbegin_year\tbegin_period\tend_year\tend_period\n"
+        "SMU01115000500000002\t01\t11500\t05\t05000000\t02\tU\t2026\t\t2007\tM01\t2007\tM03\n",
+        encoding="utf-8",
+    )
+    (src / "sm.industry").write_text("industry_code\tindustry_name\n05000000\tTotal private\n", encoding="utf-8")
+    (src / "sm.data_type").write_text("data_type_code\tdata_type_text\n02\tAverage weekly hours of all employees\n", encoding="utf-8")
+    (src / "sm.seasonal").write_text("seasonal_code\tseasonal_text\nU\tNot seasonally adjusted\n", encoding="utf-8")
+    (src / "sm.footnote").write_text("footnote_code\tfootnote_text\nP\tpreliminary\n", encoding="utf-8")
+
+
+def _write_complete_sm_period(src):
+    rows = ["period\tperiod_abbr\tperiod_name"]
+    names = [
+        ("M01", "JAN", "January"), ("M02", "FEB", "February"), ("M03", "MAR", "March"),
+        ("M04", "APR", "April"), ("M05", "MAY", "May"), ("M06", "JUN", "June"),
+        ("M07", "JUL", "July"), ("M08", "AUG", "August"), ("M09", "SEP", "September"),
+        ("M10", "OCT", "October"), ("M11", "NOV", "November"), ("M12", "DEC", "December"),
+        ("M13", "ANN", "Annual"),
+    ]
+    rows.extend("\t".join(row) for row in names)
+    (src / "sm.period").write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def test_unemployment_final_source_period_mapping_official_and_fallback():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = housing_data.Path(tmp)
+        _write_complete_sm_period(src)
+        official = unemployment_raw_sa_pilot.resolve_ces_period_mapping(src)
+        assert official["sm_period_supplied"] is True
+        assert official["period_mapping_source"] == "official_sm_period"
+        assert official["sm_period_sha256"] == housing_data.sha256_file(src / "sm.period")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        src = housing_data.Path(tmp)
+        (src / "sm.txt").write_text("BLS State and Area documentation\n", encoding="utf-8")
+        fallback = unemployment_raw_sa_pilot.resolve_ces_period_mapping(src)
+        assert fallback["sm_period_supplied"] is False
+        assert fallback["sm_period_optional"] is True
+        assert fallback["period_mapping_source"] == "official_sm_txt_documentation"
+        assert fallback["sm_txt_sha256"] == housing_data.sha256_file(src / "sm.txt")
+
+
+def test_unemployment_final_source_period_code_validation_and_html_refusal():
+    assert unemployment_raw_sa_pilot.validate_ces_period_code("M01") == ("monthly", 1)
+    assert unemployment_raw_sa_pilot.validate_ces_period_code("M12") == ("monthly", 12)
+    assert unemployment_raw_sa_pilot.validate_ces_period_code("M13") == ("annual_average", None)
+    for bad in ("M00", "M14", "Q01", "bad"):
+        try:
+            unemployment_raw_sa_pilot.validate_ces_period_code(bad)
+        except ValueError as exc:
+            assert "unexpected CES period code" in str(exc)
+        else:
+            raise AssertionError(f"unexpectedly accepted {bad}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        src = housing_data.Path(tmp)
+        (src / "sm.period").write_text("<html>Access Denied</html>", encoding="utf-8")
+        try:
+            unemployment_raw_sa_pilot.resolve_ces_period_mapping(src)
+        except ValueError as exc:
+            assert "sm.period appears to be HTML" in str(exc)
+        else:
+            raise AssertionError("HTML sm.period was accepted")
+
+
+def test_unemployment_final_source_absent_sm_period_does_not_block_required_sources():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = housing_data.Path(tmp)
+        (repo / "dlrhcs").mkdir()
+        (repo / "scripts").mkdir()
+        src = repo / "data" / "unemployment" / "raw" / "ces_metro"
+        src.mkdir(parents=True)
+        _write_minimal_final_ces_metadata(src)
+        (src / "sm.data.1.AllData").write_text(
+            "series_id\tyear\tperiod\tvalue\tfootnote_codes\n"
+            "SMU01115000500000002\t2007\tM01\t34.1\t\n",
+            encoding="utf-8",
+        )
+        code = unemployment_raw_sa_pilot.main([
+            "--repo-root", str(repo),
+            "--validate-final-ces-source",
+            "--ces-source-root", "data/unemployment/raw/ces_metro",
+            "--final-out-root", "out",
+        ])
+        assert code == 2
+        val = json.loads((repo / "out" / "final_source_manifest.json").read_text(encoding="utf-8"))["validation"]
+        assert val["sm_period_supplied"] is False
+        assert val["sm_period_optional"] is True
+        assert val["period_mapping_source"] == "official_sm_txt_documentation"
+        assert val["status"] != "failed_missing_ces_source"
+        assert not any("sm.period" in r for r in val.get("missing_required_ces_files", []))
+
+
+def test_unemployment_final_source_missing_substantive_data_still_refuses():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = housing_data.Path(tmp)
+        (repo / "dlrhcs").mkdir()
+        (repo / "scripts").mkdir()
+        src = repo / "data" / "unemployment" / "raw" / "ces_metro"
+        src.mkdir(parents=True)
+        _write_minimal_final_ces_metadata(src)
+        code = unemployment_raw_sa_pilot.main([
+            "--repo-root", str(repo),
+            "--validate-final-ces-source",
+            "--ces-source-root", "data/unemployment/raw/ces_metro",
+            "--final-out-root", "out",
+        ])
+        assert code == 2
+        val = json.loads((repo / "out" / "final_source_manifest.json").read_text(encoding="utf-8"))["validation"]
+        assert val["status"] == "failed_missing_ces_source"
+        assert any("sm.data" in r for r in val["missing_required_ces_files"])
+        assert not any("sm.period" in r for r in val["missing_required_ces_files"])
+
+
+def test_unemployment_final_source_unexpected_period_in_data_refuses():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = housing_data.Path(tmp)
+        _write_minimal_final_ces_metadata(src)
+        data = src / "sm.data.1.AllData"
+        data.write_text(
+            "series_id\tyear\tperiod\tvalue\tfootnote_codes\n"
+            "SMU01115000500000002\t2007\tQ01\t34.1\t\n",
+            encoding="utf-8",
+        )
+        selected, _ = unemployment_raw_sa_pilot.parse_ces_metadata_from_source(src)
+        try:
+            unemployment_raw_sa_pilot.parse_ces_source_data_files(src, selected)
+        except ValueError as exc:
+            assert "unexpected CES period code" in str(exc)
+        else:
+            raise AssertionError("unexpected period code was silently accepted")
+
+
+def test_unemployment_final_source_complete_history_rejects_gaps_duplicates_and_truncation():
+    selected = {
+        "S1": {
+            "series_id": "S1", "cbsa_code": "11500", "area_name": "Area",
+            "seasonal": "U", "industry_code": "05000000", "data_type_code": "02",
+            "begin_year": "2007", "begin_period": "M01", "end_year": "2007", "end_period": "M04",
+        }
+    }
+    rows = [
+        {"ces_series_id": "S1", "cbsa_code": "11500", "date": "2007-02-01", "hours_raw": 34.0, "preliminary_flag": 0},
+        {"ces_series_id": "S1", "cbsa_code": "11500", "date": "2007-02-01", "hours_raw": 34.0, "preliminary_flag": 0},
+        {"ces_series_id": "S1", "cbsa_code": "11500", "date": "2007-04-01", "hours_raw": 34.0, "preliminary_flag": 0},
+    ]
+    coverage = unemployment_raw_sa_pilot.ces_series_coverage(rows, selected, requested_start="2007-01", requested_end="2007-04")
+    complete, reasons = unemployment_raw_sa_pilot.validate_complete_ces_history(coverage, required_start="2007-01", required_end="2007-04")
+    assert not complete
+    assert any("starts_after_2007-01" in r for r in reasons)
+    assert any("missing_months" in r for r in reasons)
+    assert any("duplicate_months" in r for r in reasons)
+
+
+def test_unemployment_final_source_later_starts_are_candidate_specific_not_source_failures():
+    selected = {
+        "S1": {
+            "series_id": "S1", "cbsa_code": "11500", "area_name": "Early Area",
+            "seasonal": "U", "industry_code": "05000000", "data_type_code": "02",
+            "begin_year": "2007", "begin_period": "M01", "end_year": "2011", "end_period": "M03",
+        },
+        "S2": {
+            "series_id": "S2", "cbsa_code": "11600", "area_name": "Later Area",
+            "seasonal": "U", "industry_code": "05000000", "data_type_code": "02",
+            "begin_year": "2010", "begin_period": "M01", "end_year": "2011", "end_period": "M03",
+        },
+    }
+    rows = []
+    for sid, code, start in (("S1", "11500", "2007-01"), ("S2", "11600", "2010-01")):
+        for month in unemployment_raw_sa_pilot.month_range(start, "2011-03"):
+            rows.append({
+                "ces_series_id": sid,
+                "cbsa_code": code,
+                "date": month + "-01",
+                "hours_raw": 34.0,
+                "preliminary_flag": 0,
+                "source_file": "sm.data.1.AllData",
+                "source_sha256": "abc",
+            })
+    coverage = unemployment_raw_sa_pilot.ces_series_coverage(rows, selected, requested_start="2007-01", requested_end="2011-03")
+    source_valid, status, reasons = unemployment_raw_sa_pilot.validate_ces_source_integrity(coverage)
+    assert source_valid
+    assert status == "source_valid_candidate_filtering_required"
+    assert reasons == []
+
+    elig_rows, summary = unemployment_raw_sa_pilot.candidate_ces_eligibility(coverage, endpoint="2011-03")
+    assert summary["2007-01"]["eligible_ces_msas"] == 1
+    assert summary["2010-01"]["eligible_ces_msas"] == 2
+    later_2007 = [
+        r for r in elig_rows
+        if r["requested_start"] == "2007-01" and r["series_id"] == "S2"
+    ][0]
+    assert later_2007["eligible"] == 0
+    assert later_2007["exclusion_reason"] == "ces_starts_after_requested_start"
+
+
+def test_unemployment_final_source_endpoint_uses_latest_nonpreliminary_month():
+    rows = []
+    for month, prelim in (("2020-01", 0), ("2020-02", 0), ("2020-03", 1)):
+        rows.append({"date": month + "-01", "preliminary_flag": prelim})
+        rows.append({"date": month + "-01", "preliminary_flag": prelim})
+    final_month, observed_month, audit = unemployment_raw_sa_pilot.latest_common_final_ces_month(rows)
+    assert final_month == "2020-02"
+    assert observed_month == "2020-03"
+    by_month = {r["month"]: r for r in audit}
+    assert by_month["2020-03"]["ces_preliminary_observations"] == 2
+
+
+def test_unemployment_final_candidate_comparison_reports_raw_common_months_and_flags():
+    rows = []
+    for code in ("1", "2"):
+        for idx, month in enumerate(("2019-10", "2019-11", "2019-12", "2020-01")):
+            rows.append({
+                "candidate_start": "2019-10",
+                "transformation": "lagged_levels",
+                "cbsa_code": code,
+                "date": month + "-01",
+                "hours_x": float(idx + 1),
+                "permits_x": float(idx + 1) * 10.0,
+            })
+    inv = [{
+        "candidate_start": "2019-10",
+        "transformation": "lagged_levels",
+        "common_msas": 2,
+        "raw_months": 4,
+        "usable_months_after_transformations_and_one_month_lag": 4,
+        "missing_observations": 0,
+        "preliminary_observations": 0,
+        "x13_failures": 0,
+    }]
+    inv[0].update(unemployment_raw_sa_pilot.condition_diagnostics(
+        np.array([r["hours_x"] for r in rows], float),
+        np.array([r["permits_x"] for r in rows], float),
+    ))
+    inv[0]["two_way_demeaned_correlation"] = unemployment_raw_sa_pilot.two_way_demeaned_corr(rows)
+    inv[0].update(unemployment_raw_sa_pilot.within_msa_corr_summary(rows))
+    inv[0].update(unemployment_raw_sa_pilot.fold_condition_diagnostics(rows, J=2))
+    inv[0].update(unemployment_raw_sa_pilot.candidate_value_diagnostics(rows))
+    comparison, collinearity = unemployment_raw_sa_pilot.final_candidate_comparison(inv, rows, [])
+    assert comparison[0]["raw_common_months"] == 4
+    assert "hours_mean" in comparison[0]
+    assert "max_abs_within_msa_corr" in collinearity[0]
+    assert "fold_min_eigenvalue_min" in collinearity[0]
+
+
+def test_unemployment_final_candidate_comparison_lags_losses_and_recommendation():
+    inventory = [
+        {
+            "candidate_start": "2007-01", "transformation": "lagged_levels", "common_msas": 2, "raw_months": 5,
+            "usable_months_after_transformations_and_one_month_lag": 4, "missing_observations": 0,
+            "preliminary_observations": 0, "x13_failures": 0, "pooled_correlation": 0.1,
+            "two_way_demeaned_correlation": 0.2, "condition_number": 3.0,
+        },
+        {
+            "candidate_start": "2010-01", "transformation": "one_month_growth", "common_msas": 3, "raw_months": 4,
+            "usable_months_after_transformations_and_one_month_lag": 2, "missing_observations": 0,
+            "preliminary_observations": 0, "x13_failures": 0, "condition_number": 2.0,
+        },
+    ]
+    panel = [
+        {"candidate_start": "2007-01", "transformation": "lagged_levels", "cbsa_code": "1", "date": "2007-02-01"},
+        {"candidate_start": "2007-01", "transformation": "lagged_levels", "cbsa_code": "1", "date": "2007-05-01"},
+        {"candidate_start": "2010-01", "transformation": "one_month_growth", "cbsa_code": "1", "date": "2010-03-01"},
+    ]
+    dropped = [
+        {"candidate_start": "2010-01", "transformation": "one_month_growth", "cbsa_code": "2", "dropped_reason": "missing_transformed_hours_after_lag;missing_laus_sa"},
+    ]
+    comparison, collinearity = unemployment_raw_sa_pilot.final_candidate_comparison(inventory, panel, dropped)
+    first = {r["requested_start"]: r for r in comparison}["2007-01"]
+    assert first["effective_common_start"] == "2007-02"
+    second = {r["requested_start"]: r for r in comparison}["2010-01"]
+    assert second["losses_from_laus"] == 1
+    assert second["losses_from_ces"] == 1
+    rec = unemployment_raw_sa_pilot.recommend_candidate_panel(comparison, collinearity)
+    assert rec["requested_start"] == "2007-01"
+    assert rec["freeze_panel"] is False
+
+
 if __name__ == "__main__":
     import sys
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

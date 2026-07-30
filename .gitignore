@@ -48,6 +48,27 @@ data/**/list1_*.xlsx
 data/zillow/tools/x13/
 data/zillow/archive_existing_*/
 # data/zillow/processed/*.csv
+data/zillow/raw/bls_ces/sm.data.*
+data/zillow/raw/bls_ces/*.zip
 
 # Machine-local housing runtime reports
 outputs/empirical/housing_all_homes/runtime/
+
+# --- Local official data and regenerable empirical artifacts ---
+# Official BLS CES State and Metro Area data payloads are kept locally and
+# documented by small manifests, but should not be pushed as repository blobs.
+data/unemployment/raw/ces_metro/sm.data.[0-9]*
+data/unemployment/raw/ces_metro/*.zip
+data/unemployment/raw/ces_metro/api_cache/
+
+# Unemployment raw-data/X-13 pilot caches are reproducible from official files
+# and scripts. Keep compact manifests, diagnostics, recommendations, and source
+# inventories trackable outside these scratch/data subdirectories.
+outputs/empirical/unemployment/raw_sa_pilot/raw/
+outputs/empirical/unemployment/raw_sa_pilot/**/x13_work/
+outputs/empirical/unemployment/raw_sa_pilot/**/checkpoints/
+outputs/empirical/unemployment/raw_sa_pilot/**/logs/
+outputs/empirical/unemployment/raw_sa_pilot/*_long.csv
+outputs/empirical/unemployment/raw_sa_pilot/final_source_validation/data/*.csv
+outputs/empirical/unemployment/raw_sa_pilot/**/*console*.txt
+**/*.part

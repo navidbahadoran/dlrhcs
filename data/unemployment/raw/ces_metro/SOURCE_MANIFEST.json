@@ -1,0 +1,70 @@
+{
+  "access_date_utc": "2026-07-29",
+  "agency": "U.S. Bureau of Labor Statistics",
+  "dataset": "CES State and Metro Area total private average weekly hours, all employees",
+  "documentation_url": "https://download.bls.gov/pub/time.series/sm/sm.txt",
+  "files": [
+    {
+      "byte_size": 12644,
+      "filename": "sm.area",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.area",
+      "sha256": "357930421d05d7883c8ddb7657d0046e55e10e48840de2cb63e106d2d66e5649"
+    },
+    {
+      "byte_size": 543146115,
+      "filename": "sm.data.1.AllData",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.data.1.AllData",
+      "sha256": "15f772522a3d5d04367d77ecf40dd152807d040eaae936f934c2e075b7049b22"
+    },
+    {
+      "byte_size": 819,
+      "filename": "sm.data_type",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.data_type",
+      "sha256": "3b14101486303537f41bcfbd187dcdb7cc5dd6d949830f7d4c9ab4a7f499b2dc"
+    },
+    {
+      "byte_size": 58,
+      "filename": "sm.footnote",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.footnote",
+      "sha256": "f17940d248667a23cf98277cce50daf4962d2eaee4e1db9bae37bc1846f1e2e8"
+    },
+    {
+      "byte_size": 14684,
+      "filename": "sm.industry",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.industry",
+      "sha256": "63562d3efc25f54bc6163fc4282df1abb7c0653d24add398a685f3b4e836dbb9"
+    },
+    {
+      "byte_size": 419,
+      "filename": "sm.period",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.period",
+      "sha256": "e8ce3168cbb2fd71dd6e51e2b30d9bfbd170c0940c850f949d50a3948e05b198"
+    },
+    {
+      "byte_size": 58,
+      "filename": "sm.seasonal",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.seasonal",
+      "sha256": "3ec19a178632c27e143543efb539dae96b399de7f4e1f1b262bb686ed1da7ebf"
+    },
+    {
+      "byte_size": 1880196,
+      "filename": "sm.series",
+      "official_url": "https://download.bls.gov/pub/time.series/sm/sm.series",
+      "sha256": "542dd547de0f513424491abfff55540ca02bdbeb03b1ff7b551df84e3e375cab"
+    }
+  ],
+  "local_directory": "data/unemployment/raw/ces_metro",
+  "notes": [
+    "The large official data payload sm.data.1.AllData is intentionally ignored by Git and preserved locally.",
+    "Metadata files are small and may be tracked with this manifest.",
+    "No interpolation, imputation, winsorization, standardization, forecasting, or backcasting is performed during source validation."
+  ],
+  "required_series_filter": {
+    "data_type_code": "02",
+    "geography": "five-digit MSA/CBSA area codes, excluding metropolitan divisions",
+    "industry_code": "05000000",
+    "periods": "M01 through M12 only; M13 annual average excluded",
+    "seasonal_code": "U"
+  },
+  "validation_command": "./.venv/Scripts/python.exe scripts/unemployment_raw_sa_pilot.py --repo-root . --validate-final-ces-source"
+}
